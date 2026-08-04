@@ -1,0 +1,41 @@
+import React from 'react'
+
+const Dashboard = React.lazy(() => import('./views/dashboard/dashboard'))
+
+const Users = React.lazy(() => import('./views/masters/users'))
+const ItemGroupMaster = React.lazy(() => import('./views/masters/itemgroupmaster'))
+const ItemMaster = React.lazy(() => import('./views/masters/Itemmaster'))
+const SupplierGroupMaster = React.lazy(() => import('./views/masters/suppliergroupmaster'))
+const SupplierMaster = React.lazy(() => import('./views/masters/suppliermaster'))
+const CustomerGroupMaster = React.lazy(() => import('./views/masters/customergroupmaster'))
+const CustomerMaster = React.lazy(() => import('./views/masters/customermaster'))
+const PriceMaster = React.lazy(() => import('./views/masters/pricemaster'))
+const MailSettings = React.lazy(() => import('./views/masters/mailsetting'))
+const GRNEntry = React.lazy(() => import('./views/transaction/grnentry'))
+const Reports = React.lazy(() => import('./views/report/reports'))
+
+const routes = [
+  { path: '/', exact: true, name: 'Home' },
+
+  // Dashboard
+  { path: '/dashboard', name: 'Dashboard', element: Dashboard },
+
+  // Masters
+  { path: '/masters/users', name: 'User Master', element: Users },
+  { path: '/masters/Itemgroupmaster', name: 'Item Group Master', element: ItemGroupMaster },
+  { path: '/masters/Itemmaster', name: 'Item Master', element: ItemMaster },
+  { path: '/masters/suppliermaster', name: 'Supplier Group Master', element: SupplierMaster},
+  { path: '/masters/suppliergroupmaster', name: 'Supplier Group Master', element: SupplierGroupMaster},
+  { path: '/masters/customergroupmaster', name: 'Customer Group Master', element: CustomerGroupMaster },
+  { path: '/masters/customermaster', name: 'Customer Master', element: CustomerMaster },
+  { path: '/masters/pricemaster', name: 'Price Master', element: PriceMaster },
+  { path: '/masters/mailsetting', name: 'Mail Settings', element: MailSettings },
+
+  // Transaction
+  { path: '/transaction/grnentry', name: 'GRN Entry', element: GRNEntry },
+
+  // Reports
+  { path: '/report/reports', name: 'Reports', element: Reports },
+]
+
+export default routes

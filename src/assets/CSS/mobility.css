@@ -1,0 +1,212 @@
+.mobility-container {
+    min-height: 100vh;
+    background: #f5f7fc;
+    padding: 10px;   /* 20px → 10px */
+    margin: 0;
+    overflow-x: hidden;
+}
+
+/* Header */
+.mobility-header {
+    background: linear-gradient(135deg, #0b43b5, #1d5eff);
+    color: #fff;
+    padding: 18px 20px;
+    border-radius: 0 0 20px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    margin: 0;
+    box-sizing: border-box;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+}
+
+.mobility-date {
+    font-size: 11px;
+    opacity: 0.9;
+    margin-bottom: 8px;
+}
+
+.mobility-header h3 {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 700;
+}
+
+.mobility-header p {
+    margin-top: 4px;
+    font-size: 13px;
+    opacity: 0.9;
+}
+
+.mobility-logout-icon {
+    font-size: 22px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.mobility-logout-icon:hover {
+    transform: scale(1.1);
+}
+
+/* Welcome */
+.welcome-section {
+    text-align: center;
+    padding: 15px 0 10px;
+}
+
+.welcome-icon {
+     width: 65px;
+    height: 65px;
+    font-size: 28px;
+    background: #edf3ff;
+    color: #0b43b5;
+    border-radius: 50%;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    margin: auto;
+    font-size: 36px;
+}
+
+.welcome-section h2 {
+    margin-top: 15px;
+    color: #173c8f;
+    font-size: 32px;
+    font-weight: 700;
+}
+
+.welcome-section p {
+    margin-top: 5px;
+    color: #888;
+    font-size: 14px;
+}
+
+/* Cards */
+.mobility-card {
+    border: none !important;
+    border-radius: 16px !important;
+    margin-bottom: 15px;
+    cursor: pointer;
+
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+
+    transition: all 0.25s ease;
+}
+
+.mobility-card:hover {
+    transform: translateY(-2px);
+}
+
+.mobility-card:active {
+    transform: scale(0.98);
+}
+
+.mobility-card-content {
+    padding: 12px 8px !important;
+
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.mobility-card-left {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+/* Icons */
+.icon-circle {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.invoice-bg {
+    background: #eef4ff;
+    color: #2563eb;
+}
+
+.part-bg {
+    background: #e9fff1;
+    color: #16a34a;
+}
+
+.gate-bg {
+    background: #fff1e9;
+    color: #f97316;
+}
+
+/* Text */
+.mobility-card-left h6 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: #173c8f;
+}
+
+.mobility-card-left p {
+    margin-top: 5px;
+    font-size: 11px;
+    color: #7a7a7a;
+    line-height: 1.4;
+}
+
+/* Arrow */
+.arrow-icon {
+    color: #2563eb;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+/* Left Border Colors */
+.invoice-card {
+    border-left: 4px solid #2563eb !important;
+}
+
+.mobility-part-card {
+    border-left: 4px solid #22c55e !important;
+}
+
+.gate-card {
+    border-left: 4px solid #f97316 !important;
+}
+
+/* Desktop */
+@media (min-width: 1200px) {
+    .welcome-section h2 {
+        font-size: 42px;
+    }
+
+    .mobility-card {
+        margin-bottom: 20px;
+    }
+}
+
+/* Laptop */
+@media (min-width: 992px) and (max-width: 1199px) {
+    .welcome-section h2 {
+        font-size: 38px;
+    }
+}
+
+/* Tablet */
+@media (min-width: 768px) and (max-width: 991px) {
+    .welcome-section h2 {
+        font-size: 34px;
+    }
+
+    .mobility-container {
+        padding: 15px;
+    }
+}

@@ -1,0 +1,332 @@
+.lg-root {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  position: relative;
+}
+
+.lg-left {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+}
+
+.lg-truck-img {
+  width: 100%;
+  height: 100%;
+}
+
+.forvia-feature-strip {
+  position: absolute;
+  bottom: 25px;
+  left: 25px;
+  right: 25px;
+
+  display: flex;
+  justify-content: space-between;
+
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.lg-left-content {
+  position: absolute;
+  top: 32px;
+  left: 36px;
+  z-index: 4;
+}
+
+.lg-logo {
+  height: 56px;
+  width: auto;
+  object-fit: contain;
+}
+
+.lg-tagline {
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 13px;
+  margin: 8px 0 10px;
+  letter-spacing: 0.03em;
+}
+
+.lg-tagline-bar {
+  width: 40px;
+  height: 3px;
+  background: #4a9eff;
+  border-radius: 2px;
+}
+
+/* Bottom feature strip */
+.lg-features {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 80px;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 18px 24px;
+  background: rgba(0, 15, 50, 0.65);
+  backdrop-filter: blur(6px);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.lg-feature {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 0 24px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 11px;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.lg-feat-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #7ec8ff;
+}
+
+.lg-feat-divider {
+  width: 1px;
+  height: 48px;
+  background: rgba(255, 255, 255, 0.12);
+  flex-shrink: 0;
+}
+
+.lg-right {
+  position: absolute;
+  top: 50%;
+  right: 12%;
+  transform: translateY(-50%);
+  z-index: 20;
+}
+
+/* ── CARD ─────────────────────────────────────────── */
+.lg-card {
+  width: 430px;
+  background: #fff;
+  border: 1px solid #e5e9f0;
+  border-radius: 22px;
+  padding: 40px 36px 26px;
+  position: relative;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+}
+
+.lg-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.lg-title {
+  text-align: center;
+  font-size: 19px;
+  font-weight: 700;
+  color: #334155;
+  margin: 0 0 26px;
+  line-height: 1.4;
+}
+
+.lg-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  text-align: left;
+}
+
+.lg-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lg-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.lg-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.lg-input-icon {
+  position: absolute;
+  left: 12px;
+  color: #a0aec0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.lg-input.form-control {
+  background: #ffffff !important;
+  border: 1px solid #d9dee6 !important;
+  border-radius: 12px !important;
+  color: #2d3748 !important;
+  font-size: 15px !important;
+  padding: 10px 12px 10px 38px !important;
+  height: 46px !important;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.lg-input.lg-input-pw.form-control {
+  padding-right: 40px !important;
+}
+
+.lg-input.form-control::placeholder {
+  color: #a0aec0 !important;
+}
+
+.lg-input.form-control:focus {
+  border-color: #3b6fd4 !important;
+  box-shadow: 0 0 0 3px rgba(59, 111, 212, 0.12) !important;
+  outline: none !important;
+}
+
+/* Eye toggle button */
+.lg-eye-btn {
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: #a0aec0;
+  display: flex;
+  align-items: center;
+  line-height: 1;
+}
+
+.lg-eye-btn:hover {
+  color: #4a5568;
+}
+
+.lg-mobility-row {
+  margin-top: 2px;
+  margin-bottom: 6px;
+}
+
+.lg-check-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #475569;
+  cursor: pointer;
+  user-select: none;
+}
+
+.lg-checkbox {
+  width: 15px;
+  height: 15px;
+  accent-color: #1d5cff;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* ── SIGN IN BUTTON ───────────────────────────────── */
+.lg-btn.btn {
+  width: 100%;
+  height: 50px;
+  background: #1355e8 !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 12px !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  margin-top: 4px;
+}
+
+.lg-btn.btn:hover {
+  background: #0c3580 !important;
+  color: #ffffff !important;
+}
+
+.lg-btn.btn:focus,
+.lg-btn.btn:active {
+  background: #071e4a !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.lg-btn.btn:disabled {
+  background: #9db8ff !important;
+  color: #ffffff !important;
+  cursor: not-allowed;
+}
+
+/* Footer: Version + Build Date */
+.lg-footer-info {
+  margin-top: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.lg-version,
+.lg-build {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+/* ── RESPONSIVE ───────────────────────────────────── */
+@media (max-width: 992px) {
+
+  .lg-right {
+    right: 5%;
+  }
+
+  .lg-card {
+    width: 360px;
+  }
+}
+
+@media (max-width: 768px) {
+  .lg-left {
+    display: none;
+  }
+  .lg-right {
+    position: static;
+    transform: none;
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+  }
+
+  .lg-card {
+    width: 100%;
+    max-width: 420px;
+  }
+}
+
+@media (max-width: 480px) {
+
+  .lg-card {
+    width: 100%;
+    padding: 32px 22px 22px;
+    border-radius: 18px;
+  }
+
+  .lg-title {
+    font-size: 17px;
+  }
+}
