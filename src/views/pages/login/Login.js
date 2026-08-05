@@ -6,7 +6,7 @@ import './Login.css'
 import truckImg from '../../../assets/images/truck.png';
 import API from '../../../api.js';
 import { v4 as uuidv4 } from "uuid";
-
+//login page
 const Login = () => {
   const navigate = useNavigate()
   const [showPassword, setShowPassword] = useState(false)
