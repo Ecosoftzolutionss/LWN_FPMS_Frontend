@@ -10,6 +10,8 @@ const SupplierMaster = React.lazy(() => import('./views/masters/suppliermaster')
 const CustomerGroupMaster = React.lazy(() => import('./views/masters/customergroupmaster'))
 const CustomerMaster = React.lazy(() => import('./views/masters/customermaster'))
 const PriceMaster = React.lazy(() => import('./views/masters/pricemaster'))
+const StoreMaster = React.lazy(() => import('./views/masters/storemaster'))
+const LocationMaster = React.lazy(() => import('./views/masters/locationmaster'))
 const MailSettings = React.lazy(() => import('./views/masters/mailsetting'))
 const GRNEntry = React.lazy(() => import('./views/transaction/grnentry'))
 const Reports = React.lazy(() => import('./views/report/reports'))
@@ -29,6 +31,8 @@ const routes = [
   { path: '/masters/customergroupmaster', name: 'Customer Group Master', element: CustomerGroupMaster },
   { path: '/masters/customermaster', name: 'Customer Master', element: CustomerMaster },
   { path: '/masters/pricemaster', name: 'Price Master', element: PriceMaster },
+  { path: '/masters/storemaster', name: 'Store Master', element: StoreMaster },
+  { path: '/masters/locationmaster', name: 'Location Master', element: LocationMaster },
   { path: '/masters/mailsetting', name: 'Mail Settings', element: MailSettings },
 
   // Transaction

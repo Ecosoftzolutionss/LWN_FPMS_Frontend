@@ -15,6 +15,7 @@ import {
   cilDescription,
   cilChartLine,
   cilDollar,
+  
 } from '@coreui/icons'
 
 import { CNavGroup, CNavItem } from '@coreui/react'
@@ -81,6 +82,18 @@ const _nav = [
         name: 'Price Master',
         to: '/masters/pricemaster',
         icon: <CIcon icon={cilDollar} customClassName="nav-icon" />,
+      },
+      {
+        component: CNavItem,
+        name: 'Store Master',
+        to: '/masters/storemaster',
+        icon: <CIcon icon={cilStorage} customClassName="nav-icon" />,
+      },
+      {
+        component: CNavItem,
+        name: 'Location Master',
+        to: '/masters/locationmaster',
+        icon: <CIcon icon={cilDescription} customClassName="nav-icon" />,
       },
       {
         component: CNavItem,

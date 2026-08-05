@@ -24,7 +24,10 @@ const EMPTY_FORM = {
   customerDivision: '',
   mobileNumber: '',
   emailId: '',
+  gstNo: '',
 }
+
+const GST_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/
 
 const getErrorMessage = (err, fallback) => {
   const data = err?.response?.data
@@ -75,6 +78,7 @@ const CustomerMaster = () => {
     customerDivision: '',
     mobileNumber: '',
     emailId: '',
+    gstNo: '',
   })
 
   const [editId, setEditId] = useState(null)
@@ -121,6 +125,7 @@ const CustomerMaster = () => {
       customerDivision: '',
       mobileNumber: '',
       emailId: '',
+      gstNo: '',
     }
 
     const customerCode = form.customerCode.trim()
@@ -167,6 +172,21 @@ const CustomerMaster = () => {
       temp.emailId = 'Email ID already exists'
     }
 
+    const gstNo = form.gstNo.trim().toUpperCase()
+
+    if (!gstNo) {
+      temp.gstNo = 'GST No is required'
+    } else if (!GST_REGEX.test(gstNo)) {
+      temp.gstNo = 'Enter a valid 15-character GSTIN (e.g. 33ABCDE1234F1Z5)'
+    } else if (
+      customers.some(
+        (c) =>
+          c.gstNo?.trim().toUpperCase() === gstNo && c.id !== editId,
+      )
+    ) {
+      temp.gstNo = 'GST No already exists'
+    }
+
     setErrors(temp)
 
     return !Object.values(temp).some((x) => x)
@@ -182,6 +202,7 @@ const CustomerMaster = () => {
         customerDivision: form.customerDivision.trim(),
         mobileNumber: form.mobileNumber.trim(),
         emailId: form.emailId.trim(),
+        gstNo: form.gstNo.trim().toUpperCase(),
       }
 
       if (editId) {
@@ -214,6 +235,7 @@ const CustomerMaster = () => {
         customerDivision: d.customerDivision || '',
         mobileNumber: d.mobileNumber || '',
         emailId: d.emailId || '',
+        gstNo: d.gstNo || '',
       })
 
       setErrors({
@@ -222,6 +244,7 @@ const CustomerMaster = () => {
         customerDivision: '',
         mobileNumber: '',
         emailId: '',
+        gstNo: '',
       })
     } catch {
       toast.error('Failed to load customer')
@@ -237,6 +260,7 @@ const CustomerMaster = () => {
       customerDivision: '',
       mobileNumber: '',
       emailId: '',
+      gstNo: '',
     })
 
     setEditId(null)
@@ -276,7 +300,8 @@ const CustomerMaster = () => {
       (c.customerName || '').toLowerCase().includes(search.toLowerCase()) ||
       (c.customerCode || '').toLowerCase().includes(search.toLowerCase()) ||
       (c.customerDivision || '').toLowerCase().includes(search.toLowerCase()) ||
-      (c.emailId || '').toLowerCase().includes(search.toLowerCase()),
+      (c.emailId || '').toLowerCase().includes(search.toLowerCase()) ||
+      (c.gstNo || '').toLowerCase().includes(search.toLowerCase()),
   )
 
   const columns = [
@@ -286,6 +311,7 @@ const CustomerMaster = () => {
     { name: 'CUSTOMER DIVISION', selector: (row) => row.customerDivision, wrap: true },
     { name: 'MOBILE NUMBER', selector: (row) => row.mobileNumber },
     { name: 'EMAIL ADDRESS', selector: (row) => row.emailId, wrap: true },
+    { name: 'GST NO.', selector: (row) => row.gstNo },
     {
       name: 'ACTION',
       center: true,
@@ -410,6 +436,23 @@ const CustomerMaster = () => {
                   onChange={handleChange}
                 />
                 {errors.emailId && <small className="text-danger">{errors.emailId}</small>}
+              </CCol>
+
+              <CCol md={4}>
+                <label className="custom-label">
+                  <strong>GST No.</strong> <span className="required">*</span>
+                </label>
+                <CFormInput
+                  name="gstNo"
+                  placeholder="Enter GSTIN (e.g. 33ABCDE1234F1Z5)"
+                  value={form.gstNo}
+                  className={errors.gstNo ? 'error-input' : ''}
+                  onChange={(e) =>
+                    handleChange({ target: { name: 'gstNo', value: e.target.value.toUpperCase() } })
+                  }
+                  maxLength={15}
+                />
+                {errors.gstNo && <small className="text-danger">{errors.gstNo}</small>}
               </CCol>
             </CRow>
 

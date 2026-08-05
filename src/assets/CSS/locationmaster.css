@@ -1,0 +1,912 @@
+/* =========================================================
+   LOCATION MASTER PAGE — SCOPED CSS
+========================================================= */
+
+.location-master-page {
+  background: #f4f6fb;
+  padding: 15px;
+}
+
+.location-master-page .required {
+  color: #e53935;
+  margin-left: 2px;
+  font-weight: 700;
+}
+
+.location-grid {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 992px) {
+  .location-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =========================================================
+   LEFT FORM CARD
+========================================================= */
+
+.location-form-card {
+  border: 1px solid #d8deed;
+  border-radius: 12px;
+}
+
+.location-master-page .section-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0d47a1;
+  border-left: 4px solid #0d47a1;
+  padding-left: 10px;
+  margin-bottom: 18px;
+}
+
+.location-master-page .loc-field {
+  margin-bottom: 14px;
+}
+
+.location-master-page .custom-label {
+  font-size: 12px;
+  color: #1f2937;
+  font-weight: 700;
+  margin-bottom: 6px;
+  display: block;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.location-master-page .form-control,
+.location-master-page .react-select__control {
+  height: 38px !important;
+  min-height: 38px !important;
+  border-radius: 6px !important;
+  border: 1px solid #c4d3ea !important;
+  font-size: 13px !important;
+  box-shadow: none !important;
+  background: #fff !important;
+}
+
+.location-master-page .form-control:disabled {
+  background: #f1f3f8 !important;
+  color: #8895ab !important;
+}
+
+.location-master-page .error-input {
+  border: 1px solid #dc3545 !important;
+}
+
+.location-master-page .react-select-error .react-select__control {
+  border-color: #dc3545 !important;
+}
+
+/* Colour picker */
+.location-master-page .colour-picker-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 38px;
+  border: 1px solid #c4d3ea;
+  border-radius: 6px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.location-master-page .colour-picker-wrap.error-input {
+  border: 1px solid #dc3545 !important;
+}
+
+.location-master-page .colour-picker-wrap.colour-readonly {
+  background: #f1f3f8;
+}
+
+.location-master-page .colour-readonly .colour-hex-input {
+  color: #8895ab;
+}
+
+.location-master-page .colour-swatch {
+  width: 26px;
+  height: 22px;
+  margin-left: 8px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+
+  flex: 1;
+  border: none;
+  outline: none;
+  padding: 0 10px;
+  font-size: 13px;
+  color: #2d3748;
+  background: transparent;
+}
+
+.location-master-page .colour-hex-input::placeholder {
+  color: #9aa7bd;
+}
+
+.location-master-page .colour-edit-btn {
+  width: 30px;
+  height: 30px;
+  margin-right: 4px;
+  border: none;
+  border-radius: 6px;
+  background: #1d5cff;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.location-master-page .colour-edit-btn:hover {
+  background: #0c3580;
+}
+
+.location-master-page .colour-native-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Summary */
+.location-master-page .loc-summary {
+  font-size: 12px;
+  color: #475569;
+  border-top: 1px solid #eef1f8;
+  padding-top: 10px;
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Racks header + add button */
+.location-master-page .loc-racks-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14px;
+  margin-bottom: 8px;
+}
+
+.location-master-page .add-rack-btn {
+  background: #1d5cff !important;
+  border: none !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  padding: 5px 10px !important;
+  border-radius: 6px !important;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.location-master-page .add-rack-btn:hover {
+  background: #0c3580 !important;
+}
+
+/* Add rack inline box */
+.location-master-page .add-rack-box {
+  background: #f7f9fd;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.location-master-page .add-rack-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.location-master-page .rack-mini-input {
+  flex: 1;
+  height: 32px;
+  border: 1px solid #c4d3ea;
+  border-radius: 6px;
+  font-size: 12px;
+  padding: 0 8px;
+  min-width: 0;
+}
+
+.location-master-page .rack-slots-input {
+  flex: 0 0 50px;
+}
+
+.location-master-page .rack-add-confirm-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  background: #1d5cff;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.location-master-page .add-rack-checks {
+  display: flex;
+  gap: 14px;
+  font-size: 12px;
+  color: #475569;
+}
+
+.location-master-page .add-rack-checks label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+}
+
+/* Rack table */
+.location-master-page .rack-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+
+.location-master-page .rack-table th {
+  background: #f1f4fa;
+  color: #23395d;
+  font-weight: 700;
+  text-align: center;
+  padding: 6px 4px;
+}
+
+.location-master-page .rack-table td {
+  text-align: center;
+  padding: 6px 4px;
+  border-bottom: 1px solid #eef1f8;
+}
+
+.location-master-page .rack-delete-btn {
+  border: none;
+  background: #ffebee;
+  color: #e53935;
+  border-radius: 4px;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+}
+
+/* Save/Clear */
+.location-master-page .loc-btn-area {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.location-master-page .save-btn {
+  flex: 1;
+  height: 38px;
+  background: #0d4ea2 !important;
+  border: none !important;
+  color: #fff !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  border-radius: 6px !important;
+}
+
+.location-master-page .clear-btn {
+  flex: 1;
+  height: 38px;
+  background: #f1f3f8 !important;
+  border: 1px solid #d8deed !important;
+  color: #475569 !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  border-radius: 6px !important;
+}
+
+/* Mini store list */
+.location-master-page .store-list-mini {
+  margin-top: 6px;
+}
+
+.location-master-page .store-mini-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.location-master-page .store-mini-row:hover {
+  background: #f1f4fa;
+}
+
+.location-master-page .store-mini-row.active {
+  background: #e3ecfd;
+}
+
+.location-master-page .store-mini-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.location-master-page .store-mini-label {
+  flex: 1;
+  color: #1f2937;
+}
+
+.location-master-page .store-mini-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.location-master-page .store-mini-actions button {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: #64748b;
+  padding: 2px;
+}
+
+/* =========================================================
+   RIGHT PREVIEW CARD
+========================================================= */
+
+.location-preview-card {
+  border: 1px solid #d8deed;
+  border-radius: 12px;
+  min-height: 480px;
+}
+
+.location-preview-body {
+  min-height: 460px;
+  display: flex;
+  flex-direction: column;
+}
+
+.location-master-page .empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #64748b;
+  padding: 40px 20px;
+}
+
+.location-master-page .empty-icon {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  border: 2px dashed #cbd5e1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1d5cff;
+  margin-bottom: 16px;
+}
+
+.location-master-page .empty-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 6px;
+}
+
+.location-master-page .empty-sub {
+  font-size: 13px;
+  max-width: 320px;
+}
+
+.location-master-page .preview-header {
+  font-size: 13px;
+  font-weight: 700;
+  color: #23395d;
+  margin-bottom: 16px;
+}
+
+.location-master-page .rack-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 14px;
+}
+
+.location-master-page .rack-preview-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.location-master-page .rack-preview-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #23395d;
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.location-master-page .rack-slot-row {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.location-master-page .rack-slot {
+  flex: 1;
+  font-size: 10px;
+  text-align: center;
+  padding: 4px 2px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.location-master-page .rack-slot.front {
+  background: #ffd8a8;
+  color: #7c4a03;
+}
+
+.location-master-page .rack-slot.rear {
+  background: #e0c3fc;
+  color: #4a1a7c;
+}
+
+.location-master-page .preview-legend {
+  display: flex;
+  gap: 18px;
+  margin-top: 16px;
+  font-size: 12px;
+  color: #475569;
+}
+
+.location-master-page .preview-legend span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.location-master-page .legend-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+.location-master-page .legend-swatch.front {
+  background: #ffd8a8;
+}
+
+.location-master-page .legend-swatch.rear {
+  background: #e0c3fc;
+}
+
+/* =========================================================
+   RACK NO. QUICK-ADD BOX TITLE
+========================================================= */
+
+.location-master-page .add-rack-box-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #475569;
+  margin-bottom: 6px;
+}
+
+/* =========================================================
+   MULTI-STORE DASHBOARD (RIGHT PANEL)
+========================================================= */
+
+.location-master-page .dash-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.location-master-page .dash-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #23395d;
+}
+
+.location-master-page .dash-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.location-master-page .dash-rack-view-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #94a3b8;
+  letter-spacing: 0.03em;
+}
+
+.location-master-page .dash-rack-view-select {
+  width: 200px;
+}
+
+.location-master-page .dash-rack-view-select .react-select__control {
+  min-height: 32px !important;
+  height: 32px !important;
+  font-size: 12px !important;
+}
+
+.location-master-page .dash-zoom {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #f1f4fa;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: #475569;
+}
+
+.location-master-page .dash-zoom button {
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: #fff;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #475569;
+}
+
+.location-master-page .dash-zoom button:hover {
+  background: #e3ecfd;
+  color: #1d5cff;
+}
+
+.location-master-page .dash-scroll {
+  overflow: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 14px;
+  flex: 1;
+}
+
+.location-master-page .dash-grid {
+  min-width: max-content;
+}
+
+.location-master-page .dash-columns {
+  display: flex;
+  gap: 16px;
+}
+
+.location-master-page .dash-column {
+  width: 180px;
+  flex-shrink: 0;
+}
+
+.location-master-page .dash-column-header {
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #23395d;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #eef1f8;
+}
+
+.location-master-page .dash-cell {
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 6px 8px;
+  margin-bottom: 8px;
+  min-height: 46px;
+}
+
+.location-master-page .dash-cell-empty {
+  border: none;
+  background: transparent;
+}
+
+.location-master-page .dash-cell-highlight {
+  border: 2px solid #1d5cff;
+  box-shadow: 0 0 0 3px rgba(29, 92, 255, 0.12);
+}
+
+.location-master-page .dash-cell-rackno {
+  font-size: 10px;
+  font-weight: 700;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.location-master-page .dash-cell-slots {
+  display: flex;
+  gap: 4px;
+}
+
+.location-master-page .dash-slot {
+  flex: 1;
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+  padding: 5px 2px;
+  border-radius: 4px;
+}
+
+.location-master-page .dash-slot.occupied-front {
+  background: #ffd8a8;
+  color: #7c4a03;
+}
+
+.location-master-page .dash-slot.occupied-rear {
+  background: #e0c3fc;
+  color: #4a1a7c;
+}
+
+.location-master-page .dash-slot.available {
+  background: #fff;
+  border: 1px dashed #cbd5e1;
+  color: #94a3b8;
+}
+
+.location-master-page .dash-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.location-master-page .dash-side-toggle {
+  display: flex;
+  border: 1px solid #d8deed;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.location-master-page .dash-side-toggle button {
+  border: none;
+  background: #fff;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 16px;
+  cursor: pointer;
+}
+
+.location-master-page .dash-side-toggle button.active {
+  background: #1d5cff;
+  color: #fff;
+}
+
+.location-master-page .dash-legend {
+  display: flex;
+  gap: 16px;
+  font-size: 11px;
+  color: #475569;
+  flex-wrap: wrap;
+}
+
+.location-master-page .dash-legend span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.location-master-page .dash-legend .legend-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+.location-master-page .legend-swatch.occupied-front {
+  background: #ffd8a8;
+}
+
+.location-master-page .legend-swatch.occupied-rear {
+  background: #e0c3fc;
+}
+
+.location-master-page .legend-swatch.available {
+  background: #fff;
+  border: 1px dashed #cbd5e1;
+}
+
+/* Preview card now flexes to fit the dashboard's header/scroll/footer */
+.location-preview-body {
+  display: flex;
+  flex-direction: column;
+}
+
+/* =========================================================
+   TABS (Add Rack / Add Location)
+========================================================= */
+
+.location-master-page .loc-tabs {
+  display: flex;
+  gap: 6px;
+  margin-top: 16px;
+  margin-bottom: 12px;
+}
+
+.location-master-page .loc-tabs button {
+  border: 1px solid #d8deed;
+  background: #fff;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+}
+
+.location-master-page .loc-tabs button.active {
+  background: #1d5cff;
+  border-color: #1d5cff;
+  color: #fff;
+}
+
+.location-master-page .rack-tab-panel {
+  border-top: 1px solid #eef1f8;
+  padding-top: 12px;
+}
+
+.location-master-page .add-rack-box-hint {
+  font-size: 10px;
+  color: #94a3b8;
+  margin-bottom: 8px;
+}
+
+/* Front/Rear checkbox pair inside the row table */
+.location-master-page .mini-check {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  color: #475569;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.location-master-page .mini-check input {
+  width: 12px;
+  height: 12px;
+  cursor: pointer;
+}
+
+.location-master-page .fixture-mini-input {
+  width: 44px;
+  height: 26px;
+  border: 1px solid #c4d3ea;
+  border-radius: 4px;
+  font-size: 11px;
+  text-align: center;
+}
+
+/* Chips listing each Rack under the current store, with a delete button */
+.location-master-page .rack-list-mini {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.location-master-page .rack-mini-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #eef1f8;
+  color: #23395d;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 14px;
+}
+
+.location-master-page .rack-mini-chip button {
+  border: none;
+  background: transparent;
+  color: #e53935;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+/* =========================================================
+   NESTED RACK -> COLUMN -> ROW PREVIEW
+========================================================= */
+
+.location-master-page .rack-preview-outer {
+  display: inline-block;
+  background: #dbeafe;
+  border: 2px solid #93c5fd;
+  border-radius: 10px;
+  padding: 30px 20px 20px;
+  position: relative;
+  min-width: 300px;
+}
+
+.location-master-page .rack-preview-badge {
+  position: absolute;
+  top: -14px;
+  left: 20px;
+  background: #1d5cff;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 14px;
+  border-radius: 6px;
+}
+
+.location-master-page .rack-preview-column {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+
+.location-master-page .rack-preview-column-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #1e40af;
+  margin-bottom: 8px;
+}
+
+.location-master-page .rack-preview-row {
+  margin-bottom: 8px;
+}
+
+.location-master-page .rack-preview-row:last-child {
+  margin-bottom: 0;
+}
+
+.location-master-page .rack-preview-row-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.location-master-page .rack-preview-row-slots {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.location-master-page .rack-slot-box {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 6px 10px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.location-master-page .rack-slot-box.occupied-front {
+  background: #ffd8a8;
+  color: #7c4a03;
+}
+
+.location-master-page .rack-slot-box.occupied-rear {
+  background: #e0c3fc;
+  color: #4a1a7c;
+}
+
+.location-master-page .rack-slot-box.available {
+  background: #fff;
+  border: 1px dashed #cbd5e1;
+  color: #94a3b8;
+}

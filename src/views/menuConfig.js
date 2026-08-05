@@ -10,6 +10,7 @@ import {
   cilDescription,
   cilChartLine,
   cilDollar,
+  cilStorage,
 } from '@coreui/icons'
 
 export const MENU_CONFIG = [
@@ -49,6 +50,14 @@ export const MENU_CONFIG = [
   {
     name: 'Price Master',
      icon: cilDollar,
+  },
+  {
+    name: 'Store Master',
+     icon: cilStorage,
+  },
+   {
+    name: 'Location Master',
+     icon: cilDescription,
   },
   {
     name: 'Mail Settings',

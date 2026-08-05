@@ -429,14 +429,14 @@ const ItemMaster = () => {
             <CRow className="g-3">
               <CCol md={4}>
                 <label className="custom-label">
-                  <strong>Item Number</strong> <span className="required">*</span>
+                  <strong>Part Number</strong> <span className="required">*</span>
                 </label>
                 <CFormInput value={form.itemNumber} placeholder="Auto Generate" disabled />
               </CCol>
 
               <CCol md={4}>
                 <label className="custom-label">
-                  <strong>Item Name</strong> <span className="required">*</span>
+                  <strong>Part Name</strong> <span className="required">*</span>
                 </label>
                 <CFormInput
                   ref={itemNameRef}
