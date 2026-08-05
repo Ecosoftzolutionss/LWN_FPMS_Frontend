@@ -20,7 +20,7 @@ import {
 import { CNavGroup, CNavItem } from '@coreui/react'
 
 const _nav = [
-  // Dashboard
+  // Dashboard //daaddd
   {
     component: CNavItem,
     name: 'Dashboard',
