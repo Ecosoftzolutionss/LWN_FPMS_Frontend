@@ -15,7 +15,11 @@ import {
   cilDescription,
   cilChartLine,
   cilDollar,
-  
+  cilCloudUpload,
+  cilCheckCircle,
+  cilTransfer,
+
+
 } from '@coreui/icons'
 
 import { CNavGroup, CNavItem } from '@coreui/react'
@@ -95,12 +99,12 @@ const _nav = [
         to: '/masters/locationmaster',
         icon: <CIcon icon={cilDescription} customClassName="nav-icon" />,
       },
-      {
-        component: CNavItem,
-        name: 'Mail Settings',
-        to: '/masters/mailsetting',
-        icon: <CIcon icon={cilEnvelopeClosed} customClassName="nav-icon" />,
-      },
+      // {
+      //   component: CNavItem,
+      //   name: 'Mail Settings',
+      //   to: '/masters/mailsetting',
+      //   icon: <CIcon icon={cilEnvelopeClosed} customClassName="nav-icon" />,
+      // },
     ],
   },
 
@@ -114,8 +118,21 @@ const _nav = [
         component: CNavItem,
         name: 'GRN Entry',
         to: '/transaction/grnentry',
-        icon: <CIcon icon={cilDescription} customClassName="nav-icon" />,
+        icon: <CIcon icon={cilCloudUpload} customClassName="nav-icon" />,
       },
+      {
+        component: CNavItem,
+        name: 'GRN Post',
+        to: '/transaction/grnpost',
+        icon: <CIcon icon={cilCheckCircle} customClassName="nav-icon" />,
+      },
+      {
+        component: CNavItem,
+        name: 'Store Movement',
+        to: '/transaction/storemovement',
+        icon: <CIcon icon={cilTransfer} customClassName="nav-icon" />,
+      },
+
     ],
   },
 

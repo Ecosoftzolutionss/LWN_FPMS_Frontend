@@ -15,6 +15,7 @@ import {
 } from '@coreui/react'
 import { FaEdit, FaTrash, FaPlus, FaArrowLeft, FaPen } from 'react-icons/fa'
 import { toast } from 'react-toastify'
+import Select from 'react-select'
 import API from '../../api.js'
 import '../../assets/CSS/storeMaster.css'
 
@@ -22,7 +23,7 @@ const HEX_REGEX = /^#[0-9A-Fa-f]{6}$/
 
 const EMPTY_FORM = {
   storeLocation: '',
-  palletNumber: '',
+  palletTypeId: '',
   colourCode: '#1E88E5',
 }
 
@@ -66,13 +67,14 @@ const StoreMaster = () => {
   }
 
   const [stores, setStores] = useState([])
+  const [palletTypes, setPalletTypes] = useState([])
   const [showForm, setShowForm] = useState(false)
 
   const [form, setForm] = useState(EMPTY_FORM)
 
   const [errors, setErrors] = useState({
     storeLocation: '',
-    palletNumber: '',
+    palletTypeId: '',
     colourCode: '',
   })
 
@@ -84,6 +86,7 @@ const StoreMaster = () => {
 
   useEffect(() => {
     loadStores()
+    loadPalletTypes()
   }, [])
 
   useEffect(() => {
@@ -107,6 +110,23 @@ const StoreMaster = () => {
     }
   }
 
+  const loadPalletTypes = async () => {
+    try {
+      const res = await API.get('/PalletType')
+      setPalletTypes(res.data || [])
+    } catch {
+      toast.error('Failed to load pallet types')
+    }
+  }
+
+  const palletTypeOptions = palletTypes.map((p) => {
+    const next = p.currentSequence + 1 > p.rangeTo ? p.rangeFrom : p.currentSequence + 1
+    return {
+      value: p.id,
+      label: `${p.palletName} (next: ${p.palletName}-${String(next).padStart(2, '0')})`,
+    }
+  })
+
   const handleChange = (e) => {
     const { name, value } = e.target
     setForm({ ...form, [name]: value })
@@ -116,24 +136,12 @@ const StoreMaster = () => {
   const validate = () => {
     const temp = {
       storeLocation: '',
-      palletNumber: '',
+      palletTypeId: '',
       colourCode: '',
     }
 
     if (!form.storeLocation.trim()) temp.storeLocation = 'Store Location is required'
-
-    const palletNumber = form.palletNumber.trim()
-    if (!palletNumber) {
-      temp.palletNumber = 'Pallet Number is required'
-    } else if (
-      stores.some(
-        (s) =>
-          s.palletNumber?.trim().toLowerCase() === palletNumber.toLowerCase() &&
-          s.id !== editId,
-      )
-    ) {
-      temp.palletNumber = 'Pallet Number already exists'
-    }
+    if (!editId && !form.palletTypeId) temp.palletTypeId = 'Pallet Type is required'
 
     const colour = form.colourCode.trim()
     if (!colour) {
@@ -151,21 +159,25 @@ const StoreMaster = () => {
     if (!validate()) return
 
     try {
-      const payload = {
-        storeLocation: form.storeLocation.trim(),
-        palletNumber: form.palletNumber.trim(),
-        colourCode: form.colourCode.trim().toUpperCase(),
-      }
-
       if (editId) {
-        await API.put(`/StoreMaster/${editId}`, payload)
+        // Editing only ever touches Store Location + Colour — Pallet
+        // Number/Type are assigned once at creation and never change.
+        await API.put(`/StoreMaster/${editId}`, {
+          storeLocation: form.storeLocation.trim(),
+          colourCode: form.colourCode.trim().toUpperCase(),
+        })
         toast.success('Store Updated Successfully')
       } else {
-        await API.post('/StoreMaster', payload)
+        await API.post('/StoreMaster', {
+          storeLocation: form.storeLocation.trim(),
+          palletTypeId: Number(form.palletTypeId),
+          colourCode: form.colourCode.trim().toUpperCase(),
+        })
         toast.success('Store Saved Successfully')
       }
 
       await loadStores()
+      await loadPalletTypes() // refresh "next" preview since a sequence moved
       resetForm()
       setShowForm(false)
     } catch (err) {
@@ -183,11 +195,11 @@ const StoreMaster = () => {
 
       setForm({
         storeLocation: d.storeLocation || '',
-        palletNumber: d.palletNumber || '',
+        palletTypeId: d.palletTypeId || '',
         colourCode: d.colourCode || '#1E88E5',
       })
 
-      setErrors({ storeLocation: '', palletNumber: '', colourCode: '' })
+      setErrors({ storeLocation: '', palletTypeId: '', colourCode: '' })
     } catch {
       toast.error('Failed to load store record')
     }
@@ -195,7 +207,7 @@ const StoreMaster = () => {
 
   const resetForm = () => {
     setForm(EMPTY_FORM)
-    setErrors({ storeLocation: '', palletNumber: '', colourCode: '' })
+    setErrors({ storeLocation: '', palletTypeId: '', colourCode: '' })
     setEditId(null)
 
     setTimeout(() => {
@@ -235,8 +247,9 @@ const StoreMaster = () => {
   )
 
   const columns = [
-    { name: 'SL.NO', selector: (row, index) => index + 1, width: '80px' },
+    { name: 'SL.NO', selector: (row, index) => index + 1, width: '90px' },
     { name: 'PALLET NUMBER', selector: (row) => row.palletNumber },
+    { name: 'PALLET TYPE', selector: (row) => row.palletTypeName },
     { name: 'STORE LOCATION', selector: (row) => row.storeLocation, wrap: true },
     {
       name: 'COLOUR',
@@ -356,16 +369,32 @@ const StoreMaster = () => {
 
               <CCol md={4}>
                 <label className="custom-label">
-                  <strong>Pallet Number</strong> <span className="required">*</span>
+                  <strong>Pallet Type</strong> <span className="required">*</span>
                 </label>
-                <CFormInput
-                  name="palletNumber"
-                  placeholder="Enter Pallet Number"
-                  value={form.palletNumber}
-                  className={errors.palletNumber ? 'error-input' : ''}
-                  onChange={handleChange}
-                />
-                {errors.palletNumber && <small className="text-danger">{errors.palletNumber}</small>}
+
+                {editId ? (
+                  <CFormInput
+                    value={stores.find((s) => s.id === editId)?.palletNumber || ''}
+                    disabled
+                  />
+                ) : (
+                  <>
+                    <div className={errors.palletTypeId ? 'react-select-error' : ''}>
+                      <Select
+                        classNamePrefix="react-select"
+                        placeholder="Select Pallet Type"
+                        options={palletTypeOptions}
+                        value={palletTypeOptions.find((x) => String(x.value) === String(form.palletTypeId)) || null}
+                        onChange={(selected) => {
+                          setForm({ ...form, palletTypeId: selected?.value || '' })
+                          clearError('palletTypeId')
+                        }}
+                        isClearable
+                      />
+                    </div>
+                    {errors.palletTypeId && <small className="text-danger">{errors.palletTypeId}</small>}
+                  </>
+                )}
               </CCol>
             </CRow>
 

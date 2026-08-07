@@ -68,6 +68,14 @@ export const MENU_CONFIG = [
     icon: cilDescription,
   },
   {
+    name: 'GRN Post',
+    icon: cilDescription,
+  },
+  {
+    name: 'Store Movement',
+    icon: cilDescription,
+  },
+  {
     name: 'Reports',
     icon: cilChartLine,
   },

@@ -91,6 +91,7 @@ const ItemMaster = () => {
   const [form, setForm] = useState(EMPTY_FORM)
 
   const [errors, setErrors] = useState({
+    itemNumber: '',
     itemName: '',
     itemTypeId: '',
     itemGroupId: '',
@@ -155,15 +156,6 @@ const ItemMaster = () => {
     }
   }
 
-  const loadNextItemNumber = async () => {
-    try {
-      const res = await API.get('/ItemMaster/next-number')
-      setForm((prev) => ({ ...prev, itemNumber: res.data?.itemNumber || '' }))
-    } catch {
-      // Non-fatal — the number is only a preview; backend re-generates on Save
-    }
-  }
-
   const handleChange = (e) => {
     const { name, value } = e.target
     setForm({ ...form, [name]: value })
@@ -172,6 +164,7 @@ const ItemMaster = () => {
 
   const validate = () => {
     const temp = {
+      itemNumber: '',
       itemName: '',
       itemTypeId: '',
       itemGroupId: '',
@@ -180,6 +173,20 @@ const ItemMaster = () => {
       safetyLevel: '',
       reorderLevel: '',
       dangerLevel: '',
+    }
+
+    const itemNumber = form.itemNumber.trim()
+
+    if (!itemNumber) {
+      temp.itemNumber = 'Item Number is required'
+    } else if (
+      items.some(
+        (i) =>
+          i.itemNumber?.trim().toLowerCase() === itemNumber.toLowerCase() &&
+          i.id !== editId,
+      )
+    ) {
+      temp.itemNumber = 'Item Number already exists'
     }
 
     const itemName = form.itemName.trim()
@@ -216,6 +223,7 @@ const ItemMaster = () => {
 
     try {
       const payload = {
+        itemNumber: form.itemNumber.trim(),
         itemName: form.itemName.trim(),
         itemTypeId: Number(form.itemTypeId) || 0,
         itemTypeName: itemTypeInput,
@@ -285,6 +293,7 @@ const ItemMaster = () => {
       setItemTypeInput(d.itemTypeName || '')
 
       setErrors({
+        itemNumber: '',
         itemName: '',
         itemTypeId: '',
         itemGroupId: '',
@@ -304,6 +313,7 @@ const ItemMaster = () => {
     setItemTypeInput('')
 
     setErrors({
+      itemNumber: '',
       itemName: '',
       itemTypeId: '',
       itemGroupId: '',
@@ -315,7 +325,6 @@ const ItemMaster = () => {
     })
 
     setEditId(null)
-    loadNextItemNumber()
 
     setTimeout(() => {
       itemNameRef.current?.focus()
@@ -429,14 +438,21 @@ const ItemMaster = () => {
             <CRow className="g-3">
               <CCol md={4}>
                 <label className="custom-label">
-                  <strong>Part Number</strong> <span className="required">*</span>
+                  <strong>Item Number</strong> <span className="required">*</span>
                 </label>
-                <CFormInput value={form.itemNumber} placeholder="Auto Generate" disabled />
+                <CFormInput
+                  name="itemNumber"
+                  placeholder="Enter Item Number"
+                  value={form.itemNumber}
+                  className={errors.itemNumber ? 'error-input' : ''}
+                  onChange={handleChange}
+                />
+                {errors.itemNumber && <small className="text-danger">{errors.itemNumber}</small>}
               </CCol>
 
               <CCol md={4}>
                 <label className="custom-label">
-                  <strong>Part Name</strong> <span className="required">*</span>
+                  <strong>Item Name</strong> <span className="required">*</span>
                 </label>
                 <CFormInput
                   ref={itemNameRef}

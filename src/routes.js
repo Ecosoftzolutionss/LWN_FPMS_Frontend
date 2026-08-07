@@ -14,6 +14,8 @@ const StoreMaster = React.lazy(() => import('./views/masters/storemaster'))
 const LocationMaster = React.lazy(() => import('./views/masters/locationmaster'))
 const MailSettings = React.lazy(() => import('./views/masters/mailsetting'))
 const GRNEntry = React.lazy(() => import('./views/transaction/grnentry'))
+const GRNPost = React.lazy(() => import('./views/transaction/grnpost'))
+const StoreMovement = React.lazy(() => import('./views/transaction/storemovement'))
 const Reports = React.lazy(() => import('./views/report/reports'))
 
 const routes = [
@@ -37,6 +39,8 @@ const routes = [
 
   // Transaction
   { path: '/transaction/grnentry', name: 'GRN Entry', element: GRNEntry },
+  { path: '/transaction/grnpost', name: 'GRN Post', element: GRNPost },
+  { path: '/transaction/storemovement', name: 'Store Movement', element: StoreMovement },
 
   // Reports
   { path: '/report/reports', name: 'Reports', element: Reports },

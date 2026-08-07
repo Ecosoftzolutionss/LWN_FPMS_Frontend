@@ -27,7 +27,7 @@ const getErrorMessage = (err, fallback) => {
 }
 
 const ItemGroupMaster = () => {
-  const groupCodeRef = useRef()
+  const groupNameRef = useRef()
 
   const customStyles = {
     rows: { style: { minHeight: '34px' } },
@@ -53,14 +53,12 @@ const ItemGroupMaster = () => {
   const [showForm, setShowForm] = useState(false)
 
   const [form, setForm] = useState({
-    groupCode: '',
     groupName: '',
     description: '',
     isActive: true,
   })
 
   const [errors, setErrors] = useState({
-    groupCode: '',
     groupName: '',
   })
 
@@ -77,7 +75,7 @@ const ItemGroupMaster = () => {
   useEffect(() => {
     if (showForm) {
       setTimeout(() => {
-        groupCodeRef.current?.focus()
+        groupNameRef.current?.focus()
       }, 200)
     }
   }, [showForm])
@@ -111,24 +109,10 @@ const ItemGroupMaster = () => {
 
   const validate = () => {
     const temp = {
-      groupCode: '',
       groupName: '',
     }
 
-    const groupCode = form.groupCode.trim()
     const groupName = form.groupName.trim()
-
-    if (!groupCode) {
-      temp.groupCode = 'Group Code is required'
-    } else if (
-      groups.some(
-        (g) =>
-          g.groupCode?.trim().toLowerCase() === groupCode.toLowerCase() &&
-          g.id !== editId,
-      )
-    ) {
-      temp.groupCode = 'Group Code already exists'
-    }
 
     if (!groupName) {
       temp.groupName = 'Group Name is required'
@@ -136,7 +120,7 @@ const ItemGroupMaster = () => {
       groups.some(
         (g) =>
           g.groupName?.trim().toLowerCase() === groupName.toLowerCase() &&
-          g.id !== editId,
+          g.id !== editId
       )
     ) {
       temp.groupName = 'Group Name already exists'
@@ -146,13 +130,11 @@ const ItemGroupMaster = () => {
 
     return !Object.values(temp).some((x) => x)
   }
-
   const handleSubmit = async () => {
     if (!validate()) return
 
     try {
       const payload = {
-        groupCode: form.groupCode.trim(),
         groupName: form.groupName.trim(),
         description: form.description.trim(),
         isActive: form.isActive === true || form.isActive === 'true',
@@ -182,14 +164,12 @@ const ItemGroupMaster = () => {
       setShowForm(true)
 
       setForm({
-        groupCode: res.data.groupCode || '',
         groupName: res.data.groupName || '',
         description: res.data.description || '',
         isActive: res.data.isActive,
       })
 
       setErrors({
-        groupCode: '',
         groupName: '',
       })
     } catch {
@@ -199,21 +179,19 @@ const ItemGroupMaster = () => {
 
   const resetForm = () => {
     setForm({
-      groupCode: '',
       groupName: '',
       description: '',
       isActive: true,
     })
 
     setErrors({
-      groupCode: '',
       groupName: '',
     })
 
     setEditId(null)
 
     setTimeout(() => {
-      groupCodeRef.current?.focus()
+      groupNameRef.current?.focus()
     }, 100)
   }
 
@@ -241,8 +219,7 @@ const ItemGroupMaster = () => {
 
   const filteredGroups = groups.filter(
     (g) =>
-      (g.groupName || '').toLowerCase().includes(search.toLowerCase()) ||
-      (g.groupCode || '').toLowerCase().includes(search.toLowerCase()),
+      (g.groupName || '').toLowerCase().includes(search.toLowerCase())
   )
 
   const columns = [
@@ -250,10 +227,6 @@ const ItemGroupMaster = () => {
       name: 'S.NO',
       selector: (row, index) => index + 1,
       width: '80px',
-    },
-    {
-      name: 'GROUP CODE',
-      selector: (row) => row.groupCode,
     },
     {
       name: 'GROUP NAME',
@@ -346,28 +319,6 @@ const ItemGroupMaster = () => {
             <div className="section-title">Item Group Information</div>
 
             <CRow className="g-3">
-              <CCol md={4}>
-                <label className="custom-label">
-                  <strong>Group Code</strong> <span className="required">*</span>
-                </label>
-
-                <CFormInput
-                  ref={groupCodeRef}
-                  placeholder="Enter Group Code"
-                  name="groupCode"
-                  value={form.groupCode}
-                  className={errors.groupCode ? 'error-input' : ''}
-                  onChange={(e) => {
-                    const value = e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '')
-                    setForm({ ...form, groupCode: value })
-                    clearError('groupCode')
-                  }}
-                />
-
-                {errors.groupCode && (
-                  <small className="text-danger">{errors.groupCode}</small>
-                )}
-              </CCol>
 
               <CCol md={4}>
                 <label className="custom-label">
@@ -377,6 +328,7 @@ const ItemGroupMaster = () => {
                 <CFormInput
                   placeholder="Enter Group Name"
                   name="groupName"
+                  ref={groupNameRef}
                   value={form.groupName}
                   className={errors.groupName ? 'error-input' : ''}
                   onChange={handleChange}
@@ -423,7 +375,7 @@ const ItemGroupMaster = () => {
             <div className="table-title">Item Group List</div>
 
             <CFormInput
-              placeholder="Search by Group Code, Group Name..."
+              placeholder="Search by Group Name..."
               className="search-box"
               style={{ width: '320px' }}
               onChange={(e) => setSearch(e.target.value)}
@@ -466,8 +418,8 @@ const ItemGroupMaster = () => {
             }}
           >
             <div>
-              <strong>Group Code :</strong>{' '}
-              <span className="text-primary fw-bold">{deleteGroup?.groupCode}</span>
+              <strong>Group Name :</strong>
+              <span>{deleteGroup?.groupName}</span>
             </div>
           </div>
         </CModalBody>
