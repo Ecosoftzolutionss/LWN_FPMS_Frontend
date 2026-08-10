@@ -15,6 +15,7 @@ import {
 } from '@coreui/react'
 import { FaEdit, FaTrash, FaPlus, FaArrowLeft } from 'react-icons/fa'
 import { toast } from 'react-toastify'
+import Select from 'react-select'
 import API from '../../api.js'
 import '../../assets/CSS/customerMaster.css'
 
@@ -24,7 +25,13 @@ const EMPTY_FORM = {
   customerDivision: '',
   mobileNumber: '',
   emailId: '',
+  gstNo: '',
 }
+
+const GST_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/
+const MOBILE_REGEX = /^[0-9]{10}$/
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const NAME_REGEX = /^[A-Za-z0-9_ ]+$/
 
 const getErrorMessage = (err, fallback) => {
   const data = err?.response?.data
@@ -65,6 +72,7 @@ const CustomerMaster = () => {
   }
 
   const [customers, setCustomers] = useState([])
+  const [customerGroups, setCustomerGroups] = useState([])
   const [showForm, setShowForm] = useState(false)
 
   const [form, setForm] = useState(EMPTY_FORM)
@@ -75,6 +83,7 @@ const CustomerMaster = () => {
     customerDivision: '',
     mobileNumber: '',
     emailId: '',
+    gstNo: '',
   })
 
   const [editId, setEditId] = useState(null)
@@ -85,6 +94,7 @@ const CustomerMaster = () => {
 
   useEffect(() => {
     loadCustomers()
+    loadCustomerGroups()
   }, [])
 
   useEffect(() => {
@@ -108,6 +118,20 @@ const CustomerMaster = () => {
     }
   }
 
+  const loadCustomerGroups = async () => {
+    try {
+      const res = await API.get('/CustomerGroup')
+      setCustomerGroups(res.data || [])
+    } catch {
+      toast.error('Failed to load customer groups')
+    }
+  }
+
+  const customerDivisionOptions = customerGroups.map((g) => ({
+    value: g.customerGroupType,
+    label: g.customerGroupType,
+  }))
+
   const handleChange = (e) => {
     const { name, value } = e.target
     setForm({ ...form, [name]: value })
@@ -121,6 +145,7 @@ const CustomerMaster = () => {
       customerDivision: '',
       mobileNumber: '',
       emailId: '',
+      gstNo: '',
     }
 
     const customerCode = form.customerCode.trim()
@@ -141,6 +166,8 @@ const CustomerMaster = () => {
 
     if (!customerName) {
       temp.customerName = 'Customer Name is required'
+    } else if (!NAME_REGEX.test(customerName)) {
+      temp.customerName = 'Only letters, numbers, underscore and spaces are allowed (e.g. Test_233)'
     } else if (
       customers.some(
         (c) =>
@@ -152,11 +179,19 @@ const CustomerMaster = () => {
     }
 
     if (!form.customerDivision.trim()) temp.customerDivision = 'Customer Division is required'
-    if (!form.mobileNumber.trim()) temp.mobileNumber = 'Customer Mobile Number is required'
+
+    const mobileNumber = form.mobileNumber.trim()
+    if (!mobileNumber) {
+      temp.mobileNumber = 'Customer Mobile Number is required'
+    } else if (!MOBILE_REGEX.test(mobileNumber)) {
+      temp.mobileNumber = 'Mobile Number must be exactly 10 digits'
+    }
 
     const email = form.emailId.trim()
     if (!email) {
       temp.emailId = 'Customer Email ID is required'
+    } else if (!EMAIL_REGEX.test(email)) {
+      temp.emailId = 'Enter a valid email address'
     } else if (
       customers.some(
         (c) =>
@@ -165,6 +200,21 @@ const CustomerMaster = () => {
       )
     ) {
       temp.emailId = 'Email ID already exists'
+    }
+
+    const gstNo = form.gstNo.trim().toUpperCase()
+
+    if (!gstNo) {
+      temp.gstNo = 'GST No is required'
+    } else if (!GST_REGEX.test(gstNo)) {
+      temp.gstNo = 'Enter a valid 15-character GSTIN (e.g. 33ABCDE1234F1Z5)'
+    } else if (
+      customers.some(
+        (c) =>
+          c.gstNo?.trim().toUpperCase() === gstNo && c.id !== editId,
+      )
+    ) {
+      temp.gstNo = 'GST No already exists'
     }
 
     setErrors(temp)
@@ -182,6 +232,7 @@ const CustomerMaster = () => {
         customerDivision: form.customerDivision.trim(),
         mobileNumber: form.mobileNumber.trim(),
         emailId: form.emailId.trim(),
+        gstNo: form.gstNo.trim().toUpperCase(),
       }
 
       if (editId) {
@@ -214,6 +265,7 @@ const CustomerMaster = () => {
         customerDivision: d.customerDivision || '',
         mobileNumber: d.mobileNumber || '',
         emailId: d.emailId || '',
+        gstNo: d.gstNo || '',
       })
 
       setErrors({
@@ -222,6 +274,7 @@ const CustomerMaster = () => {
         customerDivision: '',
         mobileNumber: '',
         emailId: '',
+        gstNo: '',
       })
     } catch {
       toast.error('Failed to load customer')
@@ -237,6 +290,7 @@ const CustomerMaster = () => {
       customerDivision: '',
       mobileNumber: '',
       emailId: '',
+      gstNo: '',
     })
 
     setEditId(null)
@@ -276,7 +330,8 @@ const CustomerMaster = () => {
       (c.customerName || '').toLowerCase().includes(search.toLowerCase()) ||
       (c.customerCode || '').toLowerCase().includes(search.toLowerCase()) ||
       (c.customerDivision || '').toLowerCase().includes(search.toLowerCase()) ||
-      (c.emailId || '').toLowerCase().includes(search.toLowerCase()),
+      (c.emailId || '').toLowerCase().includes(search.toLowerCase()) ||
+      (c.gstNo || '').toLowerCase().includes(search.toLowerCase()),
   )
 
   const columns = [
@@ -286,6 +341,7 @@ const CustomerMaster = () => {
     { name: 'CUSTOMER DIVISION', selector: (row) => row.customerDivision, wrap: true },
     { name: 'MOBILE NUMBER', selector: (row) => row.mobileNumber },
     { name: 'EMAIL ADDRESS', selector: (row) => row.emailId, wrap: true },
+    { name: 'GST NO.', selector: (row) => row.gstNo },
     {
       name: 'ACTION',
       center: true,
@@ -359,10 +415,14 @@ const CustomerMaster = () => {
                 <CFormInput
                   ref={nameRef}
                   name="customerName"
-                  placeholder="Enter Customer Name"
+                  placeholder="Enter Customer Name (e.g. Test_233)"
                   value={form.customerName}
                   className={errors.customerName ? 'error-input' : ''}
-                  onChange={handleChange}
+                  onChange={(e) =>
+                    handleChange({
+                      target: { name: 'customerName', value: e.target.value.replace(/[^A-Za-z0-9_ ]/g, '') },
+                    })
+                  }
                 />
                 {errors.customerName && <small className="text-danger">{errors.customerName}</small>}
               </CCol>
@@ -375,6 +435,7 @@ const CustomerMaster = () => {
                   name="mobileNumber"
                   placeholder="Enter Customer Mobile Number"
                   value={form.mobileNumber}
+                  maxLength={10}
                   className={errors.mobileNumber ? 'error-input' : ''}
                   onChange={(e) =>
                     handleChange({ target: { name: 'mobileNumber', value: e.target.value.replace(/[^0-9]/g, '') } })
@@ -387,13 +448,19 @@ const CustomerMaster = () => {
                 <label className="custom-label">
                   <strong>Customer Division</strong> <span className="required">*</span>
                 </label>
-                <CFormInput
-                  name="customerDivision"
-                  placeholder="Enter Customer Division"
-                  value={form.customerDivision}
-                  className={errors.customerDivision ? 'error-input' : ''}
-                  onChange={handleChange}
-                />
+                <div className={errors.customerDivision ? 'react-select-error' : ''}>
+                  <Select
+                    classNamePrefix="react-select"
+                    placeholder="Select Customer Division"
+                    options={customerDivisionOptions}
+                    value={customerDivisionOptions.find((x) => x.value === form.customerDivision) || null}
+                    onChange={(selected) => {
+                      setForm({ ...form, customerDivision: selected?.value || '' })
+                      clearError('customerDivision')
+                    }}
+                    isClearable
+                  />
+                </div>
                 {errors.customerDivision && <small className="text-danger">{errors.customerDivision}</small>}
               </CCol>
 
@@ -410,6 +477,23 @@ const CustomerMaster = () => {
                   onChange={handleChange}
                 />
                 {errors.emailId && <small className="text-danger">{errors.emailId}</small>}
+              </CCol>
+
+              <CCol md={4}>
+                <label className="custom-label">
+                  <strong>GST No.</strong> <span className="required">*</span>
+                </label>
+                <CFormInput
+                  name="gstNo"
+                  placeholder="Enter GSTIN (e.g. 33ABCDE1234F1Z5)"
+                  value={form.gstNo}
+                  className={errors.gstNo ? 'error-input' : ''}
+                  onChange={(e) =>
+                    handleChange({ target: { name: 'gstNo', value: e.target.value.toUpperCase() } })
+                  }
+                  maxLength={15}
+                />
+                {errors.gstNo && <small className="text-danger">{errors.gstNo}</small>}
               </CCol>
             </CRow>
 

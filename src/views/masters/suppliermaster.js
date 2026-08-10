@@ -22,7 +22,14 @@ import '../../assets/CSS/supplierMaster.css'
 
 const STATE_OPTIONS = INDIAN_STATES.map((s) => ({ value: s.name, label: s.name, code: s.code }))
 
+const CONTACT_REGEX = /^[0-9]{10}$/
+const GST_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/
+const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const PINCODE_REGEX = /^[0-9]{6}$/
+
 const EMPTY_ADDRESS = {
+  companyName: '',
   addressLine1: '',
   addressLine2: '',
   state: '',
@@ -139,15 +146,6 @@ const SupplierMaster = () => {
     }
   }
 
-  const loadNextSupplierCode = async () => {
-    try {
-      const res = await API.get('/SupplierMaster/next-number')
-      setForm((prev) => ({ ...prev, supplierCode: res.data?.supplierCode || '' }))
-    } catch {
-      // Non-fatal — preview only, backend re-generates on Save
-    }
-  }
-
   const handleChange = (e) => {
     const { name, value } = e.target
     setForm({ ...form, [name]: value })
@@ -176,14 +174,35 @@ const SupplierMaster = () => {
 
   const validateAddress = (section, temp) => {
     const addr = form[section]
+    if (!addr.companyName.trim()) temp[`${section}.companyName`] = 'Company Name is required'
     if (!addr.addressLine1.trim()) temp[`${section}.addressLine1`] = 'Address Line 1 is required'
     if (!addr.state) temp[`${section}.state`] = 'State is required'
     if (!addr.stateCode.trim()) temp[`${section}.stateCode`] = 'State Code is required'
-    if (!addr.pinCode.trim()) temp[`${section}.pinCode`] = 'Pin Code is required'
+
+    const pinCode = addr.pinCode.trim()
+    if (!pinCode) {
+      temp[`${section}.pinCode`] = 'Pin Code is required'
+    } else if (!PINCODE_REGEX.test(pinCode)) {
+      temp[`${section}.pinCode`] = 'Pin Code must be exactly 6 digits'
+    }
   }
 
   const validate = () => {
     const temp = {}
+
+    const supplierCode = form.supplierCode.trim()
+
+    if (!supplierCode) {
+      temp.supplierCode = 'Supplier ID is required'
+    } else if (
+      suppliers.some(
+        (s) =>
+          s.supplierCode?.trim().toLowerCase() === supplierCode.toLowerCase() &&
+          s.id !== editId,
+      )
+    ) {
+      temp.supplierCode = 'Supplier ID already exists'
+    }
 
     const supplierName = form.supplierName.trim()
 
@@ -201,11 +220,37 @@ const SupplierMaster = () => {
 
     if (!form.vendorCode.trim()) temp.vendorCode = 'Vendor Code is required'
     if (!form.supplierGroupId) temp.supplierGroupId = 'Supplier Group is required'
-    if (!form.email.trim()) temp.email = 'Email is required'
-    if (!form.contactNumber.trim()) temp.contactNumber = 'Contact Number is required'
+    if (!form.email.trim()) {
+      temp.email = 'Email is required'
+    } else if (!EMAIL_REGEX.test(form.email.trim())) {
+      temp.email = 'Enter a valid email address'
+    }
+
+    if (!form.contactNumber.trim()) {
+      temp.contactNumber = 'Contact Number is required'
+    } else if (!CONTACT_REGEX.test(form.contactNumber.trim())) {
+      temp.contactNumber = 'Contact Number must be exactly 10 digits'
+    }
+
     if (!form.personToContact.trim()) temp.personToContact = 'Person to Contact is required'
-    if (!form.gstNo.trim()) temp.gstNo = 'GST No is required'
-    if (!form.panNo.trim()) temp.panNo = 'PAN No is required'
+
+    const gstNo = form.gstNo.trim().toUpperCase()
+    if (!gstNo) {
+      temp.gstNo = 'GST No is required'
+    } else if (!GST_REGEX.test(gstNo)) {
+      temp.gstNo = 'Enter a valid 15-character GSTIN (e.g. 33ABCDE1234F1Z5)'
+    } else if (
+      suppliers.some((s) => s.gstNo?.trim().toUpperCase() === gstNo && s.id !== editId)
+    ) {
+      temp.gstNo = 'GST No already exists'
+    }
+
+    const panNo = form.panNo.trim().toUpperCase()
+    if (!panNo) {
+      temp.panNo = 'PAN No is required'
+    } else if (!PAN_REGEX.test(panNo)) {
+      temp.panNo = 'Enter a valid 10-character PAN (e.g. ABCDE1234F)'
+    }
 
     validateAddress('billing', temp)
     if (!sameAsBilling) validateAddress('shipping', temp)
@@ -222,19 +267,22 @@ const SupplierMaster = () => {
       const shipping = sameAsBilling ? form.billing : form.shipping
 
       const payload = {
+        supplierCode: form.supplierCode.trim(),
         supplierName: form.supplierName.trim(),
         vendorCode: form.vendorCode.trim(),
         supplierGroupId: Number(form.supplierGroupId),
         email: form.email.trim(),
         contactNumber: form.contactNumber.trim(),
         personToContact: form.personToContact.trim(),
-        gstNo: form.gstNo.trim(),
-        panNo: form.panNo.trim(),
+        gstNo: form.gstNo.trim().toUpperCase(),
+        panNo: form.panNo.trim().toUpperCase(),
+        billingCompanyName: form.billing.companyName.trim(),
         billingAddressLine1: form.billing.addressLine1.trim(),
         billingAddressLine2: form.billing.addressLine2.trim(),
         billingState: form.billing.state,
         billingStateCode: form.billing.stateCode,
         billingPinCode: form.billing.pinCode.trim(),
+        shippingCompanyName: shipping.companyName.trim(),
         shippingAddressLine1: shipping.addressLine1.trim(),
         shippingAddressLine2: shipping.addressLine2.trim(),
         shippingState: shipping.state,
@@ -267,6 +315,7 @@ const SupplierMaster = () => {
       setShowForm(true)
 
       const billing = {
+        companyName: d.billingCompanyName || '',
         addressLine1: d.billingAddressLine1 || '',
         addressLine2: d.billingAddressLine2 || '',
         state: d.billingState || '',
@@ -275,6 +324,7 @@ const SupplierMaster = () => {
       }
 
       const shipping = {
+        companyName: d.shippingCompanyName || '',
         addressLine1: d.shippingAddressLine1 || '',
         addressLine2: d.shippingAddressLine2 || '',
         state: d.shippingState || '',
@@ -308,7 +358,6 @@ const SupplierMaster = () => {
     setSameAsBilling(false)
     setErrors({})
     setEditId(null)
-    loadNextSupplierCode()
 
     setTimeout(() => {
       nameRef.current?.focus()
@@ -404,6 +453,22 @@ const SupplierMaster = () => {
       <CRow className="g-3">
         <CCol md={12}>
           <label className="custom-label">
+            <strong>Company Name</strong> <span className="required">*</span>
+          </label>
+          <CFormInput
+            placeholder="Enter Company Name"
+            value={form[section].companyName}
+            disabled={disabled}
+            className={errors[`${section}.companyName`] ? 'error-input' : ''}
+            onChange={(e) => handleAddressChange(section, 'companyName', e.target.value)}
+          />
+          {errors[`${section}.companyName`] && (
+            <small className="text-danger">{errors[`${section}.companyName`]}</small>
+          )}
+        </CCol>
+
+        <CCol md={12}>
+          <label className="custom-label">
             <strong>Address Line 1</strong> <span className="required">*</span>
           </label>
           <CFormInput
@@ -463,6 +528,7 @@ const SupplierMaster = () => {
             placeholder="Enter Pin Code"
             value={form[section].pinCode}
             disabled={disabled}
+            maxLength={6}
             className={errors[`${section}.pinCode`] ? 'error-input' : ''}
             onChange={(e) => handleAddressChange(section, 'pinCode', e.target.value.replace(/[^0-9]/g, ''))}
           />
@@ -502,8 +568,15 @@ const SupplierMaster = () => {
 
             <CRow className="g-3">
               <CCol md={4}>
-                <label className="custom-label"><strong>Supplier ID</strong></label>
-                <CFormInput value={form.supplierCode} placeholder="Auto Generate" disabled />
+                <label className="custom-label"><strong>Supplier ID</strong> <span className="required">*</span></label>
+                <CFormInput
+                  name="supplierCode"
+                  placeholder="Enter Supplier ID"
+                  value={form.supplierCode}
+                  className={errors.supplierCode ? 'error-input' : ''}
+                  onChange={handleChange}
+                />
+                {errors.supplierCode && <small className="text-danger">{errors.supplierCode}</small>}
               </CCol>
 
               <CCol md={4}>
@@ -564,6 +637,7 @@ const SupplierMaster = () => {
                   name="email"
                   placeholder="Enter Email Address"
                   value={form.email}
+                  maxLength={100}
                   className={errors.email ? 'error-input' : ''}
                   onChange={handleChange}
                 />
@@ -578,6 +652,7 @@ const SupplierMaster = () => {
                   name="contactNumber"
                   placeholder="Enter Contact Number"
                   value={form.contactNumber}
+                  maxLength={10}
                   className={errors.contactNumber ? 'error-input' : ''}
                   onChange={(e) =>
                     handleChange({ target: { name: 'contactNumber', value: e.target.value.replace(/[^0-9]/g, '') } })
@@ -594,6 +669,7 @@ const SupplierMaster = () => {
                   name="personToContact"
                   placeholder="Enter Person to Contact"
                   value={form.personToContact}
+                  maxLength={100}
                   className={errors.personToContact ? 'error-input' : ''}
                   onChange={handleChange}
                 />
@@ -608,6 +684,7 @@ const SupplierMaster = () => {
                   name="gstNo"
                   placeholder="Enter GST Number"
                   value={form.gstNo}
+                  maxLength={15}
                   className={errors.gstNo ? 'error-input' : ''}
                   onChange={(e) =>
                     handleChange({ target: { name: 'gstNo', value: e.target.value.toUpperCase() } })
@@ -624,6 +701,7 @@ const SupplierMaster = () => {
                   name="panNo"
                   placeholder="Enter PAN Number"
                   value={form.panNo}
+                  maxLength={10}
                   className={errors.panNo ? 'error-input' : ''}
                   onChange={(e) =>
                     handleChange({ target: { name: 'panNo', value: e.target.value.toUpperCase() } })
@@ -635,11 +713,11 @@ const SupplierMaster = () => {
 
             <CRow className="g-3 mt-1">
               <CCol md={6}>
-                {renderAddressBlock('billing', 'Billing Address', false)}
+                {renderAddressBlock('billing', 'From', false)}
               </CCol>
 
               <CCol md={6}>
-                {renderAddressBlock('shipping', 'Shipping Address', sameAsBilling)}
+                {renderAddressBlock('shipping', 'To', sameAsBilling)}
               </CCol>
             </CRow>
 

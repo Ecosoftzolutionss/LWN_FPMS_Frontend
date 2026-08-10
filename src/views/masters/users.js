@@ -134,28 +134,16 @@ const UserMaster = () => {
     }
   }
 
-  const handleChange = (e) => {
-    const { name, value } = e.target
+const handleChange = (e) => {
+    const { name, value } = e.target;
 
-    if (name === 'userName') {
-      const cleanValue = value.replace(/[^A-Za-z ]/g, '')
+    setForm((prev) => ({
+        ...prev,
+        [name]: value,
+    }));
 
-      setForm({
-        ...form,
-        userName: capitalizeFirstLetter(cleanValue),
-      })
-
-      clearError('userName')
-      return
-    }
-
-    setForm({
-      ...form,
-      [name]: value,
-    })
-
-    clearError(name)
-  }
+    clearError(name);
+};
 
   const validate = () => {
     const temp = {
@@ -166,6 +154,8 @@ const UserMaster = () => {
       password: '',
       confirmPassword: '',
     }
+
+    console.log(form);
 
     const userId = form.userId.trim()
     const userName = form.userName.trim()
@@ -218,23 +208,20 @@ const UserMaster = () => {
     // Password is only mandatory when creating a new user. When editing,
     // it's optional — only validated if the person actually typed
     // something into either field.
-    if (!editId) {
-      if (!form.password) {
-        temp.password = 'Password is required'
-      }
+    // Password is mandatory for both Add and Edit
+  if (!form.password) {
+    temp.password = 'Password is required';
+}
 
-      if (!form.confirmPassword) {
-        temp.confirmPassword = 'Confirm Password is required'
-      } else if (form.password !== form.confirmPassword) {
-        temp.confirmPassword = 'Password mismatch'
-      }
-    } else if (form.password || form.confirmPassword) {
-      if (form.password !== form.confirmPassword) {
-        temp.confirmPassword = 'Password mismatch'
-      }
-    }
+if (!form.confirmPassword) {
+    temp.confirmPassword = 'Confirm Password is required';
+} else if (form.password !== form.confirmPassword) {
+    temp.confirmPassword = 'Password mismatch';
+}
 
-    setErrors(temp)
+console.log(temp);
+
+setErrors(temp);
 
     return !Object.values(temp).some((x) => x)
   }
@@ -254,9 +241,7 @@ const UserMaster = () => {
       // Only send a password when one was actually entered, so an edit
       // with blank password fields doesn't overwrite the existing
       // password on the backend.
-      if (form.password) {
-        payload.passwordHash = form.password
-      }
+      payload.passwordHash = form.password
 
       let res
 
@@ -323,13 +308,13 @@ const UserMaster = () => {
       setShowForm(true)
 
       setForm({
-        userId: capitalizeFirstLetter(res.data.userId || ''),
-        userName: capitalizeFirstLetter(res.data.userName || res.data.UserName || ''),
-        employeeId: (res.data.employeeId || res.data.EmployeeId || '').toUpperCase(),
-        departmentId: res.data.departmentId || res.data.DepartmentId || '',
-        password: '',
-        confirmPassword: '',
-      })
+    userId: res.data.userId || '',
+    userName: res.data.userName || res.data.UserName || '',
+    employeeId: (res.data.employeeId || res.data.EmployeeId || '').toUpperCase(),
+    departmentId: res.data.departmentId || res.data.DepartmentId || '',
+    password: res.data.password || res.data.Password || '',
+    confirmPassword: res.data.password || res.data.Password || ''
+})
 
       setDepartmentInput(row.departmentName || '')
       setErrors({
@@ -606,7 +591,7 @@ const UserMaster = () => {
 
               <CCol md={4}>
                 <label className="custom-label">
-                 <strong> USER ID</strong> <span className="required">*</span>
+                  <strong> USER ID</strong> <span className="required">*</span>
                 </label>
 
                 <CFormInput
@@ -629,7 +614,7 @@ const UserMaster = () => {
 
               <CCol md={4}>
                 <label className="custom-label">
-                 <strong>Employee ID</strong>  <span className="required">*</span>
+                  <strong>Employee ID</strong>  <span className="required">*</span>
                 </label>
 
                 <CFormInput
@@ -667,12 +652,12 @@ const UserMaster = () => {
                     value={
                       form.departmentId === 0
                         ? {
-                            value: 0,
-                            label: departmentInput,
-                          }
+                          value: 0,
+                          label: departmentInput,
+                        }
                         : departments.find(
-                            (x) => String(x.value) === String(form.departmentId),
-                          ) || null
+                          (x) => String(x.value) === String(form.departmentId),
+                        ) || null
                     }
                     onChange={(selected) => {
                       setForm({
@@ -708,22 +693,16 @@ const UserMaster = () => {
 
               <CCol md={4}>
                 <label className="custom-label">
-                  <strong>Password</strong> {!editId && <span className="required">*</span>}
+                  <strong>Password</strong> <span className="required">*</span>
                 </label>
 
                 <CFormInput
                   type="password"
-                  placeholder={editId ? 'Leave blank to keep current password' : 'Enter Password'}
+                  name="password"
+                  placeholder="Enter Password"
                   value={form.password}
                   className={errors.password ? 'error-input' : ''}
-                  onChange={(e) => {
-                    setForm({
-                      ...form,
-                      password: e.target.value,
-                    })
-                    clearError('password')
-                    clearError('confirmPassword')
-                  }}
+                  onChange={handleChange}
                 />
 
                 {errors.password && (
@@ -733,21 +712,16 @@ const UserMaster = () => {
 
               <CCol md={4}>
                 <label className="custom-label">
-                  <strong>Confirm Password</strong> {!editId && <span className="required">*</span>}
+                  <strong>Confirm Password</strong> <span className="required">*</span>
                 </label>
 
                 <CFormInput
                   type="password"
+                  name="confirmPassword"
                   placeholder="Confirm Password"
                   value={form.confirmPassword}
                   className={errors.confirmPassword ? 'error-input' : ''}
-                  onChange={(e) => {
-                    setForm({
-                      ...form,
-                      confirmPassword: e.target.value,
-                    })
-                    clearError('confirmPassword')
-                  }}
+                  onChange={handleChange}
                 />
 
                 {errors.confirmPassword && (
