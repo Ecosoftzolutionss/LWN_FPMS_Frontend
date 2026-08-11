@@ -1,212 +1,724 @@
-.mobility-container {
-    min-height: 100vh;
-    background: #f5f7fc;
-    padding: 10px;   /* 20px → 10px */
-    margin: 0;
-    overflow-x: hidden;
+/* =========================================================
+   MOBILITY PAGE
+========================================================= */
+
+.mobility-page {
+  min-height: 100vh;
+  width: 100%;
+  background: #f4f6fb;
+  font-family:
+    "Segoe UI",
+    Arial,
+    sans-serif;
+
+  color: #10244a;
+
+  box-sizing: border-box;
 }
 
-/* Header */
+
+/* =========================================================
+   HEADER
+========================================================= */
+
 .mobility-header {
-    background: linear-gradient(135deg, #0b43b5, #1d5eff);
-    color: #fff;
-    padding: 18px 20px;
-    border-radius: 0 0 20px 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-    margin: 0;
-    box-sizing: border-box;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  height: 80px;
+
+  background: #102d5b;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 0 28px;
+
+  position: relative;
+
+  box-sizing: border-box;
 }
 
-.mobility-date {
+
+/* =========================================================
+   MENU
+========================================================= */
+
+.mobility-menu-button {
+  width: 42px;
+  height: 42px;
+
+  border: none;
+  background: transparent;
+
+  color: #ffffff;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 22px;
+
+  cursor: pointer;
+}
+
+
+/* =========================================================
+   LOGO
+========================================================= */
+
+.mobility-logo {
+  position: absolute;
+
+  left: 50%;
+  top: 50%;
+
+  transform: translate(
+    -50%,
+    -50%
+  );
+
+  text-align: center;
+
+  color: #ffffff;
+}
+
+
+.mobility-logo-title {
+  font-size: 25px;
+  font-weight: 800;
+
+  line-height: 24px;
+
+  letter-spacing: 0.3px;
+}
+
+
+.mobility-logo-subtitle {
+  margin-top: 2px;
+
+  font-size: 8px;
+
+  font-weight: 500;
+
+  letter-spacing: 0.7px;
+
+  color: #d8e3f7;
+}
+
+
+/* =========================================================
+   LOGOUT
+========================================================= */
+
+.mobility-header-logout {
+  width: 40px;
+  height: 40px;
+
+  border: none;
+
+  border-radius: 50%;
+
+  background: #21477e;
+
+  color: #2d72e8;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 18px;
+
+  cursor: pointer;
+
+  transition: 0.2s ease;
+}
+
+
+.mobility-header-logout:hover {
+  background: #2b558e;
+}
+
+
+/* =========================================================
+   MAIN
+========================================================= */
+
+.mobility-main {
+  width: 100%;
+
+  max-width: 900px;
+
+  margin: 0 auto;
+
+  padding: 38px 30px 50px;
+
+  box-sizing: border-box;
+}
+
+
+/* =========================================================
+   SECTION HEADER
+========================================================= */
+
+.mobility-section-header {
+  margin-bottom: 28px;
+}
+
+
+.mobility-section-title-row {
+  display: flex;
+
+  align-items: center;
+
+  gap: 12px;
+}
+
+
+.mobility-section-icon {
+  width: 25px;
+  height: 25px;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  color: #12356b;
+
+  font-size: 20px;
+}
+
+
+.mobility-section-title-row h2 {
+  margin: 0;
+
+  font-size: 21px;
+
+  font-weight: 700;
+
+  color: #0c2348;
+}
+
+
+.mobility-section-header p {
+  margin: 8px 0 0 37px;
+
+  font-size: 13px;
+
+  color: #7b8497;
+
+  line-height: 1.5;
+}
+
+
+/* =========================================================
+   OPTIONS
+========================================================= */
+
+.mobility-options {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 18px;
+}
+
+
+/* =========================================================
+   OPTION CARD
+========================================================= */
+
+.mobility-option-card {
+  width: 100%;
+
+  min-height: 105px;
+
+  background: #ffffff;
+
+  border: 1px solid #e8ebf2;
+
+  border-radius: 14px;
+
+  padding: 17px 18px;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: space-between;
+
+  box-sizing: border-box;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 3px 10px
+    rgba(30, 55, 100, 0.05);
+
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+
+  position: relative;
+
+  overflow: hidden;
+}
+
+
+.mobility-option-card::after {
+  content: "";
+
+  position: absolute;
+
+  right: -80px;
+  top: -50px;
+
+  width: 180px;
+  height: 180px;
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255,255,255,0),
+      rgba(241,244,250,0.65)
+    );
+
+  transform: rotate(14deg);
+
+  pointer-events: none;
+}
+
+
+.mobility-option-card:hover {
+  transform: translateY(-2px);
+
+  box-shadow:
+    0 7px 18px
+    rgba(30, 55, 100, 0.10);
+}
+
+
+/* =========================================================
+   CARD LEFT
+========================================================= */
+
+.mobility-option-left {
+  display: flex;
+
+  align-items: center;
+
+  gap: 17px;
+
+  min-width: 0;
+
+  position: relative;
+
+  z-index: 1;
+}
+
+
+/* =========================================================
+   OPTION ICON
+========================================================= */
+
+.mobility-option-icon {
+  width: 52px;
+  height: 52px;
+
+  flex-shrink: 0;
+
+  border-radius: 10px;
+
+  background: #edf4ff;
+
+  color: #225bd3;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  font-size: 22px;
+}
+
+
+/* =========================================================
+   CARD CONTENT
+========================================================= */
+
+.mobility-option-content {
+  min-width: 0;
+}
+
+
+.mobility-option-content h3 {
+  margin: 0 0 6px;
+
+  font-size: 15px;
+
+  font-weight: 700;
+
+  color: #0d2347;
+}
+
+
+.mobility-option-content p {
+  margin: 0;
+
+  max-width: 360px;
+
+  font-size: 11px;
+
+  line-height: 1.55;
+
+  color: #858b98;
+}
+
+
+/* =========================================================
+   ARROW
+========================================================= */
+
+.mobility-arrow-button {
+  width: 32px;
+  height: 32px;
+
+  flex-shrink: 0;
+
+  border: none;
+
+  border-radius: 50%;
+
+  background: #2e6ce6;
+
+  color: #ffffff;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  font-size: 14px;
+
+  cursor: pointer;
+
+  position: relative;
+
+  z-index: 2;
+
+  box-shadow:
+    0 4px 10px
+    rgba(46,108,230,0.28);
+
+  transition: 0.2s ease;
+}
+
+
+.mobility-arrow-button:hover {
+  background: #1e5bd0;
+
+  transform: scale(1.05);
+}
+
+
+/* =========================================================
+   FORM CARD
+========================================================= */
+
+.mobility-form-card {
+  background: #ffffff;
+
+  border: 1px solid #e8ebf2;
+
+  border-radius: 14px;
+
+  padding: 20px;
+
+  box-shadow:
+    0 3px 12px
+    rgba(30, 55, 100, 0.05);
+}
+
+
+.mobility-form-title {
+  font-size: 15px;
+
+  font-weight: 700;
+
+  color: #10244a;
+
+  margin-bottom: 20px;
+}
+
+
+.mobility-input-group {
+  margin-bottom: 20px;
+}
+
+
+.mobility-input-group label {
+  display: block;
+
+  margin-bottom: 7px;
+
+  font-size: 12px;
+
+  font-weight: 600;
+
+  color: #45536c;
+}
+
+
+.mobility-input-wrapper {
+  height: 44px;
+
+  border: 1px solid #dce2ec;
+
+  border-radius: 9px;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 10px;
+
+  padding: 0 13px;
+
+  color: #8b95a7;
+
+  background: #fafbfe;
+
+  box-sizing: border-box;
+}
+
+
+.mobility-input-wrapper input {
+  width: 100%;
+
+  height: 100%;
+
+  border: none;
+
+  outline: none;
+
+  background: transparent;
+
+  font-size: 13px;
+
+  color: #253654;
+}
+
+
+.mobility-primary-button {
+  width: 100%;
+
+  height: 44px;
+
+  border: none;
+
+  border-radius: 9px;
+
+  background: #2867dd;
+
+  color: #ffffff;
+
+  font-size: 13px;
+
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+
+/* =========================================================
+   VERIFICATION OPTIONS
+========================================================= */
+
+.mobility-verification-option {
+  min-height: 75px;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 13px;
+
+  padding: 10px;
+
+  border-bottom: 1px solid #edf0f5;
+}
+
+
+.mobility-verification-option:last-child {
+  border-bottom: none;
+}
+
+
+.mobility-verification-icon {
+  width: 45px;
+  height: 45px;
+
+  flex-shrink: 0;
+
+  border-radius: 9px;
+
+  background: #edf4ff;
+
+  color: #225bd3;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  font-size: 18px;
+}
+
+
+.mobility-verification-content {
+  flex: 1;
+}
+
+
+.mobility-verification-content h3 {
+  margin: 0 0 4px;
+
+  font-size: 14px;
+
+  font-weight: 700;
+
+  color: #10244a;
+}
+
+
+.mobility-verification-content p {
+  margin: 0;
+
+  font-size: 11px;
+
+  color: #8a91a0;
+}
+
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 600px) {
+
+  .mobility-header {
+    height: 78px;
+
+    padding: 0 18px;
+  }
+
+
+  .mobility-main {
+    padding: 28px 16px 40px;
+  }
+
+
+  .mobility-section-header {
+    margin-bottom: 22px;
+  }
+
+
+  .mobility-section-title-row h2 {
+    font-size: 18px;
+  }
+
+
+  .mobility-section-header p {
+    margin-left: 36px;
+
     font-size: 11px;
-    opacity: 0.9;
-    margin-bottom: 8px;
-}
+  }
 
-.mobility-header h3 {
-    margin: 0;
-    font-size: 28px;
-    font-weight: 700;
-}
 
-.mobility-header p {
-    margin-top: 4px;
-    font-size: 13px;
-    opacity: 0.9;
-}
+  .mobility-options {
+    gap: 14px;
+  }
 
-.mobility-logout-icon {
-    font-size: 22px;
-    cursor: pointer;
-    transition: 0.3s;
-}
 
-.mobility-logout-icon:hover {
-    transform: scale(1.1);
-}
+  .mobility-option-card {
+    min-height: 82px;
 
-/* Welcome */
-.welcome-section {
-    text-align: center;
-    padding: 15px 0 10px;
-}
+    padding: 12px 13px;
 
-.welcome-icon {
-     width: 65px;
-    height: 65px;
-    font-size: 28px;
-    background: #edf3ff;
-    color: #0b43b5;
-    border-radius: 50%;
+    border-radius: 12px;
+  }
 
-    display: flex;
-    align-items: center;
-    justify-content: center;
 
-    margin: auto;
-    font-size: 36px;
-}
+  .mobility-option-left {
+    gap: 12px;
+  }
 
-.welcome-section h2 {
-    margin-top: 15px;
-    color: #173c8f;
-    font-size: 32px;
-    font-weight: 700;
-}
 
-.welcome-section p {
-    margin-top: 5px;
-    color: #888;
-    font-size: 14px;
-}
+  .mobility-option-icon {
+    width: 43px;
+    height: 43px;
 
-/* Cards */
-.mobility-card {
-    border: none !important;
-    border-radius: 16px !important;
-    margin-bottom: 15px;
-    cursor: pointer;
-
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-
-    transition: all 0.25s ease;
-}
-
-.mobility-card:hover {
-    transform: translateY(-2px);
-}
-
-.mobility-card:active {
-    transform: scale(0.98);
-}
-
-.mobility-card-content {
-    padding: 12px 8px !important;
-
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.mobility-card-left {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-}
-
-/* Icons */
-.icon-circle {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    border-radius: 8px;
 
     font-size: 18px;
-    flex-shrink: 0;
-}
+  }
 
-.invoice-bg {
-    background: #eef4ff;
-    color: #2563eb;
-}
 
-.part-bg {
-    background: #e9fff1;
-    color: #16a34a;
-}
+  .mobility-option-content h3 {
+    font-size: 13px;
 
-.gate-bg {
-    background: #fff1e9;
-    color: #f97316;
-}
+    margin-bottom: 4px;
+  }
 
-/* Text */
-.mobility-card-left h6 {
-    margin: 0;
-    font-size: 15px;
-    font-weight: 700;
-    color: #173c8f;
-}
 
-.mobility-card-left p {
-    margin-top: 5px;
-    font-size: 11px;
-    color: #7a7a7a;
+  .mobility-option-content p {
+    max-width: 210px;
+
+    font-size: 9px;
+
     line-height: 1.4;
+  }
+
+
+  .mobility-arrow-button {
+    width: 29px;
+    height: 29px;
+
+    font-size: 12px;
+  }
+
+
+  .mobility-logo-title {
+    font-size: 22px;
+  }
+
+
+  .mobility-logo-subtitle {
+    font-size: 7px;
+  }
+
 }
 
-/* Arrow */
-.arrow-icon {
-    color: #2563eb;
-    font-size: 16px;
-    flex-shrink: 0;
-}
 
-/* Left Border Colors */
-.invoice-card {
-    border-left: 4px solid #2563eb !important;
-}
+/* =========================================================
+   SMALL MOBILE
+========================================================= */
 
-.mobility-part-card {
-    border-left: 4px solid #22c55e !important;
-}
+@media (max-width: 400px) {
 
-.gate-card {
-    border-left: 4px solid #f97316 !important;
-}
+  .mobility-main {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
 
-/* Desktop */
-@media (min-width: 1200px) {
-    .welcome-section h2 {
-        font-size: 42px;
-    }
 
-    .mobility-card {
-        margin-bottom: 20px;
-    }
-}
+  .mobility-option-content p {
+    max-width: 180px;
+  }
 
-/* Laptop */
-@media (min-width: 992px) and (max-width: 1199px) {
-    .welcome-section h2 {
-        font-size: 38px;
-    }
-}
 
-/* Tablet */
-@media (min-width: 768px) and (max-width: 991px) {
-    .welcome-section h2 {
-        font-size: 34px;
-    }
+  .mobility-option-card {
+    min-height: 78px;
+  }
 
-    .mobility-container {
-        padding: 15px;
-    }
 }

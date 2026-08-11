@@ -1,16 +1,37 @@
 import React, { Suspense } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
-import { CContainer, CSpinner } from '@coreui/react'
+import {
+  Navigate,
+  Route,
+  Routes,
+} from 'react-router-dom'
 
-// routes config
+import {
+  CContainer,
+  CSpinner,
+} from '@coreui/react'
+
+// Routes configuration
 import routes from '../routes'
 
 const AppContent = () => {
   return (
     <CContainer fluid className="px-4">
-      <Suspense fallback={<CSpinner color="primary" />}>
+
+      <Suspense
+        fallback={
+          <div className="pt-3 text-center">
+            <CSpinner
+              color="primary"
+              variant="grow"
+            />
+          </div>
+        }
+      >
+
         <Routes>
+
           {routes.map((route, idx) => {
+
             return (
               route.element && (
                 <Route
@@ -22,10 +43,24 @@ const AppContent = () => {
                 />
               )
             )
+
           })}
-          <Route path="/" element={<Navigate to="dashboard" replace />} />
+
+          {/* Default page */}
+          <Route
+            path="/"
+            element={
+              <Navigate
+                to="/dashboard"
+                replace
+              />
+            }
+          />
+
         </Routes>
+
       </Suspense>
+
     </CContainer>
   )
 }

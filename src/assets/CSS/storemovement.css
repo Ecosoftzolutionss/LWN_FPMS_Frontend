@@ -425,33 +425,18 @@
   font-weight: 700;
 }
 
-.sm-stuff-form {
-  display: flex;
-  gap: 10px;
-  align-items: center;
+.sm-stuff-hint {
+  background: #f7f9fd;
+  border: 1px dashed #c4d3ea;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 13px;
+  color: #475569;
+  text-align: center;
 }
 
-.sm-stuff-qty-input {
-  flex: 1;
-  height: 40px;
-  border: 1px solid #c4d3ea;
-  border-radius: 6px;
-  padding: 0 12px;
-  font-size: 14px;
-}
-
-.sm-select-btn {
-  background: #1d5cff !important;
-  border: none !important;
-  color: #fff !important;
-  font-weight: 600 !important;
-  padding: 10px 20px !important;
-  border-radius: 6px !important;
-  white-space: nowrap;
-}
-
-.sm-select-btn:hover {
-  background: #0c3580 !important;
+.sm-stuff-hint strong {
+  color: #1d5cff;
 }
 
 /* =========================================================
@@ -611,4 +596,162 @@
   color: #083b7d;
   border-color: #083b7d;
   transform: translateY(-1px);
+}
+
+/* =========================================================
+   GRN DETAILS MODAL
+========================================================= */
+
+.sm-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.sm-modal {
+  background: #fff;
+  border-radius: 10px;
+  width: 100%;
+  max-width: 760px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.sm-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px;
+  border-bottom: 1px solid #eef1f8;
+}
+
+.sm-modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.sm-modal-header button {
+  border: none;
+  background: transparent;
+  font-size: 18px;
+  color: #94a3b8;
+  cursor: pointer;
+}
+
+.sm-modal-body {
+  padding: 20px 22px;
+}
+
+.sm-modal-section-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0d47a1;
+  margin: 14px 0 10px;
+}
+
+.sm-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px 30px;
+  background: #f8f9fb;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.sm-info-grid div span {
+  display: block;
+  font-size: 10px;
+  color: #94a3b8;
+  font-weight: 700;
+  margin-bottom: 3px;
+}
+
+.sm-info-grid div strong {
+  font-size: 13px;
+  color: #1f2937;
+}
+
+.sm-modal-items-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.sm-modal-items-table thead th {
+  background: #f1f4fa;
+  color: #23395d;
+  font-weight: 700;
+  font-size: 11px;
+  padding: 8px;
+  text-align: left;
+}
+
+.sm-modal-items-table tbody td {
+  padding: 10px 8px;
+  border-bottom: 1px solid #eef1f8;
+}
+
+.sm-modal-footer {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px 22px;
+  border-top: 1px solid #eef1f8;
+}
+
+.sm-modal-close-btn {
+  background: #fff !important;
+  border: 1px solid #d8deed !important;
+  color: #475569 !important;
+  font-weight: 600 !important;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* =========================================================
+   CONFIRM DELETE MODAL
+========================================================= */
+
+.sm-confirm-modal {
+  background: #fff;
+  border-radius: 10px;
+  width: 100%;
+  max-width: 380px;
+  padding: 24px;
+  text-align: center;
+}
+
+.sm-confirm-title {
+  color: #dc3545;
+  font-weight: 700;
+  font-size: 16px;
+  margin-bottom: 10px;
+}
+
+.sm-confirm-id-box {
+  background: #f8f9fa;
+  padding: 12px;
+  border-radius: 8px;
+  margin-top: 10px;
+  font-size: 14px;
+}
+
+.sm-confirm-id-value {
+  color: #1d5cff;
+  font-weight: 700;
+}
+
+.sm-confirm-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 16px;
 }

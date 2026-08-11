@@ -1,0 +1,246 @@
+/* =========================================================
+   DASHBOARD PAGE — SCOPED CSS
+========================================================= */
+
+.dashboard-page {
+  background: #f4f6fb;
+  padding: 15px;
+}
+
+.dashboard-page .section-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0d47a1;
+  border-left: 4px solid #0d47a1;
+  padding-left: 10px;
+  margin-bottom: 16px;
+}
+
+.dashboard-loading {
+  text-align: center;
+  padding: 60px;
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+/* ---- KPI cards ---- */
+
+.dashboard-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.dashboard-kpi-card .card-body {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px;
+}
+
+.dashboard-kpi-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.dashboard-kpi-value {
+  font-size: 20px;
+  font-weight: 800;
+  color: #1f2937;
+  line-height: 1.1;
+}
+
+.dashboard-kpi-label {
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 600;
+  margin-top: 3px;
+}
+
+/* ---- Mid section: status + trend ---- */
+
+.dashboard-mid-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+@media (max-width: 900px) {
+  .dashboard-mid-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.dashboard-status-row {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 16px;
+}
+
+.dashboard-status-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dashboard-status-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+.dashboard-status-icon.posted {
+  background: #e6f6ea;
+  color: #1e7e34;
+}
+
+.dashboard-status-icon.unposted {
+  background: #fff3e0;
+  color: #f59e0b;
+}
+
+.dashboard-status-value {
+  font-size: 18px;
+  font-weight: 800;
+  color: #1f2937;
+}
+
+.dashboard-status-label {
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.dashboard-status-bar {
+  height: 10px;
+  background: #f1f4fa;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.dashboard-status-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #1e7e34, #4caf50);
+  border-radius: 6px;
+  transition: width 0.3s ease;
+}
+
+.dashboard-status-bar-caption {
+  margin-top: 8px;
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+/* ---- Trend chart ---- */
+
+.dashboard-trend-chart {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+  height: 140px;
+}
+
+.dashboard-trend-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+}
+
+.dashboard-trend-bar-track {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.dashboard-trend-bar {
+  width: 60%;
+  min-height: 4px;
+  background: linear-gradient(180deg, #1d5cff, #4f83ff);
+  border-radius: 4px 4px 0 0;
+  transition: height 0.3s ease;
+}
+
+.dashboard-trend-count {
+  font-size: 11px;
+  font-weight: 700;
+  color: #1f2937;
+  margin-top: 6px;
+}
+
+.dashboard-trend-day {
+  font-size: 10px;
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+/* ---- Recent GRNs table ---- */
+
+.dashboard-recent-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.dashboard-recent-table thead th {
+  background: #f1f4fa;
+  color: #23395d;
+  font-weight: 700;
+  font-size: 11px;
+  padding: 10px 8px;
+  text-align: left;
+}
+
+.dashboard-recent-table tbody td {
+  padding: 10px 8px;
+  border-bottom: 1px solid #eef1f8;
+  color: #1f2937;
+}
+
+.dashboard-status-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.dashboard-status-badge.posted {
+  background: #e6f6ea;
+  color: #1e7e34;
+}
+
+.dashboard-status-badge.partial {
+  background: #fff3e0;
+  color: #f59e0b;
+}
+
+.dashboard-status-badge.unposted {
+  background: #f1f4fa;
+  color: #64748b;
+}
+
+.dashboard-empty {
+  text-align: center;
+  padding: 30px;
+  color: #94a3b8;
+  font-size: 13px;
+}

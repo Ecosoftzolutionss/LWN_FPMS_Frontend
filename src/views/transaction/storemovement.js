@@ -35,7 +35,6 @@ const StoreMovement = () => {
 
   const [activePallet, setActivePallet] = useState(null)
   const [side, setSide] = useState('Front')
-  const [stuffQty, setStuffQty] = useState('')
   const [selectedSlot, setSelectedSlot] = useState(null) // { rackRowId, slotNumber }
 
   useEffect(() => {
@@ -103,7 +102,6 @@ const StoreMovement = () => {
 
   const openStore = async (grn) => {
     setActiveGrn(grn)
-    setStuffQty('')
     setSelectedSlot(null)
     await loadPallets(grn.id)
     await loadRackSlots()
@@ -134,45 +132,39 @@ const StoreMovement = () => {
   const isSlotOccupied = (row, slotNumber) =>
     row.occupiedSlots.some((o) => o.slotNumber === slotNumber && o.side === side)
 
-  const handleSelectSlot = (rackRowId, slotNumber) => {
-    setSelectedSlot({ rackRowId, slotNumber })
-  }
-
-  const handleStuff = async () => {
+  const handleSelectSlot = async (rackRowId, slotNumber) => {
     if (!activePallet) {
       toast.error('Pick a pallet from the left first')
       return
     }
-    if (!selectedSlot) {
-      toast.error('Select an available slot on the right')
+
+    if (remainingQty <= 0) {
+      toast.error('This pallet has already been fully stuffed')
       return
     }
-    const qty = Number(stuffQty)
-    if (!qty || qty <= 0) {
-      toast.error('Enter a quantity to stuff')
-      return
-    }
-    if (qty > remainingQty) {
-      toast.error(`Only ${remainingQty} remaining on this pallet`)
-      return
-    }
+
+    // Each pallet (GRN line) is already a whole, pre-split unit from GRN
+    // Entry's Quantity / Pallet Quantity split — so stuffing always moves
+    // the pallet's full remaining quantity into the slot, no manual
+    // amount to type in.
+    setSelectedSlot({ rackRowId, slotNumber })
 
     try {
       await API.post('/StoreMovement/stuff-rack-slot', {
         grnPalletId: activePallet.id,
-        rackRowId: selectedSlot.rackRowId,
-        slotNumber: selectedSlot.slotNumber,
+        rackRowId,
+        slotNumber,
         side,
-        quantity: qty,
+        quantity: remainingQty,
       })
 
-      toast.success('Stuffed Successfully')
-      setStuffQty('')
+      toast.success(`Pallet ${activePallet.palletNo} stuffed successfully`)
       setSelectedSlot(null)
       await loadPallets(activeGrn.id)
       await loadRackSlots()
     } catch (err) {
       toast.error(getErrorMessage(err, 'Stuff Failed'))
+      setSelectedSlot(null)
     }
   }
 
@@ -469,10 +461,13 @@ const StoreMovement = () => {
                           {rack.columns.map((col) => (
                             <div key={col.id} className="sm-rack-column">
                               <div className="sm-rack-column-title">{col.columnNo}</div>
+
                               {[...col.rows].reverse().map((row) => {
                                 const enabled = side === 'Front' ? row.hasFront : row.hasRear
                                 if (!enabled) return null
+
                                 const slotNumbers = buildSlotNumbers(row.fixture, side)
+
                                 return (
                                   <div key={row.id} className="sm-rack-row">
                                     <div className="sm-rack-row-label">{row.rowNo}</div>
@@ -510,18 +505,13 @@ const StoreMovement = () => {
             </div>
           )}
 
-          <div className="sm-stuff-form">
-            <input
-              type="number"
-              className="sm-stuff-qty-input"
-              placeholder="Quantity to stuff"
-              value={stuffQty}
-              onChange={(e) => setStuffQty(e.target.value)}
-            />
-            <CButton className="sm-select-btn" onClick={handleStuff}>
-              Select This Pallet
-            </CButton>
-          </div>
+          {!activePallet ? (
+            <div className="sm-stuff-hint">Pick a pallet from the left, then click any available slot to place it there.</div>
+          ) : (
+            <div className="sm-stuff-hint">
+              Click an available slot to place <strong>{activePallet.palletNo}</strong> ({remainingQty} units) there.
+            </div>
+          )}
         </div>
       </div>
     </div>

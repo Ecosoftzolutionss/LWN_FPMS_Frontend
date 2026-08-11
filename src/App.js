@@ -1,135 +1,392 @@
-import React, { useState, useEffect, Suspense } from 'react';
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import React, {
+  useState,
+  useEffect,
+  Suspense,
+} from 'react';
+
+import {
+  HashRouter,
+  Routes,
+  Route,
+  Navigate,
+} from 'react-router-dom';
+
 import { CSpinner } from '@coreui/react';
 import { ToastContainer } from 'react-toastify';
+
 import './scss/style.scss';
 import './scss/examples.scss';
 import 'react-toastify/dist/ReactToastify.css';
-const DefaultLayout = React.lazy(() => import('./layout/DefaultLayout'));
-const Login = React.lazy(() => import('./views/pages/login/Login'));
-const MobileSend = React.lazy(() => import('./views/mobiletransaction/mobilesend'));
-const ScanInvoice = React.lazy(() => import('./views/mobiletransaction/ScanInvoice'));
-const GateExit = React.lazy(() => import('./views/mobiletransaction/gateexit'));
-const PartScan = React.lazy(() => import('./views/mobiletransaction/PartScan'));
-import { startSessionTracking } from "./sessionActivity";
+
+import {
+  startSessionTracking,
+} from './sessionActivity';
+
+
+// ==========================================
+// Lazy Loaded Components
+// ==========================================
+
+const DefaultLayout = React.lazy(() =>
+  import('./layout/DefaultLayout')
+);
+
+const Login = React.lazy(() =>
+  import('./views/pages/login/Login')
+);
+
+const MobileSend = React.lazy(() =>
+  import('./views/mobiletransaction/mobilesend')
+);
+
+const MaterialIssue = React.lazy(() =>
+  import('./views/mobiletransaction/materialissue')
+);
+
+const StoreVerification = React.lazy(() =>
+  import('./views/mobiletransaction/storeverification')
+);
+
+
+// ==========================================
+// Helper
+// ==========================================
+
+const getStoredUser = () => {
+
+  try {
+
+    const storedUser =
+      sessionStorage.getItem('user');
+
+    if (!storedUser) {
+      return null;
+    }
+
+    return JSON.parse(storedUser);
+
+  } catch (error) {
+
+    console.error(
+      'Error reading user session:',
+      error
+    );
+
+    return null;
+
+  }
+
+};
+
+
+// ==========================================
+// App
+// ==========================================
 
 function App() {
+
+  // ========================================
+  // Logged-in User
+  // ========================================
+
   const [user, setUser] = useState(
-    JSON.parse(
-      sessionStorage.getItem('user') || 'null'
-    )
-  )
+    getStoredUser()
+  );
+
+
+  // ========================================
+  // Sync Login / Logout
+  // ========================================
 
   useEffect(() => {
+
     const syncUser = () => {
-      setUser(
-        JSON.parse(
-          sessionStorage.getItem('user') || 'null'
-        )
-      )
-    }
-    window.addEventListener('storage', syncUser)
-    return () =>
+
+      const storedUser =
+        getStoredUser();
+
+      setUser(storedUser);
+
+    };
+
+
+    // Cross-tab storage change
+    window.addEventListener(
+      'storage',
+      syncUser
+    );
+
+
+    // Same-tab login/logout
+    window.addEventListener(
+      'authChange',
+      syncUser
+    );
+
+
+    return () => {
+
       window.removeEventListener(
         'storage',
         syncUser
-      )
-  }, [])
+      );
 
-useEffect(() => {
+      window.removeEventListener(
+        'authChange',
+        syncUser
+      );
+
+    };
+
+  }, []);
+
+
+  // ========================================
+  // Session Tracking
+  // ========================================
+
+  useEffect(() => {
+
     if (user?.sessionId) {
-        startSessionTracking();
-    }
-}, [user]);
 
-  const isAuth = !!user
-  const isMasterUser =
-    user?.mobilityWithoutCheck === true
+      startSessionTracking();
+
+    }
+
+  }, [user]);
+
+
+  // ========================================
+  // IMPORTANT
+  //
+  // Always check sessionStorage directly
+  // for routing.
+  // ========================================
+
+  const currentUser =
+    getStoredUser();
+
+  const isAuth =
+    !!currentUser;
+
+
+  const isMobile =
+    !!currentUser &&
+    currentUser.mobilityWithoutCheck !== true;
+
+
+  // ========================================
+  // Render
+  // ========================================
+
   return (
+
     <HashRouter>
-      <ToastContainer position="top-right" autoClose={3000} />
+
+      {/* ====================================
+          Toast
+      ==================================== */}
+
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+      />
+
+
+      {/* ====================================
+          Suspense
+      ==================================== */}
 
       <Suspense
         fallback={
           <div className="pt-3 text-center">
-            <CSpinner color="primary" variant="grow" />
+
+            <CSpinner
+              color="primary"
+              variant="grow"
+            />
+
           </div>
         }
       >
+
         <Routes>
+
+
+          {/* ==================================
+              ROOT
+          ================================== */}
 
           <Route
             path="/"
             element={
+
               !isAuth ? (
-                <Navigate to="/login" replace />
-              ) : isMasterUser ? (
-                <Navigate to="/masters/users" replace />
+
+                <Navigate
+                  to="/login"
+                  replace
+                />
+
+              ) : isMobile ? (
+
+                <Navigate
+                  to="/m/send"
+                  replace
+                />
+
               ) : (
-                <Navigate to="/m/send" replace />  // ← non-master users go to mobile send
+
+                <Navigate
+                  to="/dashboard"
+                  replace
+                />
+
               )
-            }
-          />
-          <Route
-            path="/login"
-            element={<Login />}
-          />
-          <Route
-            path="/m/send"
-            element={
-              isAuth ? (
-                <MobileSend />
-              ) : (
-                <Navigate to="/login" replace />
-              )
-            }
-          />
-          <Route
-            path="/mobiletransaction/ScanInvoice"
-            element={
-              isAuth ? (
-                <ScanInvoice />
-              ) : (
-                <Navigate to="/login" replace />
-              )
-            }
-          />
-          <Route
-            path="/mobiletransaction/gateexit"
-            element={
-              isAuth ? (
-                <GateExit />
-              ) : (
-                <Navigate to="/login" replace />
-              )
+
             }
           />
 
+
+          {/* ==================================
+              LOGIN
+          ================================== */}
+
           <Route
-            path="/mobiletransaction/partscan"
+            path="/login"
             element={
+
               isAuth ? (
-                <PartScan />
+
+                <Navigate
+                  to="/"
+                  replace
+                />
+
               ) : (
-                <Navigate to="/login" replace />
+
+                <Login />
+
               )
+
             }
           />
+
+
+          {/* ==================================
+              MOBILE HOME
+          ================================== */}
+
+          <Route
+            path="/m/send"
+            element={
+
+              isAuth ? (
+
+                <MobileSend />
+
+              ) : (
+
+                <Navigate
+                  to="/login"
+                  replace
+                />
+
+              )
+
+            }
+          />
+
+
+          {/* ==================================
+              MATERIAL ISSUE
+          ================================== */}
+
+          <Route
+            path="/mobiletransaction/materialissue"
+            element={
+
+              isAuth ? (
+
+                <MaterialIssue />
+
+              ) : (
+
+                <Navigate
+                  to="/login"
+                  replace
+                />
+
+              )
+
+            }
+          />
+
+
+          {/* ==================================
+              STORE VERIFICATION
+          ================================== */}
+
+          <Route
+            path="/mobiletransaction/storeverification"
+            element={
+
+              isAuth ? (
+
+                <StoreVerification />
+
+              ) : (
+
+                <Navigate
+                  to="/login"
+                  replace
+                />
+
+              )
+
+            }
+          />
+
+
+          {/* ==================================
+              DEFAULT LAYOUT
+              
+              Dashboard
+              Masters
+              Transactions
+              Reports
+          ================================== */}
 
           <Route
             path="/*"
             element={
+
               isAuth ? (
+
                 <DefaultLayout />
+
               ) : (
-                <Navigate to="/login" replace />
+
+                <Navigate
+                  to="/login"
+                  replace
+                />
+
               )
+
             }
           />
+
+
         </Routes>
+
       </Suspense>
+
     </HashRouter>
-  )
+
+  );
+
 }
 
-export default App
+
+export default App;

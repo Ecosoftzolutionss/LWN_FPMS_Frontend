@@ -48,15 +48,49 @@ const AppSidebar = () => {
       return true
     })
 
-  const handleLogout = async () => {
-    try {
-      await API.post("/Auth/logout");
-    } catch {
-      // ignore — proceed to clear session regardless
+const handleLogout = async () => {
+
+  try {
+
+    await API.post("/Auth/logout");
+
+  } catch (error) {
+
+    console.error(
+      "Logout API error:",
+      error
+    );
+
+  }
+
+  // ========================================
+  // Clear login session
+  // ========================================
+
+  sessionStorage.clear();
+
+
+  // ========================================
+  // Notify App.js
+  // ========================================
+
+  window.dispatchEvent(
+    new Event("authChange")
+  );
+
+
+  // ========================================
+  // Go directly to Login
+  // ========================================
+
+  navigate(
+    "/login",
+    {
+      replace: true,
     }
-    sessionStorage.clear();
-    navigate("/login");
-  };
+  );
+
+};
 
   return (
     <CSidebar
