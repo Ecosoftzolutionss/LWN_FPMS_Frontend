@@ -141,16 +141,7 @@
 
 /* ---- Workspace view ---- */
 
-.sm-back-link {
-  border: none;
-  background: none;
-  color: #1d5cff;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  margin-bottom: 12px;
-  padding: 0;
-}
+
 
 .sm-workspace {
   display: grid;
@@ -461,4 +452,163 @@
 
 .sm-select-btn:hover {
   background: #0c3580 !important;
+}
+
+/* =========================================================
+   REAL RACK/COLUMN/ROW/SLOT SELECTION (dynamic from Location Master)
+========================================================= */
+
+.sm-empty-slots {
+  color: #94a3b8;
+  font-size: 12px;
+  padding: 14px;
+  text-align: center;
+  border: 1px dashed #e2e8f0;
+  border-radius: 8px;
+}
+
+.sm-rack-store-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-height: 480px;
+  overflow-y: auto;
+}
+
+.sm-rack-store-block {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.sm-rack-block {
+  margin-top: 10px;
+  border-top: 1px dashed #e2e8f0;
+  padding-top: 10px;
+}
+
+.sm-rack-block-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1d5cff;
+  margin-bottom: 8px;
+}
+
+.sm-rack-columns {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.sm-rack-column {
+  min-width: 200px;
+  background: #f7f9fd;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 8px 10px;
+  flex-shrink: 0;
+}
+
+.sm-rack-column-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #23395d;
+  margin-bottom: 6px;
+}
+
+.sm-rack-row {
+  margin-bottom: 6px;
+}
+
+.sm-rack-row:last-child {
+  margin-bottom: 0;
+}
+
+.sm-rack-row-label {
+  font-size: 9px;
+  font-weight: 700;
+  color: #94a3b8;
+  margin-bottom: 3px;
+}
+
+.sm-rack-row-slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.sm-slot-btn {
+  border: none;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 5px 7px;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.sm-slot-btn.available {
+  background: #fff;
+  border: 1px dashed #cbd5e1;
+  color: #64748b;
+}
+
+.sm-slot-btn.available:hover {
+  border-color: #1d5cff;
+  color: #1d5cff;
+}
+
+.sm-slot-btn.occupied {
+  background: #f1f4fa;
+  color: #cbd5e1;
+  cursor: not-allowed;
+}
+
+.sm-slot-btn.selected {
+  background: #22c55e;
+  color: #fff;
+  border: none;
+}
+
+/* =========================================================
+   BACK BUTTON (matches Item Group Master's pattern —
+   circular icon button anchored to the card's top-right corner)
+========================================================= */
+
+.sm-summary-card {
+  position: relative;
+  padding-top: 20px;
+}
+
+.round-icon-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.card-back-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: #fff;
+  color: #0d4ea2;
+  border: 1.5px solid #0d4ea2;
+  box-shadow: none;
+}
+
+.card-back-btn:hover {
+  background: #f0f5ff;
+  color: #083b7d;
+  border-color: #083b7d;
+  transform: translateY(-1px);
 }

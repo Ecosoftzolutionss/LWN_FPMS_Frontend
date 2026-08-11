@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { CButton, CFormInput, CRow, CCol, CCard, CCardBody } from '@coreui/react'
 import { FaPlus, FaTrash } from 'react-icons/fa'
 import { toast } from 'react-toastify'
@@ -44,6 +45,7 @@ const getErrorMessage = (err, fallback) => {
 }
 
 const GRNEntry = () => {
+  const navigate = useNavigate()
   const [items, setItems] = useState([])
   const [suppliers, setSuppliers] = useState([])
 
@@ -111,13 +113,28 @@ const GRNEntry = () => {
     clearError(name)
   }
 
+  // Native <input type="date"> only opens its picker when the small
+  // calendar icon is clicked, not the rest of the field. This makes a
+  // click anywhere in the field open it too (showPicker is supported in
+  // Chrome/Edge; other browsers just no-op and keep default behavior).
+  const handleDateFieldClick = (e) => {
+    if (typeof e.target.showPicker === 'function') {
+      try {
+        e.target.showPicker()
+      } catch {
+        // Some browsers throw if called too frequently/without a user
+        // gesture context — safe to ignore, default click behavior still works.
+      }
+    }
+  }
+
   const handleLineChange = (e) => {
     const { name, value } = e.target
     setLine({ ...line, [name]: value })
     clearError(name)
   }
 
-  const totalValue = (Number(line.rate) || 0) * (Number(line.quantity) || 0)
+  const totalValue = (Number(line.rate) || 0) * (Number(line.palletQuantity) || 0)
 
   const validateAdd = () => {
     const temp = {}
@@ -130,12 +147,28 @@ const GRNEntry = () => {
     if (!header.poNumber.trim()) temp.poNumber = 'PO Number is required'
     if (!header.poDate) temp.poDate = 'PO Date is required'
     if (!header.grnType) temp.grnType = 'GRN Type is required'
-    if (!header.supplierInvoiceNumber.trim()) temp.supplierInvoiceNumber = 'Supplier Invoice Number is required'
+    const invoiceNumber = header.supplierInvoiceNumber.trim()
+    if (!invoiceNumber) {
+      temp.supplierInvoiceNumber = 'Supplier Invoice Number is required'
+    } else if (!/^[0-9]+$/.test(invoiceNumber)) {
+      temp.supplierInvoiceNumber = 'Supplier Invoice Number must be numbers only'
+    }
+
     if (!header.supplierInvoiceDate) temp.supplierInvoiceDate = 'Supplier Invoice Date is required'
 
-    if (!line.itemId) temp.itemId = 'Part Number is required'
+    if (!line.itemId) {
+      temp.itemId = 'Part Number is required'
+    } else if (lineItems.some((l) => l.itemId === line.itemId)) {
+      temp.itemId = 'This part has already been added — delete it first to re-add'
+    }
     if (line.rate === '' || Number(line.rate) <= 0) temp.rate = 'Rate is required'
     if (line.quantity === '' || Number(line.quantity) <= 0) temp.quantity = 'Quantity is required'
+
+    if (line.palletQuantity !== '' && Number(line.palletQuantity) > 0 && line.quantity !== '') {
+      if (Number(line.palletQuantity) > Number(line.quantity)) {
+        temp.palletQuantity = 'Pallet Quantity cannot be greater than Quantity'
+      }
+    }
 
     setErrors(temp)
     return Object.keys(temp).length === 0
@@ -144,20 +177,60 @@ const GRNEntry = () => {
   const handleAdd = () => {
     if (!validateAdd()) return
 
-    setLineItems((prev) => [
-      ...prev,
-      {
-        key: `${line.itemId}-${Date.now()}`,
-        itemId: line.itemId,
-        partNumber: selectedItem?.label || '',
-        itemName: selectedItem?.itemName || '',
-        uom: selectedItem?.uom || '',
-        palletQuantity: line.palletQuantity,
-        rate: Number(line.rate),
-        quantity: Number(line.quantity),
-        totalValue: Math.round(totalValue * 100) / 100,
-      },
-    ])
+    const quantity = Number(line.quantity)
+    const palletQty = Number(line.palletQuantity) || 0
+    const rate = Number(line.rate)
+
+    const baseRow = {
+      itemId: line.itemId,
+      partNumber: selectedItem?.label || '',
+      itemName: selectedItem?.itemName || '',
+      uom: selectedItem?.uom || '',
+      rate,
+    }
+
+    let newRows = []
+
+    if (palletQty > 0 && palletQty < quantity) {
+      // Split into full pallets of `palletQty` each, plus one remainder
+      // row if the quantity doesn't divide evenly — e.g. Quantity 1000,
+      // Pallet Qty 200 -> five rows of 200 each.
+      const fullPallets = Math.floor(quantity / palletQty)
+      const remainder = quantity % palletQty
+
+      for (let i = 0; i < fullPallets; i++) {
+        newRows.push({
+          ...baseRow,
+          key: `${line.itemId}-${Date.now()}-${i}`,
+          quantity: palletQty,
+          palletQuantity: palletQty,
+          totalValue: Math.round(rate * palletQty * 100) / 100,
+        })
+      }
+
+      if (remainder > 0) {
+        newRows.push({
+          ...baseRow,
+          key: `${line.itemId}-${Date.now()}-rem`,
+          quantity: remainder,
+          palletQuantity: remainder,
+          totalValue: Math.round(rate * remainder * 100) / 100,
+        })
+      }
+    } else {
+      // No split needed — Pallet Qty blank, zero, or >= Quantity.
+      newRows = [
+        {
+          ...baseRow,
+          key: `${line.itemId}-${Date.now()}`,
+          quantity,
+          palletQuantity: line.palletQuantity,
+          totalValue: Math.round(totalValue * 100) / 100,
+        },
+      ]
+    }
+
+    setLineItems((prev) => [...prev, ...newRows])
 
     // Keep PO/header fields, clear only the part-specific fields for the next row.
     setLine(EMPTY_LINE)
@@ -212,7 +285,7 @@ const GRNEntry = () => {
       const res = await API.post('/GrnEntry', payload)
       toast.success(`GRN Saved Successfully (${res.data.grnNumber})`)
       handleClearAll()
-      await loadNextGrnNo()
+      navigate('/transaction/grnpost')
     } catch (err) {
       toast.error(getErrorMessage(err, 'Save Failed'))
     }
@@ -221,10 +294,11 @@ const GRNEntry = () => {
   const totals = lineItems.reduce(
     (acc, l) => ({
       quantity: acc.quantity + l.quantity,
+      palletQuantity: acc.palletQuantity + (Number(l.palletQuantity) || 0),
       rate: acc.rate + l.rate,
       totalValue: acc.totalValue + l.totalValue,
     }),
-    { quantity: 0, rate: 0, totalValue: 0 },
+    { quantity: 0, palletQuantity: 0, rate: 0, totalValue: 0 },
   )
 
   return (
@@ -293,6 +367,7 @@ const GRNEntry = () => {
                 value={header.poDate}
                 className={errors.poDate ? 'error-input' : ''}
                 onChange={handleHeaderChange}
+                onClick={handleDateFieldClick}
               />
               {errors.poDate && <small className="text-danger">{errors.poDate}</small>}
             </CCol>
@@ -342,10 +417,14 @@ const GRNEntry = () => {
               <label className="custom-label"><strong>Supplier Invoice Number</strong> <span className="required">*</span></label>
               <CFormInput
                 name="supplierInvoiceNumber"
-                placeholder="Enter Supplier Invoice Number"
+                placeholder="Enter Supplier Invoice Number (numbers only)"
                 value={header.supplierInvoiceNumber}
                 className={errors.supplierInvoiceNumber ? 'error-input' : ''}
-                onChange={handleHeaderChange}
+                onChange={(e) =>
+                  handleHeaderChange({
+                    target: { name: 'supplierInvoiceNumber', value: e.target.value.replace(/[^0-9]/g, '') },
+                  })
+                }
               />
               {errors.supplierInvoiceNumber && <small className="text-danger">{errors.supplierInvoiceNumber}</small>}
             </CCol>
@@ -358,6 +437,7 @@ const GRNEntry = () => {
                 value={header.supplierInvoiceDate}
                 className={errors.supplierInvoiceDate ? 'error-input' : ''}
                 onChange={handleHeaderChange}
+                onClick={handleDateFieldClick}
               />
               {errors.supplierInvoiceDate && <small className="text-danger">{errors.supplierInvoiceDate}</small>}
             </CCol>
@@ -368,14 +448,16 @@ const GRNEntry = () => {
             </CCol>
 
             <CCol md={4}>
-              <label className="custom-label"><strong>Pallet Quantity</strong></label>
+              <label className="custom-label"><strong>Quantity</strong> <span className="required">*</span></label>
               <CFormInput
                 type="number"
-                name="palletQuantity"
-                placeholder="Enter Pallet Quantity"
-                value={line.palletQuantity}
+                name="quantity"
+                placeholder="Enter Quantity"
+                value={line.quantity}
+                className={errors.quantity ? 'error-input' : ''}
                 onChange={handleLineChange}
               />
+              {errors.quantity && <small className="text-danger">{errors.quantity}</small>}
             </CCol>
 
             <CCol md={4}>
@@ -392,16 +474,16 @@ const GRNEntry = () => {
             </CCol>
 
             <CCol md={4}>
-              <label className="custom-label"><strong>Quantity</strong> <span className="required">*</span></label>
+              <label className="custom-label"><strong>Pallet Quantity</strong></label>
               <CFormInput
                 type="number"
-                name="quantity"
-                placeholder="Enter Quantity"
-                value={line.quantity}
-                className={errors.quantity ? 'error-input' : ''}
+                name="palletQuantity"
+                placeholder="Enter Pallet Quantity"
+                value={line.palletQuantity}
+                className={errors.palletQuantity ? 'error-input' : ''}
                 onChange={handleLineChange}
               />
-              {errors.quantity && <small className="text-danger">{errors.quantity}</small>}
+              {errors.palletQuantity && <small className="text-danger">{errors.palletQuantity}</small>}
             </CCol>
 
             <CCol md={4}>
@@ -430,6 +512,7 @@ const GRNEntry = () => {
                   <th>S.No</th>
                   <th>Part</th>
                   <th>Quantity</th>
+                  <th>Pallet Qty</th>
                   <th>Rate (₹)</th>
                   <th>Total Value (₹)</th>
                   <th>Action</th>
@@ -438,7 +521,7 @@ const GRNEntry = () => {
               <tbody>
                 {lineItems.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="grn-empty-row">No parts added yet</td>
+                    <td colSpan={7} className="grn-empty-row">No parts added yet</td>
                   </tr>
                 ) : (
                   lineItems.map((l, index) => (
@@ -451,6 +534,7 @@ const GRNEntry = () => {
                         </div>
                       </td>
                       <td>{l.quantity}</td>
+                      <td>{l.palletQuantity || '—'}</td>
                       <td>{l.rate.toFixed(2)}</td>
                       <td>{l.totalValue.toFixed(2)}</td>
                       <td>
@@ -467,6 +551,7 @@ const GRNEntry = () => {
                   <tr>
                     <td colSpan={2}><strong>Total</strong></td>
                     <td><strong>{totals.quantity}</strong></td>
+                    <td><strong>{totals.palletQuantity}</strong></td>
                     <td><strong>{totals.rate.toFixed(2)}</strong></td>
                     <td><strong>{totals.totalValue.toFixed(2)}</strong></td>
                     <td></td>
