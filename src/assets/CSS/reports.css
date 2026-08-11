@@ -1,0 +1,158 @@
+/* =========================================================
+   REPORTS PAGE — SCOPED CSS
+========================================================= */
+
+.reports-page {
+  background: #f4f6fb;
+  padding: 15px;
+}
+
+.reports-page .section-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0d47a1;
+  border-left: 4px solid #0d47a1;
+  padding-left: 10px;
+  margin-bottom: 18px;
+}
+
+.reports-page .custom-label {
+  font-size: 12px;
+  color: #1f2937;
+  font-weight: 700;
+  margin-bottom: 6px;
+  display: block;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.reports-page .form-control {
+  height: 38px !important;
+  border-radius: 6px !important;
+  border: 1px solid #c4d3ea !important;
+  font-size: 13px !important;
+}
+
+.reports-filter-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.reports-filter-field {
+  width: 200px;
+}
+
+.reports-filter-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-left: auto;
+}
+
+.reports-search-btn {
+  background: #1d5cff !important;
+  border: none !important;
+  color: #fff !important;
+  font-weight: 600 !important;
+  padding: 9px 18px !important;
+  border-radius: 6px !important;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.reports-search-btn:hover {
+  background: #0c3580 !important;
+}
+
+.reports-search-btn:disabled {
+  opacity: 0.6;
+}
+
+.reports-clear-btn {
+  background: #fff !important;
+  border: 1px solid #d8deed !important;
+  color: #475569 !important;
+  font-weight: 600 !important;
+  padding: 9px 18px !important;
+  border-radius: 6px !important;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.reports-clear-btn:hover {
+  background: #f1f4fa !important;
+}
+
+.reports-export-btn {
+  background: #1e7e34 !important;
+  border: none !important;
+  color: #fff !important;
+  font-weight: 600 !important;
+  padding: 9px 18px !important;
+  border-radius: 6px !important;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.reports-export-btn:hover {
+  background: #145523 !important;
+}
+
+.reports-summary-row {
+  display: flex;
+  gap: 24px;
+  background: #f7f9fd;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 14px 18px;
+  margin-bottom: 16px;
+}
+
+.reports-summary-row div {
+  display: flex;
+  flex-direction: column;
+}
+
+.reports-summary-row span {
+  font-size: 10px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  margin-bottom: 3px;
+}
+
+.reports-summary-row strong {
+  font-size: 16px;
+  color: #1f2937;
+}
+
+.report-status-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.report-status-badge.posted {
+  background: #e6f6ea;
+  color: #1e7e34;
+}
+
+.report-status-badge.unposted {
+  background: #f1f4fa;
+  color: #64748b;
+}
+
+.reports-empty {
+  padding: 30px;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 13px;
+}
