@@ -400,7 +400,7 @@ const SupplierMaster = () => {
   const supplierGroupOptions = supplierGroups.map((g) => ({ value: g.id, label: g.supplierGroupType }))
 
   const columns = [
-    { name: 'SL.NO', selector: (row, index) => index + 1, width: '70px' },
+    { name: 'SL.NO', selector: (row, index) => index + 1, width: '90px' },
     { name: 'SUPPLIER ID', selector: (row) => row.supplierCode },
     { name: 'SUPPLIER NAME', selector: (row) => row.supplierName, wrap: true },
     { name: 'VENDOR CODE', selector: (row) => row.vendorCode },

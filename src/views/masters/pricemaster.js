@@ -1,18 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react'
 import DataTable from 'react-data-table-component'
-import {
-  CButton,
-  CFormInput,
-  CRow,
-  CCol,
-  CCard,
-  CCardBody,
-  CModal,
-  CModalHeader,
-  CModalTitle,
-  CModalBody,
-  CModalFooter,
-} from '@coreui/react'
+import {CButton,CFormInput,CRow,CCol,CCard,CCardBody,CModal,CModalHeader,CModalTitle,CModalBody,CModalFooter,} from '@coreui/react'
 import { FaEdit, FaTrash, FaPlus, FaArrowLeft } from 'react-icons/fa'
 import { toast } from 'react-toastify'
 import Select from 'react-select'
@@ -139,6 +127,21 @@ const PriceMaster = () => {
     const { name, value } = e.target
     setForm({ ...form, [name]: value })
     clearError(name)
+  }
+
+  // Native <input type="date"> only opens its picker when the small
+  // calendar icon is clicked, not the rest of the field. This makes a
+  // click anywhere in the field open it too (showPicker is supported in
+  // Chrome/Edge; other browsers just no-op and keep default behavior).
+  const handleDateFieldClick = (e) => {
+    if (typeof e.target.showPicker === 'function') {
+      try {
+        e.target.showPicker()
+      } catch {
+        // Some browsers throw if called too frequently/without a user
+        // gesture context — safe to ignore, default click behavior still works.
+      }
+    }
   }
 
   const validate = () => {
@@ -270,7 +273,7 @@ const PriceMaster = () => {
   const partNumberOptions = items.map((i) => ({ value: i.id, label: i.itemNumber }))
 
   const columns = [
-    { name: 'SL.NO', selector: (row, index) => index + 1, width: '70px' },
+    { name: 'SL.NO', selector: (row, index) => index + 1, width: '90px' },
     { name: 'PART NUMBER', selector: (row) => row.partNumberText },
     { name: 'GROUP CODE', selector: (row) => row.groupCode },
     {
@@ -409,6 +412,7 @@ const PriceMaster = () => {
                   value={form.effectiveDate}
                   className={errors.effectiveDate ? 'error-input' : ''}
                   onChange={handleChange}
+                  onClick={handleDateFieldClick}
                 />
                 {errors.effectiveDate && <small className="text-danger">{errors.effectiveDate}</small>}
               </CCol>

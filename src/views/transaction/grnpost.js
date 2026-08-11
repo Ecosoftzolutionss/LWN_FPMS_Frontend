@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import DataTable from 'react-data-table-component'
-import { CButton, CFormInput } from '@coreui/react'
-import { FaEye, FaEdit, FaTrash, FaCheckCircle, FaFileAlt, FaPrint, FaTimes, FaDownload } from 'react-icons/fa'
+import { CButton, CFormInput, CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter } from '@coreui/react'
+import { FaEye, FaEdit, FaTrash, FaCheckCircle, FaFileAlt, FaPrint, FaTimes, FaDownload, FaRegCalendarAlt, FaBoxOpen, FaRegFileAlt } from 'react-icons/fa'
 import { toast } from 'react-toastify'
 import html2canvas from 'html2canvas'
 import jsPDF from 'jspdf'
@@ -41,10 +41,10 @@ const GRNPost = () => {
   const [detailsGrn, setDetailsGrn] = useState(null)
   const [showDetails, setShowDetails] = useState(false)
 
-  const [labelGrn, setLabelGrn] = useState(null)
+  const [labelGrn, setLabelGrn] = useState(null) // { grnNumber, supplierInvoiceNumber, supplierInvoiceDate, line: {...} }
   const [showLabel, setShowLabel] = useState(false)
 
-  const [deleteId, setDeleteId] = useState(null)
+  const [deleteLineTarget, setDeleteLineTarget] = useState(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   useEffect(() => {
@@ -78,47 +78,66 @@ const GRNPost = () => {
     }
   }
 
-  const handlePost = async (row) => {
+  const buildLabelFromLine = (grn, line) => ({
+    grnNumber: grn.grnNumber,
+    supplierInvoiceNumber: grn.supplierInvoiceNumber,
+    supplierInvoiceDate: grn.supplierInvoiceDate,
+    line,
+  })
+
+  const handlePostLine = async (line) => {
     try {
-      await API.put(`/GrnEntry/${row.id}/post`)
-      toast.success(`${row.grnNumber} Posted Successfully`)
+      await API.put(`/GrnEntry/line/${line.id}/post`)
+      toast.success(`${line.partNumber} Posted Successfully`)
+
+      // Reload the GRN so the modal's grid + status badges reflect the
+      // new posted state, and immediately show the label for this item.
+      const res = await API.get(`/GrnEntry/${detailsGrn.id}`)
+      setDetailsGrn(res.data)
       await loadRows()
 
-      // Immediately show the FIFO label for what was just posted, using
-      // the full record (now includes the assigned PalletNo/FifoPalletNo).
-      const full = await API.get(`/GrnEntry/${row.id}`)
-      setLabelGrn(full.data)
+      const postedLine = res.data.lines.find((l) => l.id === line.id)
+      setLabelGrn(buildLabelFromLine(res.data, postedLine))
       setShowLabel(true)
     } catch (err) {
       toast.error(getErrorMessage(err, 'Post Failed'))
     }
   }
 
-  const handleDeleteClick = (row) => {
-    setDeleteId(row.id)
+  const handleReprintLine = (line) => {
+    setLabelGrn(buildLabelFromLine(detailsGrn, line))
+    setShowLabel(true)
+  }
+
+  const handleViewLine = (line) => {
+    if (!line.isPosted) {
+      toast.info('This item has not been posted yet — nothing to view')
+      return
+    }
+    setLabelGrn(buildLabelFromLine(detailsGrn, line))
+    setShowLabel(true)
+  }
+
+  const handleDeleteLineClick = (line) => {
+    setDeleteLineTarget(line)
     setShowDeleteConfirm(true)
   }
 
-  const confirmDelete = async () => {
+  const confirmDeleteLine = async () => {
+    if (!deleteLineTarget) return
+
     try {
-      await API.delete(`/GrnEntry/${deleteId}`)
+      await API.delete(`/GrnEntry/line/${deleteLineTarget.id}`)
       toast.success('Deleted Successfully')
+
+      const res = await API.get(`/GrnEntry/${detailsGrn.id}`)
+      setDetailsGrn(res.data)
       await loadRows()
     } catch (err) {
       toast.error(getErrorMessage(err, 'Delete Failed'))
     } finally {
       setShowDeleteConfirm(false)
-      setDeleteId(null)
-    }
-  }
-
-  const handleReprintLabel = async (row) => {
-    try {
-      const res = await API.get(`/GrnEntry/${row.id}`)
-      setLabelGrn(res.data)
-      setShowLabel(true)
-    } catch {
-      toast.error('Failed to load GRN for label')
+      setDeleteLineTarget(null)
     }
   }
 
@@ -164,7 +183,7 @@ const GRNPost = () => {
   const totalQuantity = (grn) => (grn?.lines || []).reduce((sum, l) => sum + Number(l.quantity || 0), 0)
   const totalValue = (grn) => (grn?.lines || []).reduce((sum, l) => sum + Number(l.totalValue || 0), 0)
 
-  const firstLine = labelGrn?.lines?.[0]
+  const firstLine = labelGrn?.line
 
   return (
     <div className="grn-post-page">
@@ -193,6 +212,7 @@ const GRNPost = () => {
           columns={[
             { name: 'S.NO', selector: (row, index) => index + 1, width: '70px' },
             { name: 'GRN NO', selector: (row) => row.grnNumber },
+            { name: 'PALLET COUNT', selector: (row) => row.lineCount, center: true, width: '130px' },
             { name: 'SUPPLIER NAME', selector: (row) => row.supplierName, wrap: true },
             { name: 'INVOICE NO', selector: (row) => row.supplierInvoiceNumber },
             {
@@ -200,49 +220,14 @@ const GRNPost = () => {
               selector: (row) => row.supplierInvoiceDate,
               cell: (row) => formatDate(row.supplierInvoiceDate),
             },
-            {
-              name: 'ACTION',
-              center: true,
-              minWidth: '220px',
-              cell: (row) => (
-                <div className="grn-post-actions">
-                  <button className="icon-btn view-btn" title="View" onClick={() => handleView(row)}>
-                    <FaEye size={13} />
-                  </button>
-
-                  {tab === 'unposted' && (
-                    <>
-                      <button className="icon-btn edit-btn" title="Edit">
-                        <FaEdit size={13} />
-                      </button>
-                      <button className="icon-btn delete-btn" title="Delete" onClick={() => handleDeleteClick(row)}>
-                        <FaTrash size={13} />
-                      </button>
-                      <button className="post-btn" onClick={() => handlePost(row)}>
-                        <FaCheckCircle size={12} /> Post
-                      </button>
-                    </>
-                  )}
-
-                  {tab === 'reprint' && (
-                    <>
-                      <button className="icon-btn delete-btn" title="Delete" onClick={() => handleDeleteClick(row)}>
-                        <FaTrash size={13} />
-                      </button>
-                      <button className="reprint-btn" onClick={() => handleReprintLabel(row)}>
-                        <FaPrint size={12} /> Reprint Label
-                      </button>
-                    </>
-                  )}
-                </div>
-              ),
-            },
           ]}
           data={filteredRows}
           pagination
           striped
           responsive
           highlightOnHover
+          pointerOnHover
+          onRowClicked={handleView}
           noDataComponent={<div className="grn-post-empty">No records to display</div>}
           customStyles={{
             rows: { style: { minHeight: '48px' } },
@@ -271,38 +256,35 @@ const GRNPost = () => {
         />
       </div>
 
-      {/* ---------- GRN Details modal ---------- */}
-      {showDetails && detailsGrn && (
-        <div className="grn-modal-overlay" onClick={() => setShowDetails(false)}>
-          <div className="grn-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="grn-modal-header">
-              <h3>GRN Details</h3>
-              <button onClick={() => setShowDetails(false)}><FaTimes /></button>
-            </div>
+      {/* ---------- GRN Item-wise modal ---------- */}
+      <CModal visible={showDetails && !!detailsGrn} onClose={() => setShowDetails(false)} alignment="center" size="xl" scrollable>
+        {detailsGrn && (
+          <>
+            <CModalHeader>
+              <CModalTitle>GRN {detailsGrn.grnNumber} — Items</CModalTitle>
+            </CModalHeader>
 
-            <div className="grn-modal-body">
-              <div className="grn-modal-section-title">GRN Information</div>
-
-              <div className="grn-info-grid">
-                <div><span>GRN NUMBER</span><strong>{detailsGrn.grnNumber}</strong></div>
+            <CModalBody>
+              <div className="grn-info-grid grn-info-grid-compact">
                 <div><span>SUPPLIER NAME</span><strong>{detailsGrn.supplierName}</strong></div>
                 <div><span>PO NUMBER</span><strong>{detailsGrn.poNumber}</strong></div>
-                <div><span>PO DATE</span><strong>{formatDate(detailsGrn.poDate)}</strong></div>
                 <div><span>INVOICE NUMBER</span><strong>{detailsGrn.supplierInvoiceNumber}</strong></div>
                 <div><span>INVOICE DATE</span><strong>{formatDate(detailsGrn.supplierInvoiceDate)}</strong></div>
-                <div><span>GRN TYPE</span><strong>{detailsGrn.grnType}</strong></div>
               </div>
 
-              <div className="grn-modal-section-title">GRN Items</div>
+              <div className="grn-modal-section-title">Items</div>
 
               <table className="grn-modal-items-table">
                 <thead>
                   <tr>
                     <th>PART</th>
-                    <th>PART DESCRIPTION</th>
-                    <th>QUANTITY</th>
+                    <th>PART DESC</th>
+                    <th>QTY</th>
+                    <th>PALLET QTY</th>
                     <th>RATE (₹)</th>
                     <th>TOTAL VALUE (₹)</th>
+                    <th>STATUS</th>
+                    <th>ACTION</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -311,70 +293,113 @@ const GRNPost = () => {
                       <td>{l.partNumber}</td>
                       <td>{l.partName}</td>
                       <td>{l.quantity}</td>
+                      <td>{l.palletQuantity ?? '—'}</td>
                       <td>{Number(l.rate).toFixed(2)}</td>
                       <td>{Number(l.totalValue).toFixed(2)}</td>
+                      <td>
+                        <span className={`line-status-badge ${l.isPosted ? 'posted' : 'unposted'}`}>
+                          {l.isPosted ? 'Posted' : 'Not Posted'}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="grn-post-actions">
+                          <button
+                            className="icon-btn view-btn"
+                            title="View"
+                            onClick={() => handleViewLine(l)}
+                          >
+                            <FaEye size={13} />
+                          </button>
+                          <button className="icon-btn edit-btn" title="Edit not supported yet" disabled>
+                            <FaEdit size={13} />
+                          </button>
+                          <button
+                            className="icon-btn delete-btn"
+                            title="Delete"
+                            disabled={l.isPosted}
+                            onClick={() => handleDeleteLineClick(l)}
+                          >
+                            <FaTrash size={13} />
+                          </button>
+                          {l.isPosted ? (
+                            <button className="reprint-btn" onClick={() => handleReprintLine(l)}>
+                              <FaPrint size={12} /> Reprint
+                            </button>
+                          ) : (
+                            <button className="post-btn" onClick={() => handlePostLine(l)}>
+                              <FaCheckCircle size={12} /> Post
+                            </button>
+                          )}
+                        </div>
+                      </td>
                     </tr>
                   ))}
                   <tr className="grn-modal-total-row">
                     <td colSpan={2}></td>
-                    <td><strong>Total Quantity</strong><br />{totalQuantity(detailsGrn)}</td>
-                    <td colSpan={2}><strong>Total Value</strong><br />₹{totalValue(detailsGrn).toFixed(2)}</td>
+                    <td><strong>{totalQuantity(detailsGrn)}</strong></td>
+                    <td colSpan={5}><strong>Total Value: ₹{totalValue(detailsGrn).toFixed(2)}</strong></td>
                   </tr>
                 </tbody>
               </table>
-            </div>
+            </CModalBody>
 
-            <div className="grn-modal-footer">
+            <CModalFooter>
               <CButton className="grn-modal-close-btn" onClick={() => setShowDetails(false)}>
                 <FaTimes size={12} /> Close
               </CButton>
-            </div>
-          </div>
-        </div>
-      )}
+            </CModalFooter>
+          </>
+        )}
+      </CModal>
 
       {/* ---------- Delete confirm ---------- */}
-      {showDeleteConfirm && (
-        <div className="grn-modal-overlay" onClick={() => setShowDeleteConfirm(false)}>
-          <div className="grn-confirm-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="grn-confirm-title">⚠ Confirm Delete</div>
-            <p>Are you sure you want to delete this GRN?</p>
-            <div className="grn-confirm-actions">
-              <CButton color="secondary" onClick={() => setShowDeleteConfirm(false)}>Cancel</CButton>
-              <CButton color="danger" onClick={confirmDelete}>Delete</CButton>
-            </div>
-          </div>
-        </div>
-      )}
+      <CModal visible={showDeleteConfirm} onClose={() => setShowDeleteConfirm(false)} alignment="center" backdrop="static">
+        <CModalHeader className="border-0">
+          <CModalTitle className="w-100 text-center text-danger fw-bold">⚠ Confirm Delete</CModalTitle>
+        </CModalHeader>
+        <CModalBody className="text-center">
+          <p>Are you sure you want to delete this GRN?</p>
+        </CModalBody>
+        <CModalFooter className="border-0 d-flex justify-content-center">
+          <CButton color="secondary" onClick={() => setShowDeleteConfirm(false)}>Cancel</CButton>
+          <CButton color="danger" onClick={confirmDeleteLine}>Delete</CButton>
+        </CModalFooter>
+      </CModal>
 
       {/* ---------- FIFO GRN Label modal ---------- */}
-      {showLabel && labelGrn && (
-        <div className="grn-modal-overlay" onClick={() => setShowLabel(false)}>
-          <div className="grn-label-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="grn-modal-header">
+      <CModal visible={showLabel && !!labelGrn} onClose={() => setShowLabel(false)} alignment="center" size="lg" scrollable>
+        {labelGrn && (
+          <>
+            <CModalHeader>
               <div>
-                <h3><FaPrint size={16} /> FIFO GRN LABEL</h3>
-                <small>Review GRN details before printing</small>
+                <CModalTitle><FaPrint size={16} /> FIFO GRN LABEL</CModalTitle>
+                <small className="text-muted">Review GRN details before printing</small>
               </div>
-              <button onClick={() => setShowLabel(false)}><FaTimes /></button>
-            </div>
+            </CModalHeader>
 
-            <div className="grn-modal-body">
+            <CModalBody>
               <div className="fifo-card" id="fifo-print-area">
                 <div className="fifo-card-header">
-                  <img src="/GLOVIS.png" alt="Leewon" className="fifo-logo-img" crossOrigin="anonymous" />
-                  <span className="fifo-title">FIFO CARD</span>
+                  <div className="fifo-logo-wrap">
+                    <img src="/GLOVIS.png" alt="Leewon" className="fifo-logo-img" crossOrigin="anonymous" />
+                    <span className="fifo-logo-text">LEEWON</span>
+                  </div>
+                  <div className="fifo-title-wrap">
+                    <span className="fifo-dash" />
+                    <span className="fifo-title">FIFO CARD</span>
+                    <span className="fifo-dash" />
+                  </div>
                 </div>
 
                 <div className="fifo-card-main">
                   <div className="fifo-left-col">
                     <div className="fifo-box">
                       <div className="fifo-box-label">PALLET NO.</div>
-                      <div className="fifo-box-value">{labelGrn.palletNo || '—'}</div>
+                      <div className="fifo-box-value">{firstLine?.palletNo || '—'}</div>
                     </div>
                     <div className="fifo-box">
                       <div className="fifo-box-label">FIFO PALLET NO.</div>
-                      <div className="fifo-box-value small">{labelGrn.fifoPalletNo || '—'}</div>
+                      <div className="fifo-box-value small">{firstLine?.fifoPalletNo || '—'}</div>
                     </div>
                     <div className="fifo-qr-box">
                       <img
@@ -384,8 +409,8 @@ const GRNPost = () => {
                         src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&margin=0&data=${encodeURIComponent(
                           JSON.stringify({
                             grn: labelGrn.grnNumber,
-                            fifoPalletNo: labelGrn.fifoPalletNo,
-                            palletNo: labelGrn.palletNo,
+                            fifoPalletNo: firstLine?.fifoPalletNo,
+                            palletNo: firstLine?.palletNo,
                             part: firstLine?.partNumber,
                           }),
                         )}`}
@@ -396,12 +421,12 @@ const GRNPost = () => {
 
                   <div className="fifo-right-col">
                     <div className="fifo-meta-grid">
-                      <div><span>SUP. INV. NO. :</span> {labelGrn.supplierInvoiceNumber}</div>
-                      <div><span>DATE :</span> {formatDate(labelGrn.supplierInvoiceDate)}</div>
-                      <div><span>QTY :</span> {totalQuantity(labelGrn)} Nos.</div>
-                      <div><span>GRN NO. :</span> {labelGrn.grnNumber}</div>
-                      <div><span>DATE :</span> {formatDate(labelGrn.postedDate)}</div>
-                      <div><span>QTY :</span> {firstLine?.quantity ?? 0} Nos.</div>
+                      <div><FaRegFileAlt className="fifo-meta-icon" /> <span>SUP. INV. NO. :</span> {labelGrn.supplierInvoiceNumber}</div>
+                      <div><FaRegCalendarAlt className="fifo-meta-icon" /> <span>DATE :</span> {formatDate(labelGrn.supplierInvoiceDate)}</div>
+                      <div><FaBoxOpen className="fifo-meta-icon" /> <span>QTY :</span> {firstLine?.quantity ?? 0} Nos.</div>
+                      <div><FaRegFileAlt className="fifo-meta-icon" /> <span>GRN NO. :</span> {labelGrn.grnNumber}</div>
+                      <div><FaRegCalendarAlt className="fifo-meta-icon" /> <span>DATE :</span> {formatDate(firstLine?.postedDate)}</div>
+                      <div><FaBoxOpen className="fifo-meta-icon" /> <span>QTY :</span> {firstLine?.palletQuantity ?? 0} Nos.</div>
                     </div>
 
                     <div className="fifo-part-row">
@@ -423,27 +448,19 @@ const GRNPost = () => {
                   <div className="fifo-sign">QA APPROVED</div>
                 </div>
               </div>
+            </CModalBody>
 
-              {labelGrn.lines?.length > 1 && (
-                <small className="text-muted fifo-note">
-                  This GRN has {labelGrn.lines.length} parts — the label above shows the first line
-                  ({firstLine?.partNumber}). A real per-pallet FIFO system prints one label per
-                  physical pallet; say the word if you want that level of breakdown built out.
-                </small>
-              )}
-            </div>
-
-            <div className="grn-modal-footer">
+            <CModalFooter>
               <CButton className="grn-modal-download-btn" onClick={handleDownloadLabel}>
                 <FaDownload size={12} /> Download
               </CButton>
               <CButton className="grn-modal-print-btn" onClick={handlePrintLabel}>
                 <FaPrint size={12} /> Print FIFO GRN Label
               </CButton>
-            </div>
-          </div>
-        </div>
-      )}
+            </CModalFooter>
+          </>
+        )}
+      </CModal>
     </div>
   )
 }
