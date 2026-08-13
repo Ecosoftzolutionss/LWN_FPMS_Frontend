@@ -1,0 +1,176 @@
+/* =========================================================
+   DATA SYNC MODAL
+========================================================= */
+
+.dsm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 100;
+}
+
+.dsm-modal {
+  width: 100%;
+  max-width: 340px;
+  background: #ffffff;
+  border-radius: 22px;
+  padding: 32px 26px 26px;
+  text-align: center;
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.22);
+}
+
+/* =========================================================
+   SUCCESS / WARNING ICON
+========================================================= */
+
+.dsm-icon-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+
+.dsm-icon-ring {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  background: #e6f8ec;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dsm-icon-ring.has-warning {
+  background: #fff4e5;
+}
+
+.dsm-icon-circle {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #22c55e;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  box-shadow: 0 6px 14px rgba(34, 197, 94, 0.35);
+}
+
+.dsm-icon-circle.has-warning {
+  background: #f59e0b;
+  box-shadow: 0 6px 14px rgba(245, 158, 11, 0.35);
+}
+
+/* =========================================================
+   TITLE / SUBTITLE
+========================================================= */
+
+.dsm-title {
+  margin: 0 0 10px;
+  font-size: 21px;
+  font-weight: 800;
+  color: #0f2545;
+  line-height: 1.3;
+}
+
+.dsm-subtitle {
+  margin: 0 0 22px;
+  font-size: 13px;
+  color: #8a93a6;
+  line-height: 1.55;
+}
+
+/* =========================================================
+   STATUS LIST
+========================================================= */
+
+.dsm-status-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.dsm-status-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #f4f6fb;
+  border-radius: 12px;
+  padding: 12px 14px;
+  text-align: left;
+}
+
+.dsm-status-icon {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: #eaf1ff;
+  color: #2e6ce6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+}
+
+.dsm-status-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.dsm-status-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #10244a;
+}
+
+.dsm-status-sub {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+.dsm-status-check {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #d3f5dd;
+  color: #22c55e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+}
+
+.dsm-status-check.has-warning {
+  background: #fff1cc;
+  color: #b45309;
+}
+
+/* =========================================================
+   OK BUTTON
+========================================================= */
+
+.dsm-ok-btn {
+  width: 100%;
+  height: 50px;
+  border: none;
+  border-radius: 12px;
+  background: #2867dd;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 8px 18px rgba(40, 103, 221, 0.30);
+  transition: 0.2s ease;
+}
+
+.dsm-ok-btn:hover {
+  background: #1e58c9;
+}

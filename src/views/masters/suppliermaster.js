@@ -12,6 +12,7 @@ import {
   CModalTitle,
   CModalBody,
   CModalFooter,
+  CTooltip,
 } from '@coreui/react'
 import { FaEdit, FaTrash, FaPlus, FaArrowLeft } from 'react-icons/fa'
 import { toast } from 'react-toastify'
@@ -150,6 +151,21 @@ const SupplierMaster = () => {
     const { name, value } = e.target
     setForm({ ...form, [name]: value })
     clearError(name)
+  }
+
+  // Supplier Name -> Billing ("From") Company Name only. Shipping
+  // ("To") Company Name is NOT touched — stays fully manual.
+  const handleSupplierNameChange = (e) => {
+    const value = e.target.value
+
+    setForm((prev) => ({
+      ...prev,
+      supplierName: value,
+      billing: { ...prev.billing, companyName: value },
+    }))
+
+    clearError('supplierName')
+    clearError('billing.companyName')
   }
 
   const handleAddressChange = (section, field, value) => {
@@ -399,15 +415,64 @@ const SupplierMaster = () => {
 
   const supplierGroupOptions = supplierGroups.map((g) => ({ value: g.id, label: g.supplierGroupType }))
 
+  // Wraps a cell's value in a CoreUI tooltip so the full text shows
+  // on hover — useful since most columns below have a fixed width
+  // and can visually truncate/wrap longer values.
+  const TooltipCell = ({ value }) => {
+    if (!value) return <span>—</span>
+    return (
+      <CTooltip content={value} placement="top">
+        <span className="supplier-table-cell-text">{value}</span>
+      </CTooltip>
+    )
+  }
+
   const columns = [
     { name: 'SL.NO', selector: (row, index) => index + 1, width: '90px' },
-    { name: 'SUPPLIER ID', selector: (row) => row.supplierCode },
-    { name: 'SUPPLIER NAME', selector: (row) => row.supplierName, wrap: true },
-    { name: 'VENDOR CODE', selector: (row) => row.vendorCode },
-    { name: 'CONTACT PERSON', selector: (row) => row.personToContact, wrap: true },
-    { name: 'CONTACT NUMBER', selector: (row) => row.contactNumber },
-    { name: 'GST NO.', selector: (row) => row.gstNo },
-    { name: 'STATE', selector: (row) => row.billingState },
+    {
+      name: 'SUPPLIER ID',
+      selector: (row) => row.supplierCode,
+      width: '130px',
+      cell: (row) => <TooltipCell value={row.supplierCode} />,
+    },
+    {
+      name: 'SUPPLIER NAME',
+      selector: (row) => row.supplierName,
+      width: '150px',
+      wrap: true,
+      cell: (row) => <TooltipCell value={row.supplierName} />,
+    },
+    {
+      name: 'VENDOR CODE',
+      selector: (row) => row.vendorCode,
+      width: '140px',
+      cell: (row) => <TooltipCell value={row.vendorCode} />,
+    },
+    {
+      name: 'CONTACT PERSON',
+      selector: (row) => row.personToContact,
+      width: '170px',
+      wrap: true,
+      cell: (row) => <TooltipCell value={row.personToContact} />,
+    },
+    {
+      name: 'CONTACT NUMBER',
+      selector: (row) => row.contactNumber,
+      width: '170px',
+      cell: (row) => <TooltipCell value={row.contactNumber} />,
+    },
+    {
+      name: 'GST NO.',
+      selector: (row) => row.gstNo,
+      width: '120px',
+      cell: (row) => <TooltipCell value={row.gstNo} />,
+    },
+    {
+      name: 'STATE',
+      selector: (row) => row.billingState,
+      width: '120px',
+      cell: (row) => <TooltipCell value={row.billingState} />,
+    },
     {
       name: 'ACTION',
       center: true,
@@ -574,7 +639,9 @@ const SupplierMaster = () => {
                   placeholder="Enter Supplier ID"
                   value={form.supplierCode}
                   className={errors.supplierCode ? 'error-input' : ''}
-                  onChange={handleChange}
+                  onChange={(e) =>
+                    handleChange({ target: { name: 'supplierCode', value: e.target.value.toUpperCase() } })
+                  }
                 />
                 {errors.supplierCode && <small className="text-danger">{errors.supplierCode}</small>}
               </CCol>
@@ -589,7 +656,7 @@ const SupplierMaster = () => {
                   placeholder="Enter Supplier Name"
                   value={form.supplierName}
                   className={errors.supplierName ? 'error-input' : ''}
-                  onChange={handleChange}
+                  onChange={handleSupplierNameChange}
                 />
                 {errors.supplierName && <small className="text-danger">{errors.supplierName}</small>}
               </CCol>

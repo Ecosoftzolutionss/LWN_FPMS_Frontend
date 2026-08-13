@@ -13,6 +13,7 @@ import {
   CModalBody,
   CModalFooter,
 } from '@coreui/react'
+import { CTooltip } from '@coreui/react'
 import { FaEdit, FaTrash, FaPlus, FaArrowLeft } from 'react-icons/fa'
 import { toast } from 'react-toastify'
 import Select from 'react-select'
@@ -334,38 +335,74 @@ const CustomerMaster = () => {
       (c.gstNo || '').toLowerCase().includes(search.toLowerCase()),
   )
 
-  const columns = [
-    { name: 'SL.NO', selector: (row, index) => index + 1, width: '80px' },
-    { name: 'CUSTOMER ID', selector: (row) => row.customerCode },
-    { name: 'CUSTOMER NAME', selector: (row) => row.customerName, wrap: true },
-    { name: 'CUSTOMER DIVISION', selector: (row) => row.customerDivision, wrap: true },
-    { name: 'MOBILE NUMBER', selector: (row) => row.mobileNumber },
-    { name: 'EMAIL ADDRESS', selector: (row) => row.emailId, wrap: true },
-    { name: 'GST NO.', selector: (row) => row.gstNo },
-    {
-      name: 'ACTION',
-      center: true,
-      cell: (row) => (
-        <div className="action-wrapper">
-          <button className="table-action-btn edit-btn" title="Edit" onClick={() => handleEdit(row)}>
-            <FaEdit />
-          </button>
+  const TooltipCell = ({ value }) => {
+  if (value === null || value === undefined || value === '') return <span>—</span>
+  return (
+    <CTooltip content={value} placement="top">
+      <span className="customer-table-cell-text">{value}</span>
+    </CTooltip>
+  )
+}
 
-          <button
-            className="table-action-btn delete-btn"
-            title="Delete"
-            onClick={() => {
-              setDeleteId(row.id)
-              setDeleteCustomer(row)
-              setShowDeleteModal(true)
-            }}
-          >
-            <FaTrash />
-          </button>
-        </div>
-      ),
-    },
-  ]
+ const columns = [
+  { name: 'SL.NO', selector: (row, index) => index + 1, width: '80px' },
+  {
+    name: 'CUSTOMER ID',
+    selector: (row) => row.customerCode,
+    cell: (row) => <TooltipCell value={row.customerCode} />,
+  },
+  {
+    name: 'CUSTOMER NAME',
+    selector: (row) => row.customerName,
+    wrap: true,
+    cell: (row) => <TooltipCell value={row.customerName} />,
+  },
+  {
+    name: 'CUSTOMER DIVISION',
+    selector: (row) => row.customerDivision,
+    wrap: true,
+    cell: (row) => <TooltipCell value={row.customerDivision} />,
+  },
+  {
+    name: 'MOBILE NUMBER',
+    selector: (row) => row.mobileNumber,
+    cell: (row) => <TooltipCell value={row.mobileNumber} />,
+  },
+  {
+    name: 'EMAIL ADDRESS',
+    selector: (row) => row.emailId,
+    wrap: true,
+    cell: (row) => <TooltipCell value={row.emailId} />,
+  },
+  {
+    name: 'GST NO.',
+    selector: (row) => row.gstNo,
+    cell: (row) => <TooltipCell value={row.gstNo} />,
+  },
+  {
+    name: 'ACTION',
+    center: true,
+    cell: (row) => (
+      <div className="action-wrapper">
+        <button className="table-action-btn edit-btn" title="Edit" onClick={() => handleEdit(row)}>
+          <FaEdit />
+        </button>
+
+        <button
+          className="table-action-btn delete-btn"
+          title="Delete"
+          onClick={() => {
+            setDeleteId(row.id)
+            setDeleteCustomer(row)
+            setShowDeleteModal(true)
+          }}
+        >
+          <FaTrash />
+        </button>
+      </div>
+    ),
+  },
+]
 
   return (
     <div className="customer-master-page">
@@ -446,7 +483,7 @@ const CustomerMaster = () => {
 
               <CCol md={4}>
                 <label className="custom-label">
-                  <strong>Customer Division</strong> <span className="required">*</span>
+                  <strong>Customer Group</strong> <span className="required">*</span>
                 </label>
                 <div className={errors.customerDivision ? 'react-select-error' : ''}>
                   <Select

@@ -360,6 +360,135 @@
   color: #0d2347;
 }
 
+.mobility-pending-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  min-width: 18px;
+  height: 18px;
+
+  padding: 0 5px;
+
+  margin-left: 8px;
+
+  border-radius: 9px;
+
+  background: #e53935;
+  color: #ffffff;
+
+  font-size: 10px;
+  font-weight: 800;
+
+  vertical-align: middle;
+}
+
+.mobility-clear-local-btn {
+  width: 100%;
+  margin-top: 16px;
+  height: 40px;
+  border: 1px solid #f0c36d;
+  border-radius: 10px;
+  background: #fff8e6;
+  color: #b45309;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mobility-clear-local-btn:hover {
+  background: #fff1cc;
+}
+
+/* =========================================================
+   CLEAR LOCAL DATA — confirmation modal
+========================================================= */
+
+.mobility-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 200;
+}
+
+.mobility-confirm-modal {
+  width: 100%;
+  max-width: 340px;
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 28px 24px 22px;
+  text-align: center;
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.22);
+}
+
+.mobility-confirm-icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: #fff4e5;
+  color: #f59e0b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+}
+
+.mobility-confirm-title {
+  font-size: 17px;
+  font-weight: 800;
+  color: #10244a;
+  margin-bottom: 10px;
+}
+
+.mobility-confirm-message {
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.55;
+  margin-bottom: 22px;
+}
+
+.mobility-confirm-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.mobility-confirm-cancel-btn {
+  flex: 1;
+  height: 44px;
+  border: 1px solid #d8deed;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #45536c;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mobility-confirm-cancel-btn:hover {
+  background: #f5f7fb;
+}
+
+.mobility-confirm-delete-btn {
+  flex: 1;
+  height: 44px;
+  border: none;
+  border-radius: 10px;
+  background: #e53935;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mobility-confirm-delete-btn:hover {
+  background: #c62828;
+}
+
 
 .mobility-option-content p {
   margin: 0;

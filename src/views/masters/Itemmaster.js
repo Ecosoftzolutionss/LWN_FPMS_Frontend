@@ -12,6 +12,7 @@ import {
   CModalTitle,
   CModalBody,
   CModalFooter,
+  CTooltip,
 } from '@coreui/react'
 import { FaEdit, FaTrash, FaPlus, FaArrowLeft } from 'react-icons/fa'
 import { toast } from 'react-toastify'
@@ -47,9 +48,6 @@ const getErrorMessage = (err, fallback) => {
   if (typeof data === 'string') return data
   if (data.message || data.error) return data.message || data.error
 
-  // ASP.NET Core automatic model validation returns a
-  // ValidationProblemDetails object shaped like:
-  // { errors: { FieldName: ["message1", "message2"] } }
   if (data.errors && typeof data.errors === 'object') {
     const firstField = Object.keys(data.errors)[0]
     const firstMessage = data.errors[firstField]?.[0]
@@ -86,6 +84,12 @@ const ItemMaster = () => {
   const [itemGroups, setItemGroups] = useState([])
   const [itemTypes, setItemTypes] = useState([])
   const [itemTypeInput, setItemTypeInput] = useState('')
+
+  // UOM dropdown — same CreatableSelect pattern as Item Type. Options
+  // come from GET /ItemMaster/uom-list; the value is stored as a plain
+  // string on form.uom (ItemMaster.Uom is a string column, not a FK).
+  const [uomOptions, setUomOptions] = useState([])
+
   const [showForm, setShowForm] = useState(false)
 
   const [form, setForm] = useState(EMPTY_FORM)
@@ -112,6 +116,7 @@ const ItemMaster = () => {
     loadItems()
     loadItemGroups()
     loadItemTypes()
+    loadUomOptions()
   }, [])
 
   useEffect(() => {
@@ -153,6 +158,15 @@ const ItemMaster = () => {
       setItemTypes(res.data || [])
     } catch {
       toast.error('Failed to load item types')
+    }
+  }
+
+  const loadUomOptions = async () => {
+    try {
+      const res = await API.get('/ItemMaster/uom-list')
+      setUomOptions(res.data || [])
+    } catch {
+      toast.error('Failed to load UOM list')
     }
   }
 
@@ -254,6 +268,7 @@ const ItemMaster = () => {
 
       await loadItems()
       await loadItemTypes()
+      await loadUomOptions()
       resetForm()
       setShowForm(false)
     } catch (err) {
@@ -366,24 +381,67 @@ const ItemMaster = () => {
 
   const itemGroupOptions = itemGroups.map((g) => ({ value: g.id, label: g.groupName }))
 
+  // Wraps a cell's value in a CoreUI tooltip so the full text shows
+  // on hover — same pattern as SupplierMaster.jsx.
+  const TooltipCell = ({ value }) => {
+    if (value === null || value === undefined || value === '') return <span>—</span>
+    return (
+      <CTooltip content={value} placement="top">
+        <span className="item-table-cell-text">{value}</span>
+      </CTooltip>
+    )
+  }
+
   const columns = [
     {
       name: 'SL.NO',
       selector: (row, index) => index + 1,
       width: '80px',
     },
-    { name: 'ITEM NUMBER', selector: (row) => row.itemNumber },
-    { name: 'ITEM NAME', selector: (row) => row.itemName, wrap: true },
-    { name: 'ITEM TYPE', selector: (row) => row.itemTypeName, wrap: true },
-    { name: 'ITEM GROUP', selector: (row) => row.itemGroupName, wrap: true },
-    { name: 'HSN CODE', selector: (row) => row.hsnCode },
+    {
+      name: 'ITEM NUMBER',
+      selector: (row) => row.itemNumber,
+      cell: (row) => <TooltipCell value={row.itemNumber} />,
+    },
+    {
+      name: 'ITEM NAME',
+      selector: (row) => row.itemName,
+      wrap: true,
+      cell: (row) => <TooltipCell value={row.itemName} />,
+    },
+    {
+      name: 'ITEM TYPE',
+      selector: (row) => row.itemTypeName,
+      wrap: true,
+      cell: (row) => <TooltipCell value={row.itemTypeName} />,
+    },
+    {
+      name: 'ITEM GROUP',
+      selector: (row) => row.itemGroupName,
+      wrap: true,
+      cell: (row) => <TooltipCell value={row.itemGroupName} />,
+    },
+    {
+      name: 'HSN CODE',
+      selector: (row) => row.hsnCode,
+      cell: (row) => <TooltipCell value={row.hsnCode} />,
+    },
     {
       name: 'UNIT PRICE (₹)',
       selector: (row) => row.unitPrice,
-      cell: (row) => Number(row.unitPrice || 0).toFixed(2),
+      cell: (row) => <TooltipCell value={Number(row.unitPrice || 0).toFixed(2)} />,
     },
-    { name: 'DESCRIPTION', selector: (row) => row.description, wrap: true },
-    { name: 'STUFF QUANTITY', selector: (row) => row.stuffQuantity },
+    {
+      name: 'DESCRIPTION',
+      selector: (row) => row.description,
+      wrap: true,
+      cell: (row) => <TooltipCell value={row.description} />,
+    },
+    {
+      name: 'STUFF QUANTITY',
+      selector: (row) => row.stuffQuantity,
+      cell: (row) => <TooltipCell value={row.stuffQuantity} />,
+    },
     {
       name: 'ACTION',
       center: true,
@@ -547,13 +605,28 @@ const ItemMaster = () => {
                 <label className="custom-label">
                   <strong>UOM</strong> <span className="required">*</span>
                 </label>
-                <CFormInput
-                  name="uom"
-                  placeholder="Enter UOM (e.g. KG, PCS)"
-                  value={form.uom}
-                  className={errors.uom ? 'error-input' : ''}
-                  onChange={handleChange}
-                />
+
+                {/* Changed from free-text input to CreatableSelect —
+                    same dropdown-with-add-new pattern as Item Type. */}
+                <div className={errors.uom ? 'react-select-error' : ''}>
+                  <CreatableSelect
+                    classNamePrefix="react-select"
+                    placeholder="Select or type UOM (e.g. KG, PCS)"
+                    options={uomOptions}
+                    value={form.uom ? { value: form.uom, label: form.uom } : null}
+                    onChange={(selected) => {
+                      setForm({ ...form, uom: selected?.value || '' })
+                      clearError('uom')
+                    }}
+                    onCreateOption={(inputValue) => {
+                      const upperValue = inputValue.toUpperCase()
+                      setForm({ ...form, uom: upperValue })
+                      clearError('uom')
+                    }}
+                    formatCreateLabel={(inputValue) => `Create "${inputValue.toUpperCase()}"`}
+                  />
+                </div>
+
                 {errors.uom && <small className="text-danger">{errors.uom}</small>}
               </CCol>
 
