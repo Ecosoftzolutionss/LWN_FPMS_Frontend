@@ -1,81 +1,40 @@
-import React, {
-  useState,
-  useEffect,
-  Suspense,
-} from 'react';
-
-import {
-  HashRouter,
-  Routes,
-  Route,
-  Navigate,
-} from 'react-router-dom';
-
+import React, {useState,useEffect,Suspense,} from 'react';
+import {HashRouter,Routes,Route,Navigate,} from 'react-router-dom';
 import { CSpinner } from '@coreui/react';
 import { ToastContainer } from 'react-toastify';
-
 import './scss/style.scss';
 import './scss/examples.scss';
 import 'react-toastify/dist/ReactToastify.css';
-
-import {
-  startSessionTracking,
-} from './sessionActivity';
+import {startSessionTracking,} from './sessionActivity';
 
 
 // ==========================================
 // Lazy Loaded Components
 // ==========================================
-
-const DefaultLayout = React.lazy(() =>
-  import('./layout/DefaultLayout')
-);
-
-const Login = React.lazy(() =>
-  import('./views/pages/login/Login')
-);
-
-const MobileSend = React.lazy(() =>
-  import('./views/mobiletransaction/mobilesend')
-);
-
-const MaterialIssue = React.lazy(() =>
-  import('./views/mobiletransaction/materialissue')
-);
-
-const StoreVerification = React.lazy(() =>
-  import('./views/mobiletransaction/storeverification')
-);
-
-
+const DefaultLayout = React.lazy(() =>   import('./layout/DefaultLayout'));
+const Login = React.lazy(() =>import('./views/pages/login/Login'));
+const MobileSend = React.lazy(() =>import('./views/mobiletransaction/mobilesend'));
+const MaterialIssue = React.lazy(() =>import('./views/mobiletransaction/materialissue'));
+const StoreVerification = React.lazy(() =>import('./views/mobiletransaction/storeverification'));
 // ==========================================
 // Helper
 // ==========================================
 
 const getStoredUser = () => {
-
   try {
-
     const storedUser =
       sessionStorage.getItem('user');
-
     if (!storedUser) {
       return null;
     }
-
     return JSON.parse(storedUser);
-
   } catch (error) {
-
     console.error(
       'Error reading user session:',
       error
     );
-
     return null;
-
   }
-
 };
 
 
@@ -84,29 +43,12 @@ const getStoredUser = () => {
 // ==========================================
 
 function App() {
-
-  // ========================================
-  // Logged-in User
-  // ========================================
-
-  const [user, setUser] = useState(
-    getStoredUser()
-  );
-
-
-  // ========================================
-  // Sync Login / Logout
-  // ========================================
-
+  const [user, setUser] = useState(getStoredUser());
   useEffect(() => {
-
     const syncUser = () => {
-
       const storedUser =
         getStoredUser();
-
       setUser(storedUser);
-
     };
 
 
@@ -135,9 +77,7 @@ function App() {
         'authChange',
         syncUser
       );
-
     };
-
   }, []);
 
 
@@ -146,13 +86,9 @@ function App() {
   // ========================================
 
   useEffect(() => {
-
     if (user?.sessionId) {
-
       startSessionTracking();
-
     }
-
   }, [user]);
 
 
@@ -200,22 +136,14 @@ function App() {
       <Suspense
         fallback={
           <div className="pt-3 text-center">
-
             <CSpinner
               color="primary"
               variant="grow"
             />
-
           </div>
         }
       >
-
         <Routes>
-
-
-          {/* ==================================
-              ROOT
-          ================================== */}
 
           <Route
             path="/"

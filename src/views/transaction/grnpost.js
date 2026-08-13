@@ -90,8 +90,6 @@ const GRNPost = () => {
       await API.put(`/GrnEntry/line/${line.id}/post`)
       toast.success(`${line.partNumber} Posted Successfully`)
 
-      // Reload the GRN so the modal's grid + status badges reflect the
-      // new posted state, and immediately show the label for this item.
       const res = await API.get(`/GrnEntry/${detailsGrn.id}`)
       setDetailsGrn(res.data)
       await loadRows()
@@ -156,13 +154,11 @@ const GRNPost = () => {
       const canvas = await html2canvas(node, {
         scale: 3,
         backgroundColor: '#ffffff',
-        useCORS: true, // required so the cross-origin QR image actually renders
+        useCORS: true,
       })
 
       const imgData = canvas.toDataURL('image/png')
 
-      // Fit the captured card into a PDF page sized to match its own
-      // aspect ratio (landscape, since the card is wider than it is tall).
       const pxToMm = 0.264583
       const widthMm = canvas.width * pxToMm
       const heightMm = canvas.height * pxToMm
@@ -412,6 +408,8 @@ const GRNPost = () => {
                             fifoPalletNo: firstLine?.fifoPalletNo,
                             palletNo: firstLine?.palletNo,
                             part: firstLine?.partNumber,
+                            qty: firstLine?.quantity ?? firstLine?.palletQuantity ?? 0,
+                            location: firstLine?.storeLocation || firstLine?.location || '',
                           }),
                         )}`}
                       />

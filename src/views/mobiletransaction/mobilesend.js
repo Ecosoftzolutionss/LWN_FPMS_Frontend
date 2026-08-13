@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 
 import {
   FaBars,
@@ -9,11 +10,20 @@ import {
   FaQrcode,
   FaArrowRight,
   FaTh,
+  FaExclamationTriangle,
 } from 'react-icons/fa';
 
 import '../../assets/CSS/mobility.css';
 
 import API from '../../api';
+import DataSyncModal from './DataSync';
+import {
+  replacePalletsCache,
+  getAllPendingIssues,
+  removePendingIssue,
+  countPendingIssues,
+  clearAllPendingIssues,
+} from './offlineDb';
 
 
 // ==========================================
@@ -32,6 +42,38 @@ const Mobility = () => {
   const user = JSON.parse(
     sessionStorage.getItem('user') || '{}'
   );
+
+
+  // ========================================
+  // Data Sync state
+  // ========================================
+
+  const [dataSinkModalOpen, setDataSinkModalOpen] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncStats, setSyncStats] = useState({
+    downloadedCount: 0,
+    uploadedCount: 0,
+    failedCount: 0,
+  });
+  const [pendingCount, setPendingCount] = useState(0);
+
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
+
+
+  useEffect(() => {
+
+    const loadPendingCount = async () => {
+      try {
+        const count = await countPendingIssues();
+        setPendingCount(count);
+      } catch (error) {
+        console.error('Failed to read pending issue count:', error);
+      }
+    };
+
+    loadPendingCount();
+
+  }, []);
 
 
   // ========================================
@@ -54,18 +96,12 @@ const Mobility = () => {
     }
 
 
-    // Clear current session
     sessionStorage.clear();
 
-
-    // IMPORTANT:
-    // Tell App.js that authentication changed
     window.dispatchEvent(
       new Event('authChange')
     );
 
-
-    // Go to login
     navigate(
       '/login',
       {
@@ -77,17 +113,107 @@ const Mobility = () => {
 
 
   // ========================================
-  // Data Sink
+  // Data Sink — real offline sync
   // ========================================
 
-  const handleDataSink = () => {
+  const handleDataSink = async () => {
 
-    console.log(
-      'Data Sink selected'
-    );
+    if (!navigator.onLine) {
+      toast.error('You need Wi-Fi/internet to sync. Please connect and try again.');
+      return;
+    }
 
-    // Add Data Sink route here later
-    // navigate('/mobiletransaction/datasink');
+    setSyncing(true);
+
+    let uploadedCount = 0;
+    let failedCount = 0;
+    let downloadedCount = 0;
+
+    try {
+
+      // ---- 1. Upload pending issues ----
+
+      const pending = await getAllPendingIssues();
+
+      for (const issue of pending) {
+
+        try {
+
+          const { localId, ...payload } = issue;
+
+          await API.post('/MaterialIssue', payload);
+          await removePendingIssue(localId);
+
+          uploadedCount += 1;
+
+        } catch (err) {
+
+          const detail = err?.response?.data?.message || err.message;
+          console.error(`Failed to upload pending issue: ${detail}`, err);
+          failedCount += 1;
+
+        }
+
+      }
+
+      // ---- 2. Download real in-store pallets (now excludes
+      //         already-issued pallets, server-side) ----
+
+      try {
+
+        const res = await API.get('/StoreMovement/available-pallets');
+        const pallets = res.data || [];
+
+        await replacePalletsCache(pallets);
+        downloadedCount = pallets.length;
+
+      } catch (err) {
+
+        console.error('Failed to refresh pallets cache:', err);
+
+      }
+
+      setSyncStats({ downloadedCount, uploadedCount, failedCount });
+
+      const remaining = await countPendingIssues();
+      setPendingCount(remaining);
+
+      setDataSinkModalOpen(true);
+
+    } catch (err) {
+
+      console.error('Sync failed:', err);
+      toast.error('Sync failed. Please try again.');
+
+    } finally {
+
+      setSyncing(false);
+
+    }
+
+  };
+
+
+  // ========================================
+  // Clear Local Data
+  // ========================================
+
+  const handleClearLocalDataClick = () => {
+    setClearConfirmOpen(true);
+  };
+
+  const handleConfirmClearLocalData = async () => {
+
+    try {
+      await clearAllPendingIssues();
+      setPendingCount(0);
+      toast.success('Local pending data cleared. You can start fresh.');
+    } catch (err) {
+      console.error('Failed to clear local data:', err);
+      toast.error('Failed to clear local data. Please try again.');
+    } finally {
+      setClearConfirmOpen(false);
+    }
 
   };
 
@@ -246,7 +372,7 @@ const Mobility = () => {
 
 
           {/* ==================================
-              DATA SINK
+              DATA SYNC
           ================================== */}
 
           <div
@@ -275,12 +401,18 @@ const Mobility = () => {
               <div className="mobility-option-content">
 
                 <h3>
-                  Data Sink
+                  Data Sync
+                  {pendingCount > 0 && (
+                    <span className="mobility-pending-badge">
+                      {pendingCount}
+                    </span>
+                  )}
                 </h3>
 
                 <p>
-                  Fetch pallets directly from store
-                  and Sink Data.
+                  {syncing
+                    ? 'Syncing local data…'
+                    : 'Fetch store-moved pallets and sync data.'}
                 </p>
 
               </div>
@@ -290,7 +422,7 @@ const Mobility = () => {
 
             <div
               className="mobility-arrow-button"
-              aria-label="Open Data Sink"
+              aria-label="Open Data Sync"
             >
 
               <FaArrowRight />
@@ -358,7 +490,7 @@ const Mobility = () => {
           {/* ==================================
               STORE VERIFICATION
           ================================== */}
-{/* 
+
           <div
             className="mobility-option-card"
             onClick={handleStoreVerification}
@@ -373,50 +505,110 @@ const Mobility = () => {
           >
 
             <div className="mobility-option-left">
-
-
               <div className="mobility-option-icon">
-
                 <FaQrcode />
-
               </div>
-
-
               <div className="mobility-option-content">
-
                 <h3>
                   Store Verification
                 </h3>
-
                 <p>
                   Scan Store Label and GRN Label.
                 </p>
-
               </div>
-
             </div>
-
-
             <div
               className="mobility-arrow-button"
               aria-label="Open Store Verification"
             >
-
               <FaArrowRight />
-
             </div>
-
-          </div> */}
-
+          </div>
 
         </div>
 
+        {pendingCount > 0 && (
+          <button
+            type="button"
+            className="mobility-clear-local-btn"
+            onClick={handleClearLocalDataClick}
+          >
+            Clear Local Data ({pendingCount} pending)
+          </button>
+        )}
+
       </main>
 
+
+      {/* ======================================
+          DATA SYNC RESULT MODAL
+      ====================================== */}
+
+      <DataSyncModal
+        open={dataSinkModalOpen}
+        onClose={() => setDataSinkModalOpen(false)}
+        downloadedCount={syncStats.downloadedCount}
+        uploadedCount={syncStats.uploadedCount}
+        failedCount={syncStats.failedCount}
+        downloadLabel="pallets"
+        uploadLabel="issues"
+      />
+
+
+      {/* ======================================
+          CLEAR LOCAL DATA — in-app confirm modal
+      ====================================== */}
+
+      {clearConfirmOpen && (
+        <div
+          className="mobility-confirm-overlay"
+          onClick={() => setClearConfirmOpen(false)}
+        >
+          <div
+            className="mobility-confirm-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+
+            <div className="mobility-confirm-icon">
+              <FaExclamationTriangle />
+            </div>
+
+            <div className="mobility-confirm-title">
+              Clear Local Data?
+            </div>
+
+            <div className="mobility-confirm-message">
+              This will permanently delete <strong>{pendingCount}</strong> unsent
+              record{pendingCount === 1 ? '' : 's'} saved on this device. They will
+              NOT be uploaded. This cannot be undone.
+            </div>
+
+            <div className="mobility-confirm-actions">
+
+              <button
+                type="button"
+                className="mobility-confirm-cancel-btn"
+                onClick={() => setClearConfirmOpen(false)}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                className="mobility-confirm-delete-btn"
+                onClick={handleConfirmClearLocalData}
+              >
+                Clear Data
+              </button>
+
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
-
   );
-
 };
 
 

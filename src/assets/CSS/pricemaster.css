@@ -465,3 +465,13 @@
   background: #e6f6ea;
   color: #1e7e34;
 }
+
+.price-table-cell-text {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: default;
+}
+ 
