@@ -1,0 +1,404 @@
+name: Deploy FPMS Frontend
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+
+      # ============================================================
+      # 1. CHECKOUT SOURCE CODE
+      # ============================================================
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+
+      # ============================================================
+      # 2. SHOW RUNNER INFORMATION
+      # ============================================================
+      - name: Show runner information
+        shell: powershell
+        run: |
+          Write-Host "======================================"
+          Write-Host "FPMS FRONTEND DEPLOYMENT STARTED"
+          Write-Host "======================================"
+
+          Write-Host "Computer : $env:COMPUTERNAME"
+          Write-Host "User     : $env:USERNAME"
+          Write-Host "Workspace: $env:GITHUB_WORKSPACE"
+          Write-Host "Temp     : $env:RUNNER_TEMP"
+
+          Write-Host "======================================"
+
+
+      # ============================================================
+      # 3. SETUP NODE.JS
+      # ============================================================
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+
+
+      # ============================================================
+      # 4. CHECK NODE AND NPM
+      # ============================================================
+      - name: Check Node.js
+        shell: powershell
+        run: |
+          Write-Host "======================================"
+          Write-Host "Checking Node.js"
+          Write-Host "======================================"
+
+          node --version
+          npm --version
+
+          if ($LASTEXITCODE -ne 0) {
+              throw "Node.js or npm is not available."
+          }
+
+          Write-Host "Node.js is available."
+
+
+      # ============================================================
+      # 5. INSTALL DEPENDENCIES
+      # ============================================================
+      - name: Install frontend dependencies
+        shell: powershell
+        run: |
+          Write-Host "======================================"
+          Write-Host "Installing frontend dependencies"
+          Write-Host "======================================"
+
+          npm install
+
+          if ($LASTEXITCODE -ne 0) {
+              throw "npm install failed."
+          }
+
+          Write-Host "Dependencies installed successfully."
+
+
+      # ============================================================
+      # 6. BUILD REACT APPLICATION
+      # ============================================================
+      - name: Build React application
+        shell: powershell
+        run: |
+          Write-Host "======================================"
+          Write-Host "Building React application"
+          Write-Host "======================================"
+
+          npm run build
+
+          if ($LASTEXITCODE -ne 0) {
+              throw "React build failed."
+          }
+
+          # IMPORTANT:
+          # Your Vite configuration generates BUILD folder,
+          # not DIST folder.
+
+          $buildPath = "$env:GITHUB_WORKSPACE\build"
+
+          if (!(Test-Path $buildPath)) {
+              throw "build folder was not created."
+          }
+
+          Write-Host "React build completed successfully."
+          Write-Host "Build folder:"
+          Write-Host $buildPath
+
+
+      # ============================================================
+      # 7. BACKUP EXISTING FRONTEND BUILD
+      # ============================================================
+      - name: Backup Existing Frontend
+        shell: powershell
+        run: |
+
+          # ========================================================
+          # ACTUAL LIVE FRONTEND BUILD PATH
+          # ========================================================
+          $livePath = "D:\EZ Hosting\FPMS_LWN\#912_LWN_FPMS-10-08-2026 V1\Frontend\build"
+
+          # ========================================================
+          # BACKUP ROOT
+          # ========================================================
+          $backupRoot = "D:\EZ Hosting\FPMS_LWN\Backups\Frontend"
+
+          # ========================================================
+          # TIMESTAMP
+          # ========================================================
+          $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
+
+          $backupPath = Join-Path $backupRoot $timestamp
+
+          Write-Host "======================================"
+          Write-Host "Creating Frontend Backup"
+          Write-Host "======================================"
+
+          Write-Host "Live Frontend Build:"
+          Write-Host $livePath
+
+          Write-Host "Backup Root:"
+          Write-Host $backupRoot
+
+          Write-Host "Backup Path:"
+          Write-Host $backupPath
+
+
+          # ========================================================
+          # CHECK LIVE BUILD
+          # ========================================================
+          if (!(Test-Path $livePath)) {
+
+              Write-Host "Live build folder does not exist."
+
+              Write-Host "Creating live build folder..."
+
+              New-Item `
+                -ItemType Directory `
+                -Force `
+                -Path $livePath | Out-Null
+          }
+
+
+          # ========================================================
+          # CREATE BACKUP ROOT
+          # ========================================================
+          if (!(Test-Path $backupRoot)) {
+
+              Write-Host "Creating backup root..."
+
+              New-Item `
+                -ItemType Directory `
+                -Force `
+                -Path $backupRoot | Out-Null
+          }
+
+
+          # ========================================================
+          # CREATE TIMESTAMP BACKUP FOLDER
+          # ========================================================
+          New-Item `
+            -ItemType Directory `
+            -Force `
+            -Path $backupPath | Out-Null
+
+
+          # ========================================================
+          # BACKUP CURRENT BUILD
+          # ========================================================
+          Write-Host "Starting frontend backup..."
+
+          robocopy `
+            $livePath `
+            $backupPath `
+            /E `
+            /R:2 `
+            /W:2
+
+          $robocopyExitCode = $LASTEXITCODE
+
+          Write-Host "Robocopy backup exit code: $robocopyExitCode"
+
+
+          # ========================================================
+          # ROBOCOPY EXIT CODES
+          #
+          # 0 - No files copied, no errors
+          # 1 - Files copied successfully
+          # 2-7 - Successful copy with differences
+          # 8+ - Failure
+          # ========================================================
+          if ($robocopyExitCode -ge 8) {
+
+              throw "Frontend backup failed. Robocopy exit code: $robocopyExitCode"
+          }
+
+
+          # Reset exit code so GitHub Actions doesn't mark
+          # the step as failed for Robocopy codes 1-7.
+          $global:LASTEXITCODE = 0
+
+
+          Write-Host "======================================"
+          Write-Host "Frontend backup completed successfully."
+          Write-Host "Backup location:"
+          Write-Host $backupPath
+          Write-Host "======================================"
+
+
+      # ============================================================
+      # 8. DEPLOY NEW FRONTEND BUILD
+      # ============================================================
+      - name: Deploy Frontend
+        shell: powershell
+        run: |
+
+          # ========================================================
+          # NEWLY BUILT REACT APPLICATION
+          # ========================================================
+          $sourcePath = "$env:GITHUB_WORKSPACE\build"
+
+          # ========================================================
+          # ACTUAL IIS LIVE BUILD PATH
+          # ========================================================
+          $livePath = "D:\EZ Hosting\FPMS_LWN\#912_LWN_FPMS-10-08-2026 V1\Frontend\build"
+
+          Write-Host "======================================"
+          Write-Host "Deploying React Frontend"
+          Write-Host "======================================"
+
+          Write-Host "Source:"
+          Write-Host $sourcePath
+
+          Write-Host "Destination:"
+          Write-Host $livePath
+
+
+          # ========================================================
+          # CHECK SOURCE BUILD
+          # ========================================================
+          if (!(Test-Path $sourcePath)) {
+
+              throw "React build folder does not exist: $sourcePath"
+          }
+
+
+          # ========================================================
+          # CREATE LIVE BUILD FOLDER IF REQUIRED
+          # ========================================================
+          if (!(Test-Path $livePath)) {
+
+              Write-Host "Live build folder does not exist."
+
+              Write-Host "Creating live build folder..."
+
+              New-Item `
+                -ItemType Directory `
+                -Force `
+                -Path $livePath | Out-Null
+          }
+
+
+          # ========================================================
+          # DEPLOY
+          # ========================================================
+          Write-Host "Starting frontend deployment..."
+
+          robocopy `
+            $sourcePath `
+            $livePath `
+            /MIR `
+            /R:2 `
+            /W:2
+
+          $robocopyExitCode = $LASTEXITCODE
+
+          Write-Host "Robocopy deployment exit code: $robocopyExitCode"
+
+
+          # ========================================================
+          # CHECK ROBOCOPY RESULT
+          # ========================================================
+          if ($robocopyExitCode -ge 8) {
+
+              throw "Frontend deployment failed. Robocopy exit code: $robocopyExitCode"
+          }
+
+
+          # Reset exit code for GitHub Actions
+          $global:LASTEXITCODE = 0
+
+
+          Write-Host "======================================"
+          Write-Host "React Frontend deployed successfully."
+          Write-Host "======================================"
+
+
+      # ============================================================
+      # 9. VERIFY FRONTEND DEPLOYMENT
+      # ============================================================
+      - name: Verify Frontend Deployment
+        shell: powershell
+        run: |
+
+          # ========================================================
+          # ACTUAL IIS LIVE BUILD PATH
+          # ========================================================
+          $livePath = "D:\EZ Hosting\FPMS_LWN\#912_LWN_FPMS-10-08-2026 V1\Frontend\build"
+
+          Write-Host "======================================"
+          Write-Host "Verifying Frontend Deployment"
+          Write-Host "======================================"
+
+          Write-Host "Frontend build path:"
+          Write-Host $livePath
+
+
+          # ========================================================
+          # CHECK BUILD FOLDER
+          # ========================================================
+          if (!(Test-Path $livePath)) {
+
+              throw "Frontend build folder does not exist."
+          }
+
+
+          # ========================================================
+          # CHECK INDEX.HTML
+          # ========================================================
+          if (!(Test-Path "$livePath\index.html")) {
+
+              throw "index.html was not found after deployment."
+          }
+
+
+          # ========================================================
+          # CHECK ASSETS FOLDER
+          # ========================================================
+          if (!(Test-Path "$livePath\assets")) {
+
+              throw "assets folder was not found after deployment."
+          }
+
+
+          $indexFile = Get-Item "$livePath\index.html"
+
+
+          Write-Host "index.html found."
+          Write-Host "File size: $($indexFile.Length) bytes"
+          Write-Host "Last modified: $($indexFile.LastWriteTime)"
+
+
+          Write-Host "======================================"
+          Write-Host "Frontend deployment verified successfully."
+          Write-Host "======================================"
+
+
+      # ============================================================
+      # 10. DEPLOYMENT COMPLETED
+      # ============================================================
+      - name: Deployment completed
+        shell: powershell
+        run: |
+
+          Write-Host ""
+          Write-Host "=============================================="
+          Write-Host "     FPMS FRONTEND DEPLOYMENT SUCCESSFUL"
+          Write-Host "=============================================="
+
+          Write-Host "Server : $env:COMPUTERNAME"
+          Write-Host "Time   : $(Get-Date)"
+
+          Write-Host ""
+          Write-Host "React frontend is now LIVE."
+
+          Write-Host "=============================================="
