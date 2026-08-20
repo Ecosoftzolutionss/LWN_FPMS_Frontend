@@ -5,7 +5,7 @@ import { ToastContainer } from 'react-toastify';
 import './scss/style.scss';
 import './scss/examples.scss';
 import 'react-toastify/dist/ReactToastify.css';
-import {startSessionTracking,} from './sessionActivity';
+// import {startSessionTracking,} from './sessionActivity';
 
 
 // ==========================================
@@ -85,11 +85,11 @@ function App() {
   // Session Tracking
   // ========================================
 
-  useEffect(() => {
-    if (user?.sessionId) {
-      startSessionTracking();
-    }
-  }, [user]);
+  // useEffect(() => {
+  //   if (user?.sessionId) {
+  //     startSessionTracking();
+  //   }
+  // }, [user]);
 
 
   // ========================================
