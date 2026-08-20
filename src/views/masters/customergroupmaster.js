@@ -17,6 +17,7 @@ import { FaEdit, FaTrash, FaPlus, FaArrowLeft } from 'react-icons/fa'
 import { toast } from 'react-toastify'
 import API from '../../api.js'
 import '../../assets/CSS/customerGroup.css'
+import usePrivilege from '../hooks/usePrivilege.js'
 
 const getErrorMessage = (err, fallback) => {
   const data = err?.response?.data
@@ -73,6 +74,8 @@ const CustomerGroupMaster = () => {
   const [deleteId, setDeleteId] = useState(null)
   const [deleteGroup, setDeleteGroup] = useState(null)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
+    const { privileges: userPrivileges = [] } = usePrivilege()
+  const uPrivilege = userPrivileges.find((p) => p.menuName === 'Customer Group Master') || {}
 
   useEffect(() => {
     loadGroups()
@@ -224,9 +227,12 @@ const CustomerGroupMaster = () => {
       center: true,
       cell: (row) => (
         <div className="action-wrapper">
+          {uPrivilege?.canEdit && (
           <button className="table-action-btn edit-btn" title="Edit" onClick={() => handleEdit(row)}>
             <FaEdit />
           </button>
+          )}
+          {uPrivilege?.canDelete && ( 
 
           <button
             className="table-action-btn delete-btn"
@@ -239,6 +245,7 @@ const CustomerGroupMaster = () => {
           >
             <FaTrash />
           </button>
+          )}
         </div>
       ),
     },

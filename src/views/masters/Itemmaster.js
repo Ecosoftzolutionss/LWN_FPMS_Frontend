@@ -20,6 +20,7 @@ import CreatableSelect from 'react-select/creatable'
 import Select from 'react-select'
 import API from '../../api.js'
 import '../../assets/CSS/itemMaster.css'
+import usePrivilege from '../hooks/usePrivilege.js'
 
 const EMPTY_FORM = {
   itemNumber: '',
@@ -60,25 +61,35 @@ const getErrorMessage = (err, fallback) => {
 const ItemMaster = () => {
   const itemNameRef = useRef()
 
-  const customStyles = {
-    rows: { style: { minHeight: '34px' } },
-    headCells: {
-      style: {
-        justifyContent: 'center',
-        fontSize: '14px',
-        paddingTop: '2px',
-        paddingBottom: '2px',
-      },
+ const customStyles = {
+  rows: {
+    style: {
+      minHeight: '34px',
     },
-    cells: {
-      style: {
-        justifyContent: 'center',
-        fontSize: '13px',
-        paddingTop: '0px',
-        paddingBottom: '0px',
-      },
+  },
+
+  headCells: {
+    style: {
+      justifyContent: 'center',
+      fontSize: '13px',
+      fontWeight: '700',
+      paddingTop: '6px',
+      paddingBottom: '6px',
+      whiteSpace: 'normal',
+      overflow: 'visible',
+      textOverflow: 'clip',
     },
-  }
+  },
+
+  cells: {
+    style: {
+      justifyContent: 'center',
+      fontSize: '13px',
+      paddingTop: '0px',
+      paddingBottom: '0px',
+    },
+  },
+}
 
   const [items, setItems] = useState([])
   const [itemGroups, setItemGroups] = useState([])
@@ -111,6 +122,8 @@ const ItemMaster = () => {
   const [deleteId, setDeleteId] = useState(null)
   const [deleteItem, setDeleteItem] = useState(null)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const { privileges: userPrivileges = [] } = usePrivilege()
+  const uPrivilege = userPrivileges.find((p) => p.menuName === 'Item Master') || {}
 
   useEffect(() => {
     loadItems()
@@ -392,80 +405,105 @@ const ItemMaster = () => {
     )
   }
 
-  const columns = [
-    {
-      name: 'SL.NO',
-      selector: (row, index) => index + 1,
-      width: '80px',
-    },
-    {
-      name: 'ITEM NUMBER',
-      selector: (row) => row.itemNumber,
-      cell: (row) => <TooltipCell value={row.itemNumber} />,
-    },
-    {
-      name: 'ITEM NAME',
-      selector: (row) => row.itemName,
-      wrap: true,
-      cell: (row) => <TooltipCell value={row.itemName} />,
-    },
-    {
-      name: 'ITEM TYPE',
-      selector: (row) => row.itemTypeName,
-      wrap: true,
-      cell: (row) => <TooltipCell value={row.itemTypeName} />,
-    },
-    {
-      name: 'ITEM GROUP',
-      selector: (row) => row.itemGroupName,
-      wrap: true,
-      cell: (row) => <TooltipCell value={row.itemGroupName} />,
-    },
-    {
-      name: 'HSN CODE',
-      selector: (row) => row.hsnCode,
-      cell: (row) => <TooltipCell value={row.hsnCode} />,
-    },
-    {
-      name: 'UNIT PRICE (₹)',
-      selector: (row) => row.unitPrice,
-      cell: (row) => <TooltipCell value={Number(row.unitPrice || 0).toFixed(2)} />,
-    },
-    {
-      name: 'DESCRIPTION',
-      selector: (row) => row.description,
-      wrap: true,
-      cell: (row) => <TooltipCell value={row.description} />,
-    },
-    {
-      name: 'STUFF QUANTITY',
-      selector: (row) => row.stuffQuantity,
-      cell: (row) => <TooltipCell value={row.stuffQuantity} />,
-    },
-    {
-      name: 'ACTION',
-      center: true,
-      cell: (row) => (
-        <div className="action-wrapper">
-          <button className="table-action-btn edit-btn" title="Edit" onClick={() => handleEdit(row)}>
-            <FaEdit />
-          </button>
+const columns = [
+  {
+    name: 'SL.NO',
+    selector: (row, index) => index + 1,
+    width: '90px',
+    center: true,
+  },
+  {
+    name: 'ITEM NUMBER',
+    selector: (row) => row.itemNumber,
+    minWidth: '150px',
+    width: '150px',
+    cell: (row) => <TooltipCell value={row.itemNumber} />,
+  },
+  {
+    name: 'ITEM NAME',
+    selector: (row) => row.itemName,
+    minWidth: '120px',
+    wrap: true,
+    cell: (row) => <TooltipCell value={row.itemName} />,
+  },
+  {
+    name: 'ITEM TYPE',
+    selector: (row) => row.itemTypeName,
+    minWidth: '130px',
+    wrap: true,
+    cell: (row) => <TooltipCell value={row.itemTypeName} />,
+  },
+  {
+    name: 'ITEM GROUP',
+    selector: (row) => row.itemGroupName,
+    minWidth: '120px',
+    wrap: true,
+    cell: (row) => <TooltipCell value={row.itemGroupName} />,
+  },
+  {
+    name: 'HSN CODE',
+    selector: (row) => row.hsnCode,
+    minWidth: '130px',
+    cell: (row) => <TooltipCell value={row.hsnCode} />,
+  },
+  {
+    name: 'UNIT PRICE (₹)',
+    selector: (row) => row.unitPrice,
+    minWidth: '150px',
+    width: '150px',
+    center: true,
+    cell: (row) => (
+      <TooltipCell value={Number(row.unitPrice || 0).toFixed(2)} />
+    ),
+  },
+  {
+    name: 'DESCRIPTION',
+    selector: (row) => row.description,
+    minWidth: '130px',
+    wrap: true,
+    cell: (row) => <TooltipCell value={row.description} />,
+  },
+  {
+    name: 'STUFF QUANTITY',
+    selector: (row) => row.stuffQuantity,
+    minWidth: '160px',
+    width: '160px',
+    center: true,
+    cell: (row) => <TooltipCell value={row.stuffQuantity} />,
+  },
+  {
+    name: 'ACTION',
+    center: true,
+    width: '120px',
+    cell: (row) => (
+      <div className="action-wrapper">
+        {uPrivilege?.canEdit && (
+        <button
+          className="table-action-btn edit-btn"
+          title="Edit"
+          onClick={() => handleEdit(row)}
+        >
+          <FaEdit />
+        </button>
+        )}
+        {uPrivilege?.canDelete && (
 
-          <button
-            className="table-action-btn delete-btn"
-            title="Delete"
-            onClick={() => {
-              setDeleteId(row.id)
-              setDeleteItem(row)
-              setShowDeleteModal(true)
-            }}
-          >
-            <FaTrash />
-          </button>
-        </div>
-      ),
-    },
-  ]
+        <button
+          className="table-action-btn delete-btn"
+          title="Delete"
+          onClick={() => {
+            setDeleteId(row.id)
+            setDeleteItem(row)
+            setShowDeleteModal(true)
+          }}
+        >
+          <FaTrash />
+        </button>
+        )}
+      </div>
+    ),
+  },
+]
 
   return (
     <div className="item-master-page">

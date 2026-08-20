@@ -5,6 +5,7 @@ import { FaEye, FaTrash, FaWarehouse, FaCheckCircle, FaArrowLeft, FaTimes } from
 import { toast } from 'react-toastify'
 import API from '../../api.js'
 import '../../assets/CSS/storeMovement.css'
+import usePrivilege from '../hooks/usePrivilege.js'
 
 const getErrorMessage = (err, fallback) => {
   const data = err?.response?.data
@@ -36,6 +37,18 @@ const StoreMovement = () => {
   const [activePallet, setActivePallet] = useState(null)
   const [side, setSide] = useState('Front')
   const [selectedSlot, setSelectedSlot] = useState(null) // { rackRowId, slotNumber }
+  const { privileges: userPrivileges = [] } = usePrivilege()
+  const uPrivilege = userPrivileges.find((p) => p.menuName === 'Store Movement') || {}
+
+  const getCurrentUsername = () => {
+    try {
+      const user = JSON.parse(sessionStorage.getItem('user') || '{}')
+      return user?.username || ''
+    } catch {
+      return ''
+    }
+  }
+
 
   useEffect(() => {
     loadGrns()
@@ -91,9 +104,12 @@ const StoreMovement = () => {
     }
   }
 
-  const loadRackSlots = async () => {
+const loadRackSlots = async (itemId) => {
     try {
-      const res = await API.get('/StoreMovement/rack-slots')
+      const url = itemId
+        ? `/StoreMovement/rack-slots?itemId=${itemId}`
+        : '/StoreMovement/rack-slots'
+      const res = await API.get(url)
       setRackStores(res.data || [])
     } catch {
       toast.error('Failed to load store locations')
@@ -104,8 +120,15 @@ const StoreMovement = () => {
     setActiveGrn(grn)
     setSelectedSlot(null)
     await loadPallets(grn.id)
-    await loadRackSlots()
   }
+
+  // NEW: re-filter Select Location whenever the chosen pallet changes,
+  // since each pallet's Part Number may be configured to a different store.
+  useEffect(() => {
+    if (activePallet) {
+      loadRackSlots(activePallet.itemId)
+    }
+  }, [activePallet?.id])
 
   const closeStore = () => {
     setActiveGrn(null)
@@ -156,6 +179,7 @@ const StoreMovement = () => {
         slotNumber,
         side,
         quantity: remainingQty,
+        createdBy: getCurrentUsername(),
       })
 
       toast.success(`Pallet ${activePallet.palletNo} stuffed successfully`)
@@ -207,17 +231,24 @@ const StoreMovement = () => {
                 minWidth: '220px',
                 cell: (row) => (
                   <div className="sm-actions">
-                    <button className="sm-icon-btn view" onClick={() => handleView(row)}><FaEye size={13} /></button>
-                    <button className="sm-icon-btn delete" onClick={() => handleDeleteClick(row)}><FaTrash size={13} /></button>
-                    <button className="sm-store-btn" onClick={() => openStore(row)}>
-                      <FaWarehouse size={12} /> Store
-                    </button>
+                    {uPrivilege.canView && (
+                      <button className="sm-icon-btn view" onClick={() => handleView(row)}><FaEye size={13} /></button>
+                    )}
+                    {uPrivilege.canDelete && (
+                      <button className="sm-icon-btn delete" onClick={() => handleDeleteClick(row)}><FaTrash size={13} /></button>
+                    )}
+                    {uPrivilege.canEdit && (
+                      <button className="sm-store-btn" onClick={() => openStore(row)}>
+                        <FaWarehouse size={12} /> Store
+                      </button>
+                    )}
                   </div>
                 ),
               },
             ]}
             data={filteredGrns}
             pagination
+            persistTableHead
             striped
             responsive
             highlightOnHover
@@ -245,16 +276,37 @@ const StoreMovement = () => {
           />
         </div>
 
-        {/* ---------- GRN Details modal ---------- */}
+        {/* ---------- GRN Details modal ----------
+            ★ FIX: the modal box itself now caps its height and only its
+            body scrolls internally (overflowY: auto on sm-modal-body).
+            Previously the modal had no max-height, so a long items list
+            pushed the whole card taller than the viewport and the page
+            itself had to be scrolled to reach the Close button — which
+            looked like a stray scrollbar cutting the modal off, and the
+            footer/close action was never reliably reachable. Header and
+            footer are now flex-shrink: 0 so they always stay visible,
+            pinned to the top and bottom of the modal. */}
         {showDetails && detailsGrn && (
           <div className="sm-modal-overlay" onClick={() => setShowDetails(false)}>
-            <div className="sm-modal" onClick={(e) => e.stopPropagation()}>
-              <div className="sm-modal-header">
+            <div
+              className="sm-modal"
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                maxHeight: '85vh',
+                overflow: 'hidden',
+              }}
+            >
+              <div className="sm-modal-header" style={{ flexShrink: 0 }}>
                 <h3>GRN Details</h3>
                 <button onClick={() => setShowDetails(false)}><FaTimes /></button>
               </div>
 
-              <div className="sm-modal-body">
+              <div
+                className="sm-modal-body"
+                style={{ overflowY: 'auto', flex: '1 1 auto', minHeight: 0 }}
+              >
                 <div className="sm-modal-section-title">GRN Information</div>
 
                 <div className="sm-info-grid">
@@ -269,33 +321,49 @@ const StoreMovement = () => {
 
                 <div className="sm-modal-section-title">GRN Items</div>
 
-                <table className="sm-modal-items-table">
-                  <thead>
-                    <tr>
-                      <th>PART</th>
-                      <th>PART DESCRIPTION</th>
-                      <th>QUANTITY</th>
-                      <th>PALLET QTY</th>
-                      <th>RATE (₹)</th>
-                      <th>TOTAL VALUE (₹)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {detailsGrn.lines.map((l) => (
-                      <tr key={l.id}>
-                        <td>{l.partNumber}</td>
-                        <td>{l.partName}</td>
-                        <td>{l.quantity}</td>
-                        <td>{l.palletQuantity ?? '—'}</td>
-                        <td>{Number(l.rate).toFixed(2)}</td>
-                        <td>{Number(l.totalValue).toFixed(2)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <DataTable
+                  columns={[
+                    { name: 'PART', selector: (row) => row.partNumber, minWidth: '90px' },
+                    { name: 'PART DESCRIPTION', selector: (row) => row.partName, grow: 2, wrap: true },
+                    { name: 'QUANTITY', selector: (row) => row.quantity, center: true, width: '100px' },
+                    { name: 'PALLET QTY', selector: (row) => row.palletQuantity ?? '—', center: true, width: '110px' },
+                    { name: 'RATE (₹)', selector: (row) => Number(row.rate).toFixed(2), center: true, width: '100px' },
+                    { name: 'TOTAL VALUE (₹)', selector: (row) => Number(row.totalValue).toFixed(2), center: true, minWidth: '130px' },
+                  ]}
+                  data={detailsGrn.lines}
+                  keyField="id"
+                  pagination
+                  paginationPerPage={5}
+                  paginationRowsPerPageOptions={[5, 10, 25, 50]}
+                  persistTableHead
+                  striped
+                  responsive
+                  highlightOnHover
+                  noDataComponent={<div className="sm-empty">No items on this GRN</div>}
+                  customStyles={{
+                    rows: { style: { minHeight: '48px' } },
+                    headRow: { style: { backgroundColor: '#f1f4fa' } },
+                    headCells: {
+                      style: {
+                        justifyContent: 'center',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        color: '#23395d',
+                        textTransform: 'uppercase',
+                        backgroundColor: '#f1f4fa',
+                      },
+                    },
+                    cells: {
+                      style: {
+                        justifyContent: 'center',
+                        fontSize: '13px',
+                      },
+                    },
+                  }}
+                />
               </div>
 
-              <div className="sm-modal-footer">
+              <div className="sm-modal-footer" style={{ flexShrink: 0 }}>
                 <CButton className="sm-modal-close-btn" onClick={() => setShowDetails(false)}>
                   <FaTimes size={12} /> Close
                 </CButton>
@@ -376,43 +444,67 @@ const StoreMovement = () => {
           <div className="sm-card">
             <div className="sm-card-title">PALLET DETAILS</div>
 
-            <table className="sm-pallet-table">
-              <thead>
-                <tr>
-                  <th>PALLET NO</th>
-                  <th>QUANTITY</th>
-                  <th>RATE (₹)</th>
-                  <th>STUFFED QTY</th>
-                  <th>ACTION</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pallets.map((p) => (
-                  <tr
-                    key={p.id}
-                    className={activePallet?.id === p.id ? 'sm-pallet-row-active' : ''}
-                    onClick={() => setActivePallet(p)}
-                  >
-                    <td>{p.palletNo}</td>
-                    <td>{p.quantity}</td>
-                    <td>{Number(p.rate).toFixed(2)}</td>
-                    <td>{p.stuffedQty}</td>
-                    <td>
-                      {p.assignments.length > 0 ? (
-                        p.assignments.map((a) => (
-                          <span key={a.id} className="sm-assign-chip">
-                            {a.storeLocation}-{a.positionCode}
-                            <button onClick={(e) => { e.stopPropagation(); handleUndo(a.id) }}>×</button>
-                          </span>
-                        ))
-                      ) : (
-                        <span className="sm-no-assign">—</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <DataTable
+              columns={[
+                { name: 'PALLET NO', selector: (row) => row.palletNo, width: '110px' },
+                { name: 'QUANTITY', selector: (row) => row.quantity, center: true, width: '100px' },
+                { name: 'RATE (₹)', selector: (row) => Number(row.rate).toFixed(2), center: true, width: '100px' },
+                { name: 'STUFFED QTY', selector: (row) => row.stuffedQty, center: true, width: '120px' },
+                {
+                  name: 'ACTION',
+                  grow: 2,
+                  cell: (row) =>
+                    row.assignments.length > 0 ? (
+                      row.assignments.map((a) => (
+                        <span key={a.id} className="sm-assign-chip">
+                          {a.storeLocation}-{a.positionCode}
+                          <button onClick={(e) => { e.stopPropagation(); handleUndo(a.id) }}>×</button>
+                        </span>
+                      ))
+                    ) : (
+                      <span className="sm-no-assign">—</span>
+                    ),
+                },
+              ]}
+              data={pallets}
+              keyField="id"
+              pagination
+              paginationPerPage={5}
+              paginationRowsPerPageOptions={[5, 10, 25, 50]}
+              persistTableHead
+              striped
+              responsive
+              highlightOnHover
+              pointerOnHover
+              onRowClicked={(row) => setActivePallet(row)}
+              conditionalRowStyles={[
+                {
+                  when: (row) => activePallet?.id === row.id,
+                  style: { backgroundColor: '#e3ecfd' },
+                },
+              ]}
+              noDataComponent={<div className="sm-empty">No pallets for this GRN yet</div>}
+              customStyles={{
+                rows: { style: { minHeight: '48px' } },
+                headRow: { style: { backgroundColor: '#f1f4fa' } },
+                headCells: {
+                  style: {
+                    justifyContent: 'center',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    color: '#23395d',
+                    textTransform: 'uppercase',
+                    backgroundColor: '#f1f4fa',
+                  },
+                },
+                cells: {
+                  style: {
+                    justifyContent: 'center',
+                    fontSize: '13px',
+                  },
+                },
+              }}
+            />
           </div>
         </div>
 

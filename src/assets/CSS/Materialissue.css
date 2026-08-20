@@ -293,20 +293,7 @@
   flex: 1;
 }
 
-.mi-search-btn {
-  border: none;
-  background: #1d5cff;
-  color: #fff;
-  font-weight: 700;
-  font-size: 13px;
-  border-radius: 10px;
-  padding: 0 18px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  white-space: nowrap;
-}
+
 
 .mi-scan-input {
   height: 46px;
@@ -628,4 +615,113 @@
 .mi-modal-update-btn:hover {
   background: #0c3580 !important;
   border-color: #0c3580 !important;
+}
+
+
+.mi-modal-close-btn {
+  width: 100%;
+  height: 40px;
+  border: 1.5px solid #1d5cff !important;
+  border-radius: 8px !important;
+  background: #ffffff !important;
+  color: #1d5cff !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+}
+
+.mi-modal-close-btn:hover {
+  background: #f5f8ff !important;
+  color: #1d5cff !important;
+}
+
+.mi-grn-type-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.mi-grn-type-badge.regular {
+  background: #eaf1ff;
+  color: #1d5cff;
+}
+
+.mi-grn-type-badge.sample {
+  background: #e9f9ee;
+  color: #1fa855;
+}
+
+.mi-delete-info {
+  background: #f8f9fa;
+  padding: 12px;
+  border-radius: 8px;
+  margin-top: 10px;
+  text-align: left;
+  font-size: 13px;
+  color: #374151;
+}
+
+.mi-delete-info > div {
+  margin-bottom: 6px;
+}
+
+.mi-delete-info > div:last-child {
+  margin-bottom: 0;
+}
+
+.mi-delete-info strong {
+  font-weight: 700;
+  color: #374151;
+}
+
+.mi-delete-cancel-btn {
+  min-width: 90px;
+  color: #6b7280 !important;
+  background: #ffffff !important;
+  border: 1px solid #d1d5db !important;
+  font-weight: 700 !important;
+}
+
+.mi-delete-cancel-btn:hover {
+  background: #f3f4f6 !important;
+  color: #374151 !important;
+}
+
+.mi-delete-confirm-btn {
+  min-width: 90px;
+  color: #ffffff !important;
+  background: #dc3545 !important;
+  border: 1px solid #dc3545 !important;
+  font-weight: 700 !important;
+}
+
+.mi-delete-confirm-btn:hover {
+  background: #bb2d3b !important;
+  border-color: #bb2d3b !important;
+}
+
+/* 3 cards instead of 2 */
+.mi-summary-row-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px; /* match whatever mi-summary-row-2 used */
+}
+
+/* orange tone for the Change Part card */
+.mi-tone-orange {
+  background: #fff3e0;
+  border-color: #f59e0b;
+}
+.mi-tone-orange .mi-summary-icon,
+.mi-tone-orange .mi-summary-label {
+  color: #b45309;
+}
+
+/* Change Part card isn't clickable like the others */
+.mi-summary-static {
+  cursor: default;
 }

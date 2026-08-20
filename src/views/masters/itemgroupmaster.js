@@ -17,6 +17,8 @@ import { FaEdit, FaTrash, FaPlus, FaArrowLeft } from 'react-icons/fa'
 import { toast } from 'react-toastify'
 import API from '../../api.js'
 import '../../assets/CSS/itemGroup.css'
+import usePrivilege from '../hooks/usePrivilege.js'
+
 
 // Small helper so we never hand toast a non-string (fixes "[object Object]" toasts)
 const getErrorMessage = (err, fallback) => {
@@ -25,6 +27,8 @@ const getErrorMessage = (err, fallback) => {
   if (typeof data === 'string') return data
   return data.message || data.error || fallback
 }
+
+
 
 const ItemGroupMaster = () => {
   const groupNameRef = useRef()
@@ -67,6 +71,8 @@ const ItemGroupMaster = () => {
   const [deleteId, setDeleteId] = useState(null)
   const [deleteGroup, setDeleteGroup] = useState(null)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const { privileges: userPrivileges = [] } = usePrivilege()
+  const uPrivilege = userPrivileges.find((p) => p.menuName === 'Item Group Master') || {}
 
   useEffect(() => {
     loadGroups()
@@ -90,12 +96,16 @@ const ItemGroupMaster = () => {
   const loadGroups = async () => {
     try {
       const res = await API.get('/ItemGroup')
-      setGroups(res.data || [])
+
+      const sortedGroups = (res.data || []).sort(
+        (a, b) => Number(b.id) - Number(a.id)
+      )
+
+      setGroups(sortedGroups)
     } catch {
       toast.error('Failed to load item groups')
     }
   }
-
   const handleChange = (e) => {
     const { name, value } = e.target
 
@@ -250,25 +260,29 @@ const ItemGroupMaster = () => {
       center: true,
       cell: (row) => (
         <div className="action-wrapper">
-          <button
-            className="table-action-btn edit-btn"
-            title="Edit"
-            onClick={() => handleEdit(row)}
-          >
-            <FaEdit />
-          </button>
+          {uPrivilege?.canEdit && (
+            <button
+              className="table-action-btn edit-btn"
+              title="Edit"
+              onClick={() => handleEdit(row)}
+            >
+              <FaEdit />
+            </button>
+          )}
+          {uPrivilege?.canDelete && (
 
-          <button
-            className="table-action-btn delete-btn"
-            title="Delete"
-            onClick={() => {
-              setDeleteId(row.id)
-              setDeleteGroup(row)
-              setShowDeleteModal(true)
-            }}
-          >
-            <FaTrash />
-          </button>
+            <button
+              className="table-action-btn delete-btn"
+              title="Delete"
+              onClick={() => {
+                setDeleteId(row.id)
+                setDeleteGroup(row)
+                setShowDeleteModal(true)
+              }}
+            >
+              <FaTrash />
+            </button>
+          )}
         </div>
       ),
     },

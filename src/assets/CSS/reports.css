@@ -31,35 +31,112 @@
   border-radius: 6px !important;
   border: 1px solid #c4d3ea !important;
   font-size: 13px !important;
+  box-shadow: none !important;
+  background: #fff !important;
+  transition: all 0.2s ease-in-out;
+}
+
+.reports-page .form-control:hover {
+  border-color: #7aa7ea !important;
+}
+
+.reports-page .form-control:focus {
+  border: 2px solid #2f6fed !important;
+  box-shadow: 0 0 0 3px rgba(47, 111, 237, 0.15) !important;
+  outline: none !important;
+}
+
+/* ================================
+   REPORT TABLE SEARCH
+================================ */
+
+.reports-table-search {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.reports-table-search .search-box {
+  width: 320px !important;
+  height: 40px !important;
+  border-radius: 6px !important;
+  border: 1px solid #c4d3ea !important;
+  font-size: 13px !important;
+  background: #fff !important;
+  box-shadow: none !important;
+}
+
+.reports-table-search .search-box:hover {
+  border-color: #7aa7ea !important;
+}
+
+.reports-table-search .search-box:focus {
+  border: 2px solid #2f6fed !important;
+  box-shadow: 0 0 0 3px rgba(47, 111, 237, 0.15) !important;
+  outline: none !important;
+}
+
+.reports-table-search .search-box::placeholder {
+  color: #9aa7bd !important;
+  font-size: 13px;
+}
+
+.reports-page .form-control::placeholder {
+  color: #9aa7bd !important;
+  font-size: 13px;
 }
 
 .reports-filter-row {
-  display: flex;
-  align-items: flex-end;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
-  flex-wrap: wrap;
+  width: 100%;
+  align-items: end;
 }
 
 .reports-filter-field {
-  width: 200px;
+  width: 100%;
 }
 
+/* Search + Clear buttons */
 .reports-filter-actions {
+  grid-column: 1 / -1;
   display: flex;
-  gap: 10px;
+  justify-content: center;
   align-items: center;
-  margin-left: auto;
+  gap: 10px;
+  margin-top: 4px;
 }
 
 .reports-search-btn {
+  min-width: 135px;
+  height: 40px;
   background: #1d5cff !important;
   border: none !important;
   color: #fff !important;
   font-weight: 600 !important;
-  padding: 9px 18px !important;
-  border-radius: 6px !important;
+  padding: 9px 20px !important;
+  border-radius: 4px !important;
   display: flex;
   align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.reports-clear-btn {
+  min-width: 135px;
+  height: 40px;
+  background: #f1f3f5 !important;
+  border: 1px solid #e0e3e7 !important;
+  color: #64748b !important;
+  font-weight: 600 !important;
+  padding: 9px 20px !important;
+  border-radius: 4px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   gap: 6px;
 }
 
@@ -72,14 +149,17 @@
 }
 
 .reports-clear-btn {
-  background: #fff !important;
-  border: 1px solid #d8deed !important;
-  color: #475569 !important;
+  min-width: 135px;
+  height: 40px;
+  background: #f1f3f5 !important;
+  border: 1px solid #e0e3e7 !important;
+  color: #64748b !important;
   font-weight: 600 !important;
-  padding: 9px 18px !important;
-  border-radius: 6px !important;
+  padding: 9px 20px !important;
+  border-radius: 4px !important;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
 }
 
@@ -111,6 +191,7 @@
   border-radius: 8px;
   padding: 14px 18px;
   margin-bottom: 16px;
+  flex-wrap: wrap;
 }
 
 .reports-summary-row div {
@@ -140,14 +221,31 @@
   white-space: nowrap;
 }
 
-.report-status-badge.posted {
+/* ★ NEW: the merged report's four lifecycle states. Kept the original
+   .posted/.unposted names as aliases so nothing else referencing them
+   breaks, and added the two new stages (In Store, Issued) plus a
+   status- prefixed variant matching how Reports.jsx builds the class
+   name dynamically from the row's status text. */
+.report-status-badge.posted,
+.report-status-badge.status-posted {
   background: #e6f6ea;
   color: #1e7e34;
 }
 
-.report-status-badge.unposted {
+.report-status-badge.unposted,
+.report-status-badge.status-not-posted {
   background: #f1f4fa;
   color: #64748b;
+}
+
+.report-status-badge.status-in-store {
+  background: #eaf1ff;
+  color: #1d5cff;
+}
+
+.report-status-badge.status-issued {
+  background: #fff2e6;
+  color: #e8792b;
 }
 
 .reports-empty {
@@ -155,4 +253,12 @@
   text-align: center;
   color: #94a3b8;
   font-size: 13px;
+}
+
+.reports-filter-checkboxes {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding-top: 22px; /* roughly aligns with the input fields, which have a label above them */
 }

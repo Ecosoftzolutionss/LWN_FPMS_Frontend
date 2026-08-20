@@ -23,8 +23,12 @@ import {
   removePendingIssue,
   countPendingIssues,
   clearAllPendingIssues,
+  getAllPendingVerifications,
+  removePendingVerification,
+  countPendingVerifications,
+  clearAllPendingVerifications,
+  replaceVerifiedIdsCache,
 } from './offlineDb';
-
 
 // ==========================================
 // Mobility
@@ -64,10 +68,11 @@ const Mobility = () => {
 
     const loadPendingCount = async () => {
       try {
-        const count = await countPendingIssues();
-        setPendingCount(count);
+        const issueCount = await countPendingIssues();
+        const verificationCount = await countPendingVerifications();
+        setPendingCount(issueCount + verificationCount);
       } catch (error) {
-        console.error('Failed to read pending issue count:', error);
+        console.error('Failed to read pending counts:', error);
       }
     };
 
@@ -117,9 +122,14 @@ const Mobility = () => {
   // ========================================
 
   const handleDataSink = async () => {
-
     if (!navigator.onLine) {
-      toast.error('You need Wi-Fi/internet to sync. Please connect and try again.');
+      toast.error(
+        'You need Wi-Fi/internet to sync. Please connect and try again.'
+      );
+      return;
+    }
+
+    if (syncing) {
       return;
     }
 
@@ -131,66 +141,421 @@ const Mobility = () => {
 
     try {
 
-      // ---- 1. Upload pending issues ----
+      // ============================================================
+      // 1. UPLOAD PENDING MATERIAL ISSUES
+      // ============================================================
 
-      const pending = await getAllPendingIssues();
+      const pendingIssues = await getAllPendingIssues();
 
-      for (const issue of pending) {
+      console.log(
+        '[DATA SYNC] Pending Material Issues:',
+        pendingIssues.length,
+        pendingIssues
+      );
 
+      for (const issue of pendingIssues) {
         try {
 
-          const { localId, ...payload } = issue;
+          const {
+            localId,
+            ...payload
+          } = issue;
 
-          await API.post('/MaterialIssue', payload);
+          console.log(
+            '[DATA SYNC] Uploading Material Issue:',
+            payload
+          );
+
+          const response = await API.post(
+            '/MaterialIssue',
+            payload
+          );
+
+          console.log(
+            '[DATA SYNC] Material Issue uploaded:',
+            response.status,
+            response.data
+          );
+
+          // Delete only after successful API call
           await removePendingIssue(localId);
 
-          uploadedCount += 1;
+          uploadedCount++;
 
         } catch (err) {
 
-          const detail = err?.response?.data?.message || err.message;
-          console.error(`Failed to upload pending issue: ${detail}`, err);
-          failedCount += 1;
+          const status =
+            err?.response?.status;
 
+          const responseData =
+            err?.response?.data;
+
+          const message =
+            responseData?.message ||
+            (
+              typeof responseData === 'string'
+                ? responseData
+                : null
+            ) ||
+            err?.message ||
+            'Unknown error';
+
+          console.error(
+            '[DATA SYNC] Material Issue upload failed',
+            {
+              status,
+              message,
+              responseData,
+              error: err
+            }
+          );
+
+          failedCount++;
         }
-
       }
 
-      // ---- 2. Download real in-store pallets (now excludes
-      //         already-issued pallets, server-side) ----
+
+      // ============================================================
+      // 2. UPLOAD PENDING STORE VERIFICATIONS
+      // ============================================================
+
+      const pendingVerifications =
+        await getAllPendingVerifications();
+
+      console.log(
+        '[DATA SYNC] ========================================'
+      );
+
+      console.log(
+        '[DATA SYNC] Pending Store Verifications:',
+        pendingVerifications.length,
+        pendingVerifications
+      );
+
+      console.log(
+        '[DATA SYNC] Store Verification endpoint:',
+        '/StoreVerification'
+      );
+
+      console.log(
+        '[DATA SYNC] ========================================'
+      );
+
+
+      for (const verification of pendingVerifications) {
+
+        try {
+
+          // --------------------------------------------------------
+          // IndexedDB-only fields must NOT be sent to backend
+          // --------------------------------------------------------
+
+          const {
+            localId,
+            palletId,
+            partLabel,
+            itemId,
+            grnNumber,
+            palletNo,
+            quantity,
+            storeLocation,
+            verifiedAt
+          } = verification;
+
+
+          // --------------------------------------------------------
+          // Build EXACT backend payload
+          // --------------------------------------------------------
+
+          const payload = {
+            palletId: Number(palletId),
+            itemId: Number(itemId),
+            grnNumber: grnNumber === null || grnNumber === undefined ? null : String(grnNumber).trim(),
+            palletNo: palletNo === null || palletNo === undefined ? '' : String(palletNo).trim(),
+            quantity: Number(quantity),
+            storeLocation: storeLocation === null || storeLocation === undefined ? null : String(storeLocation).trim(),
+            verifiedAt: verifiedAt ? verifiedAt : new Date().toISOString()
+          };
+
+
+          // --------------------------------------------------------
+          // Validate before API call
+          // --------------------------------------------------------
+
+          if (!Number.isInteger(payload.palletId) || payload.palletId <= 0) {
+            throw new Error(`Invalid palletId: ${palletId}`);
+          }
+
+          if (!Number.isInteger(payload.itemId) ||
+              payload.itemId <= 0) {
+
+            throw new Error(
+              `Invalid ItemId: ${itemId}`
+            );
+          }
+
+
+          if (!payload.palletNo) {
+
+            throw new Error(
+              'Pallet No is required'
+            );
+          }
+
+
+          if (
+            !Number.isFinite(payload.quantity) ||
+            payload.quantity <= 0
+          ) {
+
+            throw new Error(
+              `Invalid quantity: ${quantity}`
+            );
+          }
+
+
+          console.log(
+            '[DATA SYNC] Store Verification payload:',
+            JSON.stringify(payload, null, 2)
+          );
+
+
+          // --------------------------------------------------------
+          // ACTUAL API CALL
+          // --------------------------------------------------------
+
+          const response = await API.post(
+            '/StoreVerification',
+            payload
+          );
+
+
+          console.log(
+            '[DATA SYNC] Store Verification API SUCCESS:',
+            {
+              status: response.status,
+              data: response.data
+            }
+          );
+
+
+          // --------------------------------------------------------
+          // Delete local record ONLY after API success
+          // --------------------------------------------------------
+
+          await removePendingVerification(
+            localId
+          );
+
+          uploadedCount++;
+
+          console.log(
+            `[DATA SYNC] Store Verification ${localId} synced successfully`
+          );
+
+        } catch (err) {
+
+          const status =
+            err?.response?.status;
+
+          const responseData =
+            err?.response?.data;
+
+          const message =
+            responseData?.message ||
+            (
+              typeof responseData === 'string'
+                ? responseData
+                : null
+            ) ||
+            err?.message ||
+            'Unknown error';
+
+          // A 409 Conflict means the backend's own duplicate guard
+          // caught it — treat this as "already handled", not a
+          // failure to retry. Remove the local record so it doesn't
+          // sit in the queue forever trying (and failing) again.
+          if (status === 409) {
+            console.warn(
+              '[DATA SYNC] Store Verification duplicate rejected by server — removing from local queue:',
+              { localId: verification?.localId, message }
+            );
+            await removePendingVerification(verification.localId);
+            continue;
+          }
+
+          console.error(
+            '[DATA SYNC] Store Verification upload FAILED',
+            {
+              localId: verification?.localId,
+              itemId: verification?.itemId,
+              palletNo: verification?.palletNo,
+              status,
+              message,
+              responseData,
+              error: err
+            }
+          );
+
+          // IMPORTANT:
+          // Do NOT remove the IndexedDB record.
+          // It will retry on the next Data Sync.
+          failedCount++;
+        }
+      }
+
+
+      // ============================================================
+      // 3. DOWNLOAD LATEST PALLET DATA + VERIFIED-PALLET-IDS
+      // ============================================================
 
       try {
 
-        const res = await API.get('/StoreMovement/available-pallets');
-        const pallets = res.data || [];
+        const response = await API.get(
+          '/StoreMovement/available-pallets'
+        );
 
-        await replacePalletsCache(pallets);
-        downloadedCount = pallets.length;
+        const pallets =
+          Array.isArray(response.data)
+            ? response.data
+            : [];
+
+        console.log(
+          '[DATA SYNC] Downloaded pallets:',
+          pallets.length
+        );
+
+        await replacePalletsCache(
+          pallets
+        );
+
+        downloadedCount =
+          pallets.length;
 
       } catch (err) {
 
-        console.error('Failed to refresh pallets cache:', err);
+        const status =
+          err?.response?.status;
 
+        const responseData =
+          err?.response?.data;
+
+        console.error(
+          '[DATA SYNC] Pallet download failed:',
+          {
+            status,
+            responseData,
+            message: err?.message
+          }
+        );
+
+        // Download failure should not destroy
+        // successfully uploaded records.
       }
 
-      setSyncStats({ downloadedCount, uploadedCount, failedCount });
+      // Refresh the server-confirmed verified-pallet-ids cache. This
+      // is what lets the duplicate guard in StoreVerification.jsx
+      // survive app restarts and stay correct even after a pending
+      // verification uploads and disappears from the local queue.
+      try {
 
-      const remaining = await countPendingIssues();
-      setPendingCount(remaining);
+        const verifiedRes = await API.get(
+          '/StoreVerification/verified-pallet-ids'
+        );
 
-      setDataSinkModalOpen(true);
+        const verifiedIds =
+          Array.isArray(verifiedRes.data)
+            ? verifiedRes.data
+            : [];
+
+        console.log(
+          '[DATA SYNC] Downloaded verified pallet ids:',
+          verifiedIds.length
+        );
+
+        await replaceVerifiedIdsCache(verifiedIds);
+
+      } catch (err) {
+
+        console.error(
+          '[DATA SYNC] Verified-pallet-ids download failed:',
+          {
+            status: err?.response?.status,
+            responseData: err?.response?.data,
+            message: err?.message
+          }
+        );
+
+        // Same reasoning as the pallets download — don't let this
+        // failure undo successfully uploaded/downloaded data.
+      }
+
+
+      // ============================================================
+      // 4. GET ACTUAL REMAINING PENDING COUNT
+      // ============================================================
+
+      const remainingIssues =
+        await countPendingIssues();
+
+      const remainingVerifications =
+        await countPendingVerifications();
+
+      const totalRemaining =
+        remainingIssues +
+        remainingVerifications;
+
+
+      console.log(
+        '[DATA SYNC] Remaining Material Issues:',
+        remainingIssues
+      );
+
+      console.log(
+        '[DATA SYNC] Remaining Store Verifications:',
+        remainingVerifications
+      );
+
+      console.log(
+        '[DATA SYNC] Total Pending:',
+        totalRemaining
+      );
+
+
+      setPendingCount(
+        totalRemaining
+      );
+
+
+      // ============================================================
+      // 5. SET MODAL RESULT
+      // ============================================================
+
+      setSyncStats({
+        downloadedCount,
+        uploadedCount,
+        failedCount
+      });
+
+      setDataSinkModalOpen(
+        true
+      );
 
     } catch (err) {
 
-      console.error('Sync failed:', err);
-      toast.error('Sync failed. Please try again.');
+      console.error(
+        '[DATA SYNC] Unexpected sync error:',
+        err
+      );
+
+      toast.error(
+        'Data Sync failed. Please try again.'
+      );
 
     } finally {
 
       setSyncing(false);
-
     }
-
   };
 
 
@@ -203,20 +568,34 @@ const Mobility = () => {
   };
 
   const handleConfirmClearLocalData = async () => {
-
     try {
+
       await clearAllPendingIssues();
+
+      await clearAllPendingVerifications();
+
       setPendingCount(0);
-      toast.success('Local pending data cleared. You can start fresh.');
+
+      toast.success(
+        'All pending local data cleared. You can start fresh.'
+      );
+
     } catch (err) {
-      console.error('Failed to clear local data:', err);
-      toast.error('Failed to clear local data. Please try again.');
+
+      console.error(
+        'Failed to clear local data:',
+        err
+      );
+
+      toast.error(
+        'Failed to clear local data. Please try again.'
+      );
+
     } finally {
+
       setClearConfirmOpen(false);
     }
-
   };
-
 
   // ========================================
   // Material Issue
@@ -527,15 +906,15 @@ const Mobility = () => {
 
         </div>
 
-        {pendingCount > 0 && (
-          <button
-            type="button"
-            className="mobility-clear-local-btn"
-            onClick={handleClearLocalDataClick}
-          >
-            Clear Local Data ({pendingCount} pending)
-          </button>
-        )}
+        {/* {pendingCount > 0 && (
+          // <button
+          //   type="button"
+          //   className="mobility-clear-local-btn"
+          //   onClick={handleClearLocalDataClick}
+          // >
+          //   Clear Local Data ({pendingCount} pending)
+          // </button>
+        )} */}
 
       </main>
 
@@ -551,7 +930,7 @@ const Mobility = () => {
         uploadedCount={syncStats.uploadedCount}
         failedCount={syncStats.failedCount}
         downloadLabel="pallets"
-        uploadLabel="issues"
+        uploadLabel="records"
       />
 
 

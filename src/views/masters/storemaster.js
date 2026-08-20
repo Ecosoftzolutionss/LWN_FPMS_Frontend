@@ -18,6 +18,7 @@ import { toast } from 'react-toastify'
 import Select from 'react-select'
 import API from '../../api.js'
 import '../../assets/CSS/storeMaster.css'
+import usePrivilege from '../hooks/usePrivilege.js'
 
 const HEX_REGEX = /^#[0-9A-Fa-f]{6}$/
 
@@ -25,7 +26,9 @@ const EMPTY_FORM = {
   storeLocation: '',
   palletTypeId: '',
   colourCode: '#1E88E5',
+  partNumberId: '',
 }
+
 
 const getErrorMessage = (err, fallback) => {
   const data = err?.response?.data
@@ -69,9 +72,8 @@ const StoreMaster = () => {
   const [stores, setStores] = useState([])
   const [palletTypes, setPalletTypes] = useState([])
   const [showForm, setShowForm] = useState(false)
-
+  const [parts, setParts] = useState([])
   const [form, setForm] = useState(EMPTY_FORM)
-
   const [errors, setErrors] = useState({
     storeLocation: '',
     palletTypeId: '',
@@ -83,12 +85,22 @@ const StoreMaster = () => {
   const [deleteId, setDeleteId] = useState(null)
   const [deleteStore, setDeleteStore] = useState(null)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const { privileges: userPrivileges = [] } = usePrivilege()
+  const uPrivilege = userPrivileges.find((p) => p.menuName === 'Store Master') || {}
 
   useEffect(() => {
     loadStores()
     loadPalletTypes()
+    loadParts()          // <-- was missing, dropdown was always empty
   }, [])
-
+  const loadParts = async () => {
+    try {
+      const res = await API.get('/StoreMaster/parts-list')
+      setParts(res.data || [])
+    } catch {
+      toast.error('Failed to load parts')
+    }
+  }
   useEffect(() => {
     if (showForm) {
       setTimeout(() => {
@@ -165,6 +177,7 @@ const StoreMaster = () => {
         await API.put(`/StoreMaster/${editId}`, {
           storeLocation: form.storeLocation.trim(),
           colourCode: form.colourCode.trim().toUpperCase(),
+          partNumberId: form.partNumberId || null,   // <-- was missing
         })
         toast.success('Store Updated Successfully')
       } else {
@@ -172,6 +185,7 @@ const StoreMaster = () => {
           storeLocation: form.storeLocation.trim(),
           palletTypeId: Number(form.palletTypeId),
           colourCode: form.colourCode.trim().toUpperCase(),
+          partNumberId: form.partNumberId || null,
         })
         toast.success('Store Saved Successfully')
       }
@@ -197,6 +211,7 @@ const StoreMaster = () => {
         storeLocation: d.storeLocation || '',
         palletTypeId: d.palletTypeId || '',
         colourCode: d.colourCode || '#1E88E5',
+        partNumberId: d.partNumberId || '',
       })
 
       setErrors({ storeLocation: '', palletTypeId: '', colourCode: '' })
@@ -250,6 +265,11 @@ const StoreMaster = () => {
     { name: 'SL.NO', selector: (row, index) => index + 1, width: '90px' },
     { name: 'PALLET NUMBER', selector: (row) => row.palletNumber },
     { name: 'PALLET TYPE', selector: (row) => row.palletTypeName },
+    {
+      name: 'PART NUMBER',
+      selector: (row) => row.partNumberCode || '-',
+      wrap: true,
+    },
     { name: 'STORE LOCATION', selector: (row) => row.storeLocation, wrap: true },
     {
       name: 'COLOUR',
@@ -261,21 +281,24 @@ const StoreMaster = () => {
       center: true,
       cell: (row) => (
         <div className="action-wrapper">
-          <button className="table-action-btn edit-btn" title="Edit" onClick={() => handleEdit(row)}>
-            <FaEdit />
-          </button>
-
-          <button
-            className="table-action-btn delete-btn"
-            title="Delete"
-            onClick={() => {
-              setDeleteId(row.id)
-              setDeleteStore(row)
-              setShowDeleteModal(true)
-            }}
-          >
-            <FaTrash />
-          </button>
+          {uPrivilege?.canEdit && (
+            <button className="table-action-btn edit-btn" title="Edit" onClick={() => handleEdit(row)}>
+              <FaEdit />
+            </button>
+          )}
+          {uPrivilege?.canDelete && (
+            <button
+              className="table-action-btn delete-btn"
+              title="Delete"
+              onClick={() => {
+                setDeleteId(row.id)
+                setDeleteStore(row)
+                setShowDeleteModal(true)
+              }}
+            >
+              <FaTrash />
+            </button>
+          )}
         </div>
       ),
     },
@@ -308,7 +331,18 @@ const StoreMaster = () => {
             <div className="section-title">Basic Information</div>
 
             <CRow className="g-3">
-              <CCol md={4}>
+              <CCol md={3}>
+                <label className="custom-label"><strong>Part Number</strong></label>
+                <Select
+                  classNamePrefix="react-select"
+                  placeholder="Select Part Number"
+                  options={parts.map((p) => ({ value: p.value, label: p.label }))}
+                  value={parts.map((p) => ({ value: p.value, label: p.label })).find((x) => String(x.value) === String(form.partNumberId)) || null}
+                  onChange={(selected) => setForm({ ...form, partNumberId: selected?.value || '' })}
+                  isClearable
+                />
+              </CCol>
+              <CCol md={3}>
                 <label className="custom-label">
                   <strong>Colour Picker</strong> <span className="required">*</span>
                 </label>
@@ -351,8 +385,7 @@ const StoreMaster = () => {
 
                 {errors.colourCode && <small className="text-danger">{errors.colourCode}</small>}
               </CCol>
-
-              <CCol md={4}>
+              <CCol md={3}>
                 <label className="custom-label">
                   <strong>Store Location</strong> <span className="required">*</span>
                 </label>
@@ -366,8 +399,7 @@ const StoreMaster = () => {
                 />
                 {errors.storeLocation && <small className="text-danger">{errors.storeLocation}</small>}
               </CCol>
-
-              <CCol md={4}>
+              <CCol md={3}>
                 <label className="custom-label">
                   <strong>Pallet Type</strong> <span className="required">*</span>
                 </label>
@@ -415,7 +447,6 @@ const StoreMaster = () => {
         <CCardBody>
           <div className="table-header">
             <div className="table-title">Store List</div>
-
             <CFormInput
               placeholder="Search..."
               className="search-box"
@@ -423,7 +454,6 @@ const StoreMaster = () => {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-
           <DataTable
             columns={columns}
             data={filteredStores}
@@ -435,7 +465,6 @@ const StoreMaster = () => {
           />
         </CCardBody>
       </CCard>
-
       <CModal visible={showDeleteModal} onClose={() => setShowDeleteModal(false)} alignment="center" backdrop="static">
         <CModalHeader className="border-0">
           <CModalTitle className="w-100 text-center text-danger fw-bold">⚠ Confirm Delete</CModalTitle>
@@ -443,7 +472,6 @@ const StoreMaster = () => {
 
         <CModalBody className="text-center">
           <p>Are you sure you want to delete this Store record?</p>
-
           <div style={{ background: '#f8f9fa', padding: '12px', borderRadius: '8px', marginTop: '10px' }}>
             <div>
               <strong>Pallet Number :</strong>{' '}
@@ -451,7 +479,6 @@ const StoreMaster = () => {
             </div>
           </div>
         </CModalBody>
-
         <CModalFooter className="border-0 d-flex justify-content-center">
           <CButton color="secondary" onClick={() => setShowDeleteModal(false)}>Cancel</CButton>
           <CButton color="danger" onClick={confirmDelete}>Delete</CButton>

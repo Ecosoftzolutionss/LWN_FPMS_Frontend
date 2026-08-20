@@ -19,6 +19,7 @@ import { toast } from 'react-toastify'
 import Select from 'react-select'
 import API from '../../api.js'
 import '../../assets/CSS/customerMaster.css'
+import usePrivilege from '../hooks/usePrivilege.js'
 
 const EMPTY_FORM = {
   customerCode: '',
@@ -92,6 +93,9 @@ const CustomerMaster = () => {
   const [deleteId, setDeleteId] = useState(null)
   const [deleteCustomer, setDeleteCustomer] = useState(null)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const { privileges: userPrivileges = [] } = usePrivilege()
+  const uPrivilege = userPrivileges.find((p) => p.menuName === 'Customer Master') || {}
+
 
   useEffect(() => {
     loadCustomers()
@@ -336,73 +340,78 @@ const CustomerMaster = () => {
   )
 
   const TooltipCell = ({ value }) => {
-  if (value === null || value === undefined || value === '') return <span>—</span>
-  return (
-    <CTooltip content={value} placement="top">
-      <span className="customer-table-cell-text">{value}</span>
-    </CTooltip>
-  )
-}
+    if (value === null || value === undefined || value === '') return <span>—</span>
+    return (
+      <CTooltip content={value} placement="top">
+        <span className="customer-table-cell-text">{value}</span>
+      </CTooltip>
+    )
+  }
 
- const columns = [
-  { name: 'SL.NO', selector: (row, index) => index + 1, width: '80px' },
-  {
-    name: 'CUSTOMER ID',
-    selector: (row) => row.customerCode,
-    cell: (row) => <TooltipCell value={row.customerCode} />,
-  },
-  {
-    name: 'CUSTOMER NAME',
-    selector: (row) => row.customerName,
-    wrap: true,
-    cell: (row) => <TooltipCell value={row.customerName} />,
-  },
-  {
-    name: 'CUSTOMER DIVISION',
-    selector: (row) => row.customerDivision,
-    wrap: true,
-    cell: (row) => <TooltipCell value={row.customerDivision} />,
-  },
-  {
-    name: 'MOBILE NUMBER',
-    selector: (row) => row.mobileNumber,
-    cell: (row) => <TooltipCell value={row.mobileNumber} />,
-  },
-  {
-    name: 'EMAIL ADDRESS',
-    selector: (row) => row.emailId,
-    wrap: true,
-    cell: (row) => <TooltipCell value={row.emailId} />,
-  },
-  {
-    name: 'GST NO.',
-    selector: (row) => row.gstNo,
-    cell: (row) => <TooltipCell value={row.gstNo} />,
-  },
-  {
-    name: 'ACTION',
-    center: true,
-    cell: (row) => (
-      <div className="action-wrapper">
-        <button className="table-action-btn edit-btn" title="Edit" onClick={() => handleEdit(row)}>
-          <FaEdit />
-        </button>
+  const columns = [
+    { name: 'SL.NO', selector: (row, index) => index + 1, width: '80px' },
+    {
+      name: 'CUSTOMER ID',
+      selector: (row) => row.customerCode,
+      cell: (row) => <TooltipCell value={row.customerCode} />,
+    },
+    {
+      name: 'CUSTOMER NAME',
+      selector: (row) => row.customerName,
+      wrap: true,
+      cell: (row) => <TooltipCell value={row.customerName} />,
+    },
+    {
+      name: 'CUSTOMER DIVISION',
+      selector: (row) => row.customerDivision,
+      minWidth: '190px',
+      width: '190px',
+      cell: (row) => <TooltipCell value={row.customerDivision} />,
+    },
+    {
+      name: 'MOBILE NUMBER',
+      selector: (row) => row.mobileNumber,
+      cell: (row) => <TooltipCell value={row.mobileNumber} />,
+    },
+    {
+      name: 'EMAIL ADDRESS',
+      selector: (row) => row.emailId,
+      wrap: true,
+      cell: (row) => <TooltipCell value={row.emailId} />,
+    },
+    {
+      name: 'GST NO.',
+      selector: (row) => row.gstNo,
+      cell: (row) => <TooltipCell value={row.gstNo} />,
+    },
+    {
+      name: 'ACTION',
+      center: true,
+      cell: (row) => (
+        <div className="action-wrapper">
+          {uPrivilege?.canEdit && (
+            <button className="table-action-btn edit-btn" title="Edit" onClick={() => handleEdit(row)}>
+              <FaEdit />
+            </button>
+          )}
+          {uPrivilege?.canDelete && (
 
-        <button
-          className="table-action-btn delete-btn"
-          title="Delete"
-          onClick={() => {
-            setDeleteId(row.id)
-            setDeleteCustomer(row)
-            setShowDeleteModal(true)
-          }}
-        >
-          <FaTrash />
-        </button>
-      </div>
-    ),
-  },
-]
+            <button
+              className="table-action-btn delete-btn"
+              title="Delete"
+              onClick={() => {
+                setDeleteId(row.id)
+                setDeleteCustomer(row)
+                setShowDeleteModal(true)
+              }}
+            >
+              <FaTrash />
+            </button>
+          )}
+        </div>
+      ),
+    },
+  ]
 
   return (
     <div className="customer-master-page">
