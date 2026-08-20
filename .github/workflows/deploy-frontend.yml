@@ -100,14 +100,11 @@ jobs:
               throw "React build failed."
           }
 
-          # IMPORTANT:
-          # Your Vite configuration generates BUILD folder,
-          # not DIST folder.
-
+          # Your React application generates BUILD folder
           $buildPath = "$env:GITHUB_WORKSPACE\build"
 
           if (!(Test-Path $buildPath)) {
-              throw "build folder was not created."
+              throw "build folder was not created: $buildPath"
           }
 
           Write-Host "React build completed successfully."
@@ -125,7 +122,7 @@ jobs:
           # ========================================================
           # ACTUAL LIVE FRONTEND BUILD PATH
           # ========================================================
-          $livePath = "D:\EZ Hosting\FPMS_LWN\#912_LWN_FPMS-10-08-2026 V1\Frontend\build"
+          $livePath = "D:\EZ Hosting\FPMS_LWN\912_LWN_FPMS-17-08-2026 V1\Frontend\build"
 
           # ========================================================
           # BACKUP ROOT
@@ -133,14 +130,14 @@ jobs:
           $backupRoot = "D:\EZ Hosting\FPMS_LWN\Backups\Frontend"
 
           # ========================================================
-          # TIMESTAMP
+          # CREATE TIMESTAMP
           # ========================================================
           $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
 
           $backupPath = Join-Path $backupRoot $timestamp
 
           Write-Host "======================================"
-          Write-Host "Creating Frontend Backup"
+          Write-Host "CREATING FRONTEND BACKUP"
           Write-Host "======================================"
 
           Write-Host "Live Frontend Build:"
@@ -184,7 +181,7 @@ jobs:
 
 
           # ========================================================
-          # CREATE TIMESTAMP BACKUP FOLDER
+          # CREATE TIMESTAMP BACKUP
           # ========================================================
           New-Item `
             -ItemType Directory `
@@ -210,26 +207,21 @@ jobs:
 
 
           # ========================================================
-          # ROBOCOPY EXIT CODES
-          #
-          # 0 - No files copied, no errors
-          # 1 - Files copied successfully
-          # 2-7 - Successful copy with differences
-          # 8+ - Failure
+          # ROBOCOPY:
+          # 0-7 = SUCCESS
+          # 8+  = FAILURE
           # ========================================================
           if ($robocopyExitCode -ge 8) {
 
               throw "Frontend backup failed. Robocopy exit code: $robocopyExitCode"
           }
 
-
-          # Reset exit code so GitHub Actions doesn't mark
-          # the step as failed for Robocopy codes 1-7.
+          # Reset Robocopy exit code
           $global:LASTEXITCODE = 0
 
 
           Write-Host "======================================"
-          Write-Host "Frontend backup completed successfully."
+          Write-Host "FRONTEND BACKUP COMPLETED SUCCESSFULLY"
           Write-Host "Backup location:"
           Write-Host $backupPath
           Write-Host "======================================"
@@ -243,17 +235,17 @@ jobs:
         run: |
 
           # ========================================================
-          # NEWLY BUILT REACT APPLICATION
+          # NEWLY GENERATED BUILD
           # ========================================================
           $sourcePath = "$env:GITHUB_WORKSPACE\build"
 
           # ========================================================
-          # ACTUAL IIS LIVE BUILD PATH
+          # ACTUAL LIVE FRONTEND BUILD PATH
           # ========================================================
-          $livePath = "D:\EZ Hosting\FPMS_LWN\#912_LWN_FPMS-10-08-2026 V1\Frontend\build"
+          $livePath = "D:\EZ Hosting\FPMS_LWN\912_LWN_FPMS-17-08-2026 V1\Frontend\build"
 
           Write-Host "======================================"
-          Write-Host "Deploying React Frontend"
+          Write-Host "DEPLOYING REACT FRONTEND"
           Write-Host "======================================"
 
           Write-Host "Source:"
@@ -264,7 +256,7 @@ jobs:
 
 
           # ========================================================
-          # CHECK SOURCE BUILD
+          # CHECK BUILD
           # ========================================================
           if (!(Test-Path $sourcePath)) {
 
@@ -273,7 +265,7 @@ jobs:
 
 
           # ========================================================
-          # CREATE LIVE BUILD FOLDER IF REQUIRED
+          # CREATE LIVE BUILD IF REQUIRED
           # ========================================================
           if (!(Test-Path $livePath)) {
 
@@ -289,7 +281,7 @@ jobs:
 
 
           # ========================================================
-          # DEPLOY
+          # DEPLOY BUILD
           # ========================================================
           Write-Host "Starting frontend deployment..."
 
@@ -306,20 +298,19 @@ jobs:
 
 
           # ========================================================
-          # CHECK ROBOCOPY RESULT
+          # CHECK DEPLOYMENT RESULT
           # ========================================================
           if ($robocopyExitCode -ge 8) {
 
               throw "Frontend deployment failed. Robocopy exit code: $robocopyExitCode"
           }
 
-
-          # Reset exit code for GitHub Actions
+          # Reset Robocopy exit code
           $global:LASTEXITCODE = 0
 
 
           Write-Host "======================================"
-          Write-Host "React Frontend deployed successfully."
+          Write-Host "REACT FRONTEND DEPLOYED SUCCESSFULLY"
           Write-Host "======================================"
 
 
@@ -331,15 +322,15 @@ jobs:
         run: |
 
           # ========================================================
-          # ACTUAL IIS LIVE BUILD PATH
+          # ACTUAL LIVE FRONTEND BUILD PATH
           # ========================================================
-          $livePath = "D:\EZ Hosting\FPMS_LWN\#912_LWN_FPMS-10-08-2026 V1\Frontend\build"
+          $livePath = "D:\EZ Hosting\FPMS_LWN\912_LWN_FPMS-17-08-2026 V1\Frontend\build"
 
           Write-Host "======================================"
-          Write-Host "Verifying Frontend Deployment"
+          Write-Host "VERIFYING FRONTEND DEPLOYMENT"
           Write-Host "======================================"
 
-          Write-Host "Frontend build path:"
+          Write-Host "Frontend Build Path:"
           Write-Host $livePath
 
 
@@ -370,6 +361,9 @@ jobs:
           }
 
 
+          # ========================================================
+          # GET INDEX FILE INFORMATION
+          # ========================================================
           $indexFile = Get-Item "$livePath\index.html"
 
 
@@ -379,7 +373,7 @@ jobs:
 
 
           Write-Host "======================================"
-          Write-Host "Frontend deployment verified successfully."
+          Write-Host "FRONTEND DEPLOYMENT VERIFIED SUCCESSFULLY"
           Write-Host "======================================"
 
 
@@ -401,4 +395,8 @@ jobs:
           Write-Host ""
           Write-Host "React frontend is now LIVE."
 
+          Write-Host "Live Path:"
+          Write-Host "D:\EZ Hosting\FPMS_LWN\912_LWN_FPMS-17-08-2026 V1\Frontend\build"
+
+          Write-Host ""
           Write-Host "=============================================="
