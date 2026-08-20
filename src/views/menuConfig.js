@@ -11,6 +11,7 @@ import {
   cilChartLine,
   cilDollar,
   cilStorage,
+  cilNotes,
 } from '@coreui/icons'
 
 export const MENU_CONFIG = [
@@ -74,6 +75,10 @@ export const MENU_CONFIG = [
   {
     name: 'Store Movement',
     icon: cilDescription,
+  },
+  {
+    name: 'Material Issue Slip',
+    icon: cilNotes,
   },
   {
     name: 'Reports',

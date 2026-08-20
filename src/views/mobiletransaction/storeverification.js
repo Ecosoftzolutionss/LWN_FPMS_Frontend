@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 
 import {
   FaArrowLeft,
   FaSignOutAlt,
   FaInfoCircle,
   FaFileAlt,
-  FaThLarge,
   FaShieldAlt,
   FaSave,
   FaLock,
@@ -14,43 +14,133 @@ import {
 
 import API from '../../api';
 import '../../assets/CSS/storeVerification.css';
+import {
+  getAllPallets,
+  queuePendingVerification,
+  getAllPendingVerifications,
+  getAllVerifiedIds,
+} from './offlineDb';
 
 // ==========================================
 // Store Verification
 // ==========================================
+//
+// Flow:
+//   1. Scan a GRN/Pallet label -> matched against the same synced
+//      pallets cache Material Issue uses (populated by Data Sync's
+//      /StoreMovement/available-pallets download). A match resolves
+//      GRN No, Part No, Pallet No, Qty and enables Save. An
+//      unmatched / ambiguous / mismatched scan shows an error and
+//      keeps Save disabled — nothing is guessed or half-filled.
+//   2. Save writes the verification to the LOCAL offline DB
+//      (queuePendingVerification) — same "queue now, sync later"
+//      pattern as Material Issue's pending issues. Uploaded to the
+//      server on the next Data Sync.
+//
+// Duplicate guard sources (BOTH required, see bug history):
+//   - getAllPendingVerifications(): pallets verified on THIS device
+//     but not yet synced to the server.
+//   - getAllVerifiedIds(): pallets the SERVER already has on record
+//     (from a prior sync, possibly from a different device). Without
+//     this second source, a pallet becomes re-scannable the instant
+//     its pending record syncs and is removed from the local queue —
+//     which is exactly the bug that let GI-02 verify twice.
+// ==========================================
+
+const EMPTY_RESULT = {
+  palletId: null,
+  grnNo: '',
+  partLabel: '',
+  itemId: '',
+  palletNo: '',
+  quantity: '',
+  storeLocation: '',
+};
 
 const StoreVerification = () => {
 
   const navigate = useNavigate();
 
-  // UI-only demo state: 'idle' | 'success' | 'error'
-  const [scanState, setScanState] = useState('idle');
-  const [scannedValue, setScannedValue] = useState('');
+  const [pallets, setPallets] = useState([]);
+  const [palletsLoaded, setPalletsLoaded] = useState(false);
 
-  const isMatched = scanState === 'success';
+  // Persistent guard — pallets already verified, whether still
+  // pending locally OR already confirmed synced to the server.
+  // Keyed by the pallet's unique `id`, not the recyclable
+  // palletNo/fifoPalletNo label (labels get reused across GRNs —
+  // see Material Issue's offlineDb.js comments for why).
+  const [verifiedPalletIds, setVerifiedPalletIds] = useState(new Set());
+
+  // 'idle' -> nothing scanned yet
+  // 'success' -> matched a real pallet, details shown, Save enabled
+  // 'error' -> scan was rejected, reason shown below
+  const [scanState, setScanState] = useState('idle');
+  const [scannedRaw, setScannedRaw] = useState('');
+  const [scannedError, setScannedError] = useState('');
+  const [result, setResult] = useState(EMPTY_RESULT);
+
+  const [saving, setSaving] = useState(false);
+
+  const scanInputRef = useRef(null);
+
+  useEffect(() => {
+    const loadPallets = async () => {
+      try {
+        const cached = await getAllPallets();
+        setPallets(cached);
+      } catch (err) {
+        console.error('Failed to load cached pallets:', err);
+      } finally {
+        setPalletsLoaded(true);
+      }
+    };
+    loadPallets();
+
+    // FIX: combine BOTH sources — unsynced local queue AND the
+    // server-confirmed cache. Previously only the local queue was
+    // read, so a pallet became re-scannable the moment it synced
+    // and its local record was removed.
+    const loadAlreadyVerified = async () => {
+      try {
+        const [pending, syncedIds] = await Promise.all([
+          getAllPendingVerifications(),
+          getAllVerifiedIds(),
+        ]);
+
+        const pendingIds = pending
+          .map((p) => p.palletId)
+          .filter((id) => id !== undefined && id !== null);
+
+        setVerifiedPalletIds(new Set([...pendingIds, ...syncedIds]));
+      } catch (err) {
+        console.error('Failed to load already-verified pallets:', err);
+      }
+    };
+    loadAlreadyVerified();
+  }, []);
+
+  useEffect(() => {
+    scanInputRef.current?.focus();
+  }, []);
+
+  const refocusScanInput = () => {
+    setTimeout(() => scanInputRef.current?.focus(), 50);
+  };
 
 
   // ==========================================
-  // Logout
+  // Logout / Back
   // ==========================================
 
   const handleLogout = async () => {
-
     try {
       await API.post('/Auth/logout');
     } catch (error) {
       console.error('Logout API error:', error);
     }
-
     sessionStorage.clear();
     navigate('/login', { replace: true });
-
   };
-
-
-  // ==========================================
-  // Back
-  // ==========================================
 
   const handleBack = () => {
     navigate('/m/send');
@@ -58,22 +148,199 @@ const StoreVerification = () => {
 
 
   // ==========================================
-  // Demo scan trigger (UI only — no real scanning)
+  // Reset / reject helpers
   // ==========================================
 
-  const handleScanClick = () => {
-    // Cycles through demo states just to preview the UI
-    if (scanState === 'idle') {
-      setScanState('success');
-      setScannedValue('QL-12589756');
-    } else if (scanState === 'success') {
-      setScanState('error');
-      setScannedValue('QL-12589556');
-    } else {
-      setScanState('idle');
-      setScannedValue('');
+  const resetScan = () => {
+    setScanState('idle');
+    setScannedRaw('');
+    setScannedError('');
+    setResult(EMPTY_RESULT);
+    refocusScanInput();
+  };
+
+  const reject = (message) => {
+    setScanState('error');
+    setScannedError(message);
+    setResult(EMPTY_RESULT);
+    toast.error(message);
+  };
+
+
+  // ==========================================
+  // Apply a scanned label — same matching rules
+  // as Material Issue: match by palletNo OR
+  // fifoPalletNo, resolve ambiguity by GRN,
+  // reject anything that can't be verified
+  // against real synced data.
+  // ==========================================
+
+  const applyScannedLabel = (raw) => {
+
+    if (!raw) return;
+
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      reject(
+        `Scanned code is not valid JSON — the label is malformed. ` +
+        `Raw value: ${raw.length > 140 ? raw.slice(0, 140) + '…' : raw}`
+      );
+      return;
+    }
+
+    const scannedPalletNo = parsed.palletNo;
+    const scannedFifoNo = parsed.fifoPalletNo;
+    const scannedGrn = parsed.grn;
+
+    if (!scannedPalletNo && !scannedFifoNo) {
+      reject('Scanned code is missing Pallet No / FIFO Pallet No — not a valid GRN label.');
+      return;
+    }
+
+    const candidatesById = new Map();
+    pallets.forEach((p) => {
+      const labelMatches =
+        (scannedPalletNo && p.palletNo === scannedPalletNo) ||
+        (scannedFifoNo && p.fifoPalletNo === scannedFifoNo);
+      if (labelMatches && p.id !== undefined && p.id !== null) {
+        candidatesById.set(p.id, p);
+      }
+    });
+    const candidates = Array.from(candidatesById.values());
+
+    let match = null;
+
+    if (candidates.length === 1) {
+      match = candidates[0];
+    } else if (candidates.length > 1) {
+      if (!scannedGrn) {
+        reject(
+          `Pallet "${scannedPalletNo || scannedFifoNo}" is ambiguous — ${candidates.length} pallets ` +
+          `in synced data share this label (labels get reused across GRNs). This scan has no GRN ` +
+          `to tell them apart — rejected. Ask for a label that includes the GRN number.`
+        );
+        return;
+      }
+      const grnMatches = candidates.filter((p) => p.grnNo && String(p.grnNo) === String(scannedGrn));
+      if (grnMatches.length === 1) {
+        match = grnMatches[0];
+      } else {
+        reject(
+          `Pallet "${scannedPalletNo || scannedFifoNo}" under GRN ${scannedGrn} could not be uniquely ` +
+          `resolved in synced data — rejected. Run Data Sync and check for duplicate records.`
+        );
+        return;
+      }
+    }
+
+    if (!match) {
+      reject(
+        `Pallet "${scannedPalletNo || scannedFifoNo}" was not found in synced data. This GRN may not ` +
+        `exist, may not be posted/stuffed yet, or hasn't been synced to this device. Run Data Sync and try again.`
+      );
+      return;
+    }
+
+    if (scannedGrn && match.grnNo && String(match.grnNo) !== String(scannedGrn)) {
+      reject(`Pallet ${match.palletNo} belongs to GRN ${match.grnNo}, not ${scannedGrn} — scan rejected. Check the label.`);
+      return;
+    }
+
+    if (verifiedPalletIds.has(match.id)) {
+      reject(
+        `Pallet ${match.palletNo} (GRN ${match.grnNo || '—'}) was already verified` +
+        `${verifiedPalletIds.has(match.id) ? '' : ''} — it cannot be verified again. If this is a mistake, contact an admin.`
+      );
+      return;
+    }
+
+    setResult({
+      palletId: match.id,
+      grnNo: match.grnNo || '—',
+      partLabel: match.partLabel || String(match.itemId),
+      itemId: match.itemId,
+      palletNo: match.palletNo,
+      quantity: match.quantity,
+      storeLocation: match.storeLocation || '',
+    });
+    setScanState('success');
+    setScannedError('');
+    toast.success(`Pallet ${match.palletNo} (GRN ${match.grnNo || '—'}) verified.`);
+  };
+
+
+  // ==========================================
+  // Scan input handlers
+  // ==========================================
+
+  const handleScanChange = (e) => {
+    const value = e.target.value;
+    setScannedRaw(value);
+
+    const trimmed = value.trim();
+    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+      applyScannedLabel(trimmed);
     }
   };
+
+  const handleScanKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      applyScannedLabel(e.target.value.trim());
+    }
+  };
+
+
+  // ==========================================
+  // Save — writes the verified pallet to the
+  // LOCAL offline DB, ready for next Data Sync.
+  // ==========================================
+
+  const handleSave = async () => {
+
+    if (scanState !== 'success' || !result.palletId) {
+      toast.error('Scan a valid label before saving.');
+      return;
+    }
+
+    // Guard against a double-click / re-triggered save inserting the
+    // same pallet twice before the Set state updates.
+    if (verifiedPalletIds.has(result.palletId)) {
+      reject(`Pallet ${result.palletNo} was already verified — cannot save again.`);
+      return;
+    }
+
+    setSaving(true);
+
+    try {
+      await queuePendingVerification({
+        palletId: result.palletId,
+        itemId: result.itemId,
+        grnNumber: result.grnNo === '—' ? null : result.grnNo,
+        partLabel: result.partLabel,
+        palletNo: result.palletNo,
+        quantity: result.quantity,
+        storeLocation: result.storeLocation,
+        verifiedAt: new Date().toISOString(),
+      });
+
+      setVerifiedPalletIds((prev) => new Set(prev).add(result.palletId));
+      toast.success(`Pallet ${result.palletNo} verification saved to this device.`);
+      resetScan();
+
+    } catch (err) {
+      console.error('Failed to save verification offline:', err);
+      toast.error('Failed to save locally. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+
+  };
+
+
+  const isMatched = scanState === 'success';
 
 
   // ==========================================
@@ -84,129 +351,88 @@ const StoreVerification = () => {
 
     <div className="sv-page">
 
-      {/* ======================================
-          HEADER (fixed)
-      ====================================== */}
-
       <header className="sv-topbar">
-
-        <button
-          type="button"
-          className="sv-icon-btn"
-          onClick={handleBack}
-          title="Back"
-          aria-label="Back"
-        >
+        <button type="button" className="sv-icon-btn" onClick={handleBack} title="Back" aria-label="Back">
           <FaArrowLeft />
         </button>
-
         <div className="sv-topbar-title">
           <div className="sv-topbar-main">FPMS</div>
           <div className="sv-topbar-sub">STORE VERIFICATION</div>
         </div>
-
-        <button
-          type="button"
-          className="sv-icon-btn"
-          onClick={handleLogout}
-          title="Logout"
-          aria-label="Logout"
-        >
+        <button type="button" className="sv-icon-btn" onClick={handleLogout} title="Logout" aria-label="Logout">
           <FaSignOutAlt />
         </button>
-
       </header>
-
-
-      {/* ======================================
-          SCROLLABLE BODY
-      ====================================== */}
 
       <main className="sv-body">
 
-        {/* INFO BANNER */}
-
         <div className="sv-info-banner">
-          <div className="sv-info-icon">
-            <FaInfoCircle />
-          </div>
+          <div className="sv-info-icon"><FaInfoCircle /></div>
           <div>
-            <div className="sv-info-title">Scan Store Label and GRN Label</div>
-            <div className="sv-info-sub">Both labels must match to enable saving.</div>
+            <div className="sv-info-title">Scan GRN Label</div>
+            <div className="sv-info-sub">Scan the GRN label to verify and enable saving.</div>
           </div>
         </div>
-
-        {/* STEP 1 — SCAN STORE LABEL */}
 
         <div className="sv-step-card">
 
           <div className="sv-step-header">
-            <div className="sv-step-icon">
-              <FaFileAlt />
-            </div>
+            <div className="sv-step-icon"><FaFileAlt /></div>
             <div>
-              <div className="sv-step-title">1. Scan Store Label</div>
-              <div className="sv-step-sub">Scan the store label to begin</div>
+              <div className="sv-step-title">1. Scan GRN Label</div>
+              <div className="sv-step-sub">
+                {palletsLoaded ? 'Scan the GRN label to continue' : 'Loading synced pallets…'}
+              </div>
             </div>
           </div>
 
-          <button type="button" className="sv-scan-btn">
-            <FaThLarge /> Scan Store Label
-          </button>
-
-          <div className="sv-value-box sv-value-idle">
-            Scanned value will appear here
-          </div>
-
-        </div>
-
-        {/* STEP 2 — SCAN GRN LABEL */}
-
-        <div className="sv-step-card">
-
-          <div className="sv-step-header">
-            <div className="sv-step-icon">
-              <FaFileAlt />
-            </div>
-            <div>
-              <div className="sv-step-title">2. Scan GRN Label</div>
-              <div className="sv-step-sub">Scan the GRN label to continue</div>
-            </div>
-          </div>
-
-          <button type="button" className="sv-scan-btn" onClick={handleScanClick}>
-            <FaThLarge /> Scan GRN Label
-          </button>
+          <input
+            ref={scanInputRef}
+            className="sv-scan-input"
+            placeholder="Scan a label — verifies automatically"
+            value={scannedRaw}
+            onChange={handleScanChange}
+            onKeyDown={handleScanKeyDown}
+            disabled={!palletsLoaded}
+            autoFocus
+          />
 
           <div
             className={
               'sv-value-box ' +
-              (scanState === 'idle'
-                ? 'sv-value-idle'
-                : scanState === 'success'
-                ? 'sv-value-success'
-                : 'sv-value-error')
+              (scanState === 'idle' ? 'sv-value-idle' : scanState === 'success' ? 'sv-value-success' : 'sv-value-error')
             }
           >
-            {scannedValue || 'Scanned value will appear here'}
+            {scanState === 'error'
+              ? scannedError
+              : scanState === 'success'
+              ? `${result.palletNo} — GRN ${result.grnNo}`
+              : 'Scanned value will appear here'}
           </div>
 
         </div>
 
-        {/* MATCH STATUS */}
+        {scanState === 'success' && (
+          <div className="sv-step-card">
+            <div className="sv-step-title" style={{ marginBottom: 10 }}>Verified Details</div>
+            <div className="sv-detail-row"><span>GRN No.</span><strong>{result.grnNo}</strong></div>
+            <div className="sv-detail-row"><span>Part No.</span><strong>{result.partLabel}</strong></div>
+            <div className="sv-detail-row"><span>Pallet No.</span><strong>{result.palletNo}</strong></div>
+            <div className="sv-detail-row"><span>Quantity</span><strong>{result.quantity}</strong></div>
+            <div className="sv-detail-row"><span>Location</span><strong>{result.storeLocation || '—'}</strong></div>
+          </div>
+        )}
 
         <div className={`sv-match-card ${isMatched ? 'sv-match-ok' : ''}`}>
-          <div className="sv-match-icon">
-            <FaShieldAlt />
-          </div>
+          <div className="sv-match-icon"><FaShieldAlt /></div>
           <div>
             <div className="sv-match-title">Match Status</div>
             <div className="sv-match-sub">
               {isMatched
-                ? 'Labels match. You can save now.'
+                ? 'Label verified against synced data. You can save now.'
                 : scanState === 'error'
-                ? 'Labels do not match.'
-                : 'Please scan both labels to verify.'}
+                ? scannedError
+                : 'Please scan the GRN label to verify.'}
             </div>
           </div>
         </div>
@@ -215,25 +441,13 @@ const StoreVerification = () => {
 
       </main>
 
-
-      {/* ======================================
-          FIXED FOOTER — SAVE
-      ====================================== */}
-
       <div className="sv-footer">
-
-        <button
-          type="button"
-          className="sv-save-btn"
-          disabled={!isMatched}
-        >
-          <FaSave /> Save
+        <button type="button" className="sv-save-btn" disabled={!isMatched || saving} onClick={handleSave}>
+          <FaSave /> {saving ? 'Saving…' : 'Save'}
         </button>
-
         <div className="sv-footer-hint">
-          <FaLock /> Save will be enabled when labels match
+          <FaLock /> Save will be enabled once the label is verified
         </div>
-
       </div>
 
     </div>

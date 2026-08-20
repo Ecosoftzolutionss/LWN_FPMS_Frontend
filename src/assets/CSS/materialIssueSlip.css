@@ -1,0 +1,551 @@
+.material-issue-slip-page {
+  background: #f4f6fb;
+  padding: 15px;
+}
+
+.mis-table-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.mis-table-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: #0d47a1;
+  border-left: 4px solid #0d47a1;
+  padding-left: 10px;
+}
+
+.mis-search {
+  width: 280px !important;
+  height: 38px !important;
+  font-size: 13px !important;
+  border: 1px solid #c4d3ea !important;
+  border-radius: 6px !important;
+}
+
+.mis-action-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+
+.mis-edit-btn,
+.mis-print-btn {
+  width: 32px !important;
+  height: 32px !important;
+
+  padding: 0 !important;
+
+  display: flex !important;
+  justify-content: center;
+  align-items: center;
+
+  border-radius: 5px !important;
+}
+
+.mis-edit-btn {
+  background: #eef6ff !important;
+  color: #1976d2 !important;
+  border: 1px solid #cfe3fb !important;
+}
+
+.mis-print-btn {
+  background: #fff !important;
+  color: #475569 !important;
+  border: 1px solid #94a3b8 !important;
+}
+
+.mis-empty {
+  padding: 30px;
+  color: #94a3b8;
+}
+
+.mis-modal-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mis-modal-title svg {
+  color: #0d47a1;
+}
+
+.mis-modal-title div {
+  display: flex;
+  flex-direction: column;
+}
+
+.mis-modal-title small {
+  font-size: 11px;
+  color: #64748b;
+}
+
+/* =========================================
+   PRINT SLIP
+========================================= */
+
+.issue-slip {
+  width: 700px;
+  max-width: 100%;
+  margin: auto;
+  border: 1px solid #000;
+  background: #fff;
+  color: #000;
+}
+/* =========================================
+   MATERIAL ISSUE SLIP TITLE
+========================================= */
+
+/* =========================================
+   MATERIAL ISSUE SLIP TITLE
+========================================= */
+
+.slip-title {
+  height: 55px;
+
+  display: flex;
+  align-items: center;
+
+  justify-content: flex-start;
+
+  padding: 0 18px;
+
+  background: #fff;
+
+  border-bottom: 1px solid #000;
+
+  box-sizing: border-box;
+}
+
+
+/* =========================================
+   LEEWON BRAND
+========================================= */
+
+.leewon-brand {
+  display: flex;
+
+  align-items: center;
+
+  flex-shrink: 0;
+
+  margin-right: 38px;
+}
+
+
+/* LEEWON SYMBOL */
+
+.leewon-logo {
+  width: 34px;
+
+  height: 28px;
+
+  object-fit: contain;
+
+  display: block;
+
+  margin-right: 5px;
+}
+
+
+/* LEEWON TEXT */
+
+.leewon-text {
+  font-size: 22px;
+
+  font-weight: 700;
+
+  color: #333;
+
+  letter-spacing: -0.8px;
+
+  line-height: 1;
+}
+
+
+/* =========================================
+   MATERIAL ISSUE SLIP
+========================================= */
+
+.slip-heading {
+  font-size: 25px;
+
+  font-weight: 700;
+
+  letter-spacing: 2px;
+
+  color: #000;
+
+  white-space: nowrap;
+
+  line-height: 1;
+}
+
+.header-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-bottom: 1px solid #000;
+}
+
+.header-cell {
+  min-height: 60px;
+  padding: 8px;
+
+  text-align: center;
+
+  font-size: 10px;
+
+  border-right: 1px solid #000;
+}
+
+.header-cell:last-child {
+  border-right: none;
+}
+
+.value-line {
+  margin-top: 15px;
+  border-bottom: 1px solid #000;
+  min-height: 16px;
+}
+
+.from-to {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-bottom: 1px solid #000;
+}
+
+.from-to-box {
+  min-height: 65px;
+  padding: 10px;
+
+  font-size: 11px;
+
+  border-right: 1px solid #000;
+}
+
+.from-to-box:last-child {
+  border-right: none;
+}
+
+.items-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.items-table th,
+.items-table td {
+  border: 1px solid #000;
+  padding: 6px;
+  font-size: 11px;
+}
+
+.items-table th {
+  background: #e8e8e8;
+  text-align: center;
+}
+
+.items-table td {
+  height: 28px;
+  text-align: center;
+}
+
+.remarks {
+  min-height: 30px;
+  padding: 6px;
+
+  border-bottom: 1px solid #000;
+
+  font-size: 11px;
+}
+
+.approval-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.approval-box {
+  min-height: 85px;
+  padding: 10px;
+
+  text-align: center;
+
+  font-size: 11px;
+  font-weight: 700;
+
+  border-right: 1px solid #000;
+}
+
+.approval-box:last-child {
+  border-right: none;
+}
+
+.thank-you {
+  border-top: 1px solid #000;
+
+  padding: 6px;
+
+  text-align: center;
+
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* =========================================
+   MODAL CLOSE / PRINT BUTTONS
+========================================= */
+
+.mis-modal-actions {
+  display: flex;
+  justify-content: center !important;
+  align-items: center;
+  gap: 12px;
+  margin-top: 18px;
+  width: 100%;
+}
+
+.mis-modal-actions button {
+  min-width: 90px !important;
+  height: 40px !important;
+
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  gap: 7px;
+
+  border-radius: 5px !important;
+
+  font-size: 14px !important;
+  font-weight: 600 !important;
+
+  padding: 8px 18px !important;
+}
+
+/* =========================================
+   CLOSE BUTTON
+   Same style as your Cancel button
+========================================= */
+
+.mis-modal-actions .btn-secondary {
+  background: #fff !important;
+  color: #0d4ea2 !important;
+  border: 1px solid #0d4ea2 !important;
+}
+
+.mis-modal-actions .btn-secondary:hover {
+  background: #f0f5ff !important;
+  color: #083b7d !important;
+  border-color: #083b7d !important;
+}
+
+/* =========================================
+   PRINT BUTTON
+   Same blue as Add button
+========================================= */
+
+.mis-modal-actions .btn-primary {
+  background: #0d4ea2 !important;
+  color: #fff !important;
+  border: 1px solid #0d4ea2 !important;
+}
+
+.mis-modal-actions .btn-primary:hover {
+  background: #083b7d !important;
+  border-color: #083b7d !important;
+}
+
+@media (max-width: 768px) {
+
+  .mis-table-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .mis-search {
+    width: 100% !important;
+  }
+
+  .issue-slip {
+    width: 100%;
+  }
+
+  .slip-title {
+    font-size: 16px;
+  }
+
+  .company-name {
+    font-size: 15px;
+    margin-right: 10px;
+  }
+}
+
+.material-issue-slip-page .rdt_TableHeadRow {
+  background: #f1f4fa !important;
+  min-height: 48px !important;
+}
+
+.material-issue-slip-page .rdt_TableCol {
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  color: #23395d !important;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.material-issue-slip-page .rdt_TableCell {
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  color: #1f2937 !important;
+}
+
+.material-issue-slip-page .rdt_TableRow {
+  min-height: 56px !important;
+}
+
+.material-issue-slip-page .rdt_TableRow:nth-child(even) {
+  background: #f8fbff !important;
+}
+
+.mis-search {
+  width: 280px !important;
+  height: 40px !important;
+  border-radius: 6px !important;
+  border: 1px solid #dbe2ee !important;
+  font-size: 14px !important;
+  background: #fff !important;
+}
+
+.mis-search:focus {
+  border-color: #2f6fed !important;
+  box-shadow: 0 0 0 3px rgba(47, 111, 237, 0.15) !important;
+  outline: none !important;
+}
+
+/* =========================================================
+   PRINT ONLY MATERIAL ISSUE SLIP
+========================================================= */
+
+@media print {
+
+    /* A4 paper */
+    @page {
+        size: A4 portrait;
+        margin: 10mm;
+    }
+
+    /* Hide everything */
+    body * {
+        visibility: hidden !important;
+    }
+
+    /* Show only the issue slip */
+    .issue-slip,
+    .issue-slip * {
+        visibility: visible !important;
+    }
+
+    /* Position slip at the top of printed page */
+    .issue-slip {
+        position: fixed !important;
+
+        top: 10mm !important;
+        left: 50% !important;
+
+        transform: translateX(-50%) !important;
+
+        width: 700px !important;
+        max-width: none !important;
+
+        margin: 0 !important;
+
+        border: 1px solid #000 !important;
+
+        background: #fff !important;
+
+        color: #000 !important;
+
+        box-shadow: none !important;
+
+        z-index: 999999 !important;
+    }
+
+    /* Hide modal buttons */
+    .mis-modal-actions,
+    .mis-modal-title,
+    .modal-header,
+    .btn-close {
+        display: none !important;
+    }
+
+    /* Remove modal/background effects */
+    .modal,
+    .modal-dialog,
+    .modal-content,
+    .modal-body {
+        background: transparent !important;
+        box-shadow: none !important;
+        border: none !important;
+    }
+
+    /* Keep table borders */
+    .items-table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+    }
+
+    .items-table th,
+    .items-table td {
+        border: 1px solid #000 !important;
+    }
+
+    /* Prevent table rows from splitting */
+    .items-table tr {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+    }
+
+    /* Don't print empty extra space */
+    html,
+    body {
+        width: 100% !important;
+        height: auto !important;
+        overflow: visible !important;
+        background: #fff !important;
+    }
+}
+
+
+@media (max-width: 768px) {
+
+  .mis-table-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .mis-search {
+    width: 100% !important;
+  }
+
+  .issue-slip {
+    width: 100%;
+  }
+
+  .slip-title {
+    height: 45px;
+    gap: 12px;
+  }
+
+  .leewon-logo {
+    width: 85px;
+    max-height: 30px;
+  }
+
+  .slip-heading {
+    font-size: 15px;
+    letter-spacing: 1px;
+  }
+}

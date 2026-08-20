@@ -19,6 +19,7 @@ import { toast } from 'react-toastify'
 import Select from 'react-select'
 import API from '../../api.js'
 import '../../assets/CSS/priceMaster.css'
+import usePrivilege from '../hooks/usePrivilege.js'
 
 const CUSTOMER_OR_SUPPLIER_OPTIONS = [
   { value: 'Customer', label: 'Customer' },
@@ -89,6 +90,8 @@ const PriceMaster = () => {
   const [deleteId, setDeleteId] = useState(null)
   const [deletePrice, setDeletePrice] = useState(null)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const { privileges: userPrivileges = [] } = usePrivilege()
+  const uPrivilege = userPrivileges.find((p) => p.menuName === 'Price Master') || {}
 
   useEffect(() => {
     loadPrices()
@@ -306,21 +309,25 @@ const PriceMaster = () => {
       center: true,
       cell: (row) => (
         <div className="action-wrapper">
-          <button className="table-action-btn edit-btn" title="Edit" onClick={() => handleEdit(row)}>
-            <FaEdit />
-          </button>
+          {uPrivilege?.canEdit && (
+            <button className="table-action-btn edit-btn" title="Edit" onClick={() => handleEdit(row)}>
+              <FaEdit />
+            </button>
+          )}
+          {uPrivilege?.canDelete && (
 
-          <button
-            className="table-action-btn delete-btn"
-            title="Delete"
-            onClick={() => {
-              setDeleteId(row.id)
-              setDeletePrice(row)
-              setShowDeleteModal(true)
-            }}
-          >
-            <FaTrash />
-          </button>
+            <button
+              className="table-action-btn delete-btn"
+              title="Delete"
+              onClick={() => {
+                setDeleteId(row.id)
+                setDeletePrice(row)
+                setShowDeleteModal(true)
+              }}
+            >
+              <FaTrash />
+            </button>
+          )}
         </div>
       ),
     },

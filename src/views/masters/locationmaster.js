@@ -1,10 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { CButton, CFormInput, CCard, CCardBody } from '@coreui/react'
+import {
+  CButton, CFormInput, CCard, CCardBody,
+  CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter,
+  CFormSelect, CFormLabel, CFormCheck, CTable, CTableHead, CTableRow,
+  CTableHeaderCell, CTableBody, CTableDataCell, CBadge, CSpinner,
+} from '@coreui/react'
 import { FaEdit, FaTrash, FaWarehouse, FaSyncAlt, FaMinus, FaPlus } from 'react-icons/fa'
 import { toast } from 'react-toastify'
 import Select from 'react-select'
 import API from '../../api.js'
 import '../../assets/CSS/locationMaster.css'
+import usePrivilege from '../hooks/usePrivilege.js'
 
 const getErrorMessage = (err, fallback) => {
   const data = err?.response?.data
@@ -30,6 +36,62 @@ const buildSlotCode = (columnNo, rowNo, slotNumber, side) =>
 const buildFrontSlots = (fixture) => Array.from({ length: fixture }, (_, i) => i * 2 + 1)
 const buildRearSlots = (fixture) => Array.from({ length: fixture }, (_, i) => i * 2 + 2)
 
+// ─────────────────────────────────────────────────────────────────────
+// Builds the grid from Rack No / Rows / Columns, but MERGES in any
+// Front/Rear/Fixture edits already made on the previous grid, keyed by
+// POSITION (column index, row index) rather than by label. This is what
+// makes "change rows/cols after Generate" actually work — the grid
+// updates immediately and never silently discards your edits.
+// ─────────────────────────────────────────────────────────────────────
+const buildGridFromInputs = (rackNo, rows, cols, prevGrid = []) => {
+  const prevByPos = new Map(prevGrid.map((r) => [`${r._c}-${r._r}`, r]))
+  const grid = []
+  for (let c = 1; c <= cols; c++) {
+    for (let r = 1; r <= rows; r++) {
+      const prev = prevByPos.get(`${c}-${r}`)
+      grid.push({
+        columnNo: `${rackNo}${c}`,
+        rowNo: `R${r}`,
+        hasFront: prev ? prev.hasFront : true,
+        hasRear: prev ? prev.hasRear : true,
+        fixture: prev ? prev.fixture : 1, // ★ default fixture count changed from 6 -> 1
+        _c: c,
+        _r: r,
+      })
+    }
+  }
+  return grid
+}
+
+// Attach the hidden _c/_r position markers to a grid loaded from a saved
+// rack (API), so it can be merged correctly if the user regenerates it.
+const attachPositions = (columns) => {
+  const grid = []
+  columns.forEach((col, cIdx) => {
+    col.rows.forEach((row, rIdx) => {
+      grid.push({
+        columnNo: col.columnNo,
+        rowNo: row.rowNo,
+        hasFront: row.hasFront,
+        hasRear: row.hasRear,
+        fixture: row.fixture,
+        _c: cIdx + 1,
+        _r: rIdx + 1,
+      })
+    })
+  })
+  return grid
+}
+
+// Strip the internal _c/_r markers before sending to the API.
+const stripPositions = (grid) => grid.map(({ _c, _r, ...rest }) => rest)
+
+// <select> option values are ALWAYS strings, but rack.id coming back
+// from the API can be a number. Comparing with strict === silently
+// fails, so every rack-id comparison goes through these helpers.
+const findRackById = (racks, id) => racks.find((r) => String(r.id) === String(id))
+const sameId = (a, b) => String(a) === String(b)
+
 const LocationMaster = () => {
   // ---- Store (Add Location) state — Store Name is linked to Store Master ----
   const [stores, setStores] = useState([])
@@ -39,24 +101,38 @@ const LocationMaster = () => {
   const [editId, setEditId] = useState(null)
   const [activeStore, setActiveStore] = useState(null)
 
-  const [confirmDelete, setConfirmDelete] = useState(null) // { type: 'store'|'rack', label, id, extra }
+  const [confirmDelete, setConfirmDelete] = useState(null) // { type: 'store'|'rack', label, id, extra, source }
 
   // ---- Racks (saved) ----
   const [racks, setRacks] = useState([]) // [{ id, rackNo, columns:[{ id, columnNo, rows:[...] }] }]
   const [occupancy, setOccupancy] = useState([])
 
-  // ---- Add Rack panel ----
+  // ---- Add Rack panel (inline, left card) ----
   const [showRackPanel, setShowRackPanel] = useState(false)
   const [rackFormNo, setRackFormNo] = useState('')
   const [rackFormRows, setRackFormRows] = useState(5)
   const [rackFormCols, setRackFormCols] = useState(1)
-  const [draftGrid, setDraftGrid] = useState([]) // [{ columnNo, rowNo, hasFront, hasRear, fixture }]
+  const [draftGrid, setDraftGrid] = useState([]) // [{ columnNo, rowNo, hasFront, hasRear, fixture, _c, _r }]
   const [editingRackNo, setEditingRackNo] = useState('') // set when bulk-editing an existing rack
+  const [rackFormTouched, setRackFormTouched] = useState(false) // becomes true once user has generated at least once
+
+  // ---- "Manage Racks" modal (opened from the pencil/edit icon) ----
+  const [showManageModal, setShowManageModal] = useState(false)
+  const [modalSelectedRackId, setModalSelectedRackId] = useState('') // '' = "— New Rack —"
+  const [modalEditingRackNo, setModalEditingRackNo] = useState('')
+  const [modalRackNo, setModalRackNo] = useState('')
+  const [modalRows, setModalRows] = useState(5)
+  const [modalCols, setModalCols] = useState(1)
+  const [modalGrid, setModalGrid] = useState([])
+  const [modalTouched, setModalTouched] = useState(false)
+  const [modalSaving, setModalSaving] = useState(false)
 
   // ---- Right panel preview ----
   const [selectedRackKey, setSelectedRackKey] = useState(null) // rack.id, or '__PREVIEW__'
   const [viewSide, setViewSide] = useState('front')
   const [zoom, setZoom] = useState(100)
+  const { privileges: userPrivileges = [] } = usePrivilege()
+  const uPrivilege = userPrivileges.find((p) => p.menuName === 'Location Master') || {}
 
   useEffect(() => {
     loadStores()
@@ -77,13 +153,9 @@ const LocationMaster = () => {
     label: `${s.storeLocation}-${s.palletNumber}`,
     colourCode: s.colourCode,
     palletNumber: s.palletNumber,
+    partNumber: s.partNumberCode || '',
   }))
 
-  // react-select's default filter does a plain substring match on the
-  // label — that breaks if the user types a separator that doesn't
-  // exactly match what's rendered (spaces, dashes, case, etc.). This
-  // normalizes both sides (strip everything but letters/digits, lowercase)
-  // before comparing, so "R-BR", "r br", "RBR01" all still find "R-BR-01".
   const filterStoreMasterOption = (option, rawInput) => {
     const normalize = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, '')
     return normalize(option.label).includes(normalize(rawInput))
@@ -108,8 +180,10 @@ const LocationMaster = () => {
     try {
       const res = await API.get(`/LocationRack/store/${storeId}`)
       setRacks(res.data || [])
+      return res.data || []
     } catch {
       toast.error('Failed to load racks')
+      return []
     }
   }
 
@@ -126,6 +200,7 @@ const LocationMaster = () => {
     setActiveStore(store)
     setShowRackPanel(false)
     setDraftGrid([])
+    setRackFormTouched(false)
     setRackFormNo('')
     setSelectedRackKey(null)
 
@@ -158,10 +233,6 @@ const LocationMaster = () => {
 
       await loadStores()
 
-      // res.data is the raw LocationMaster entity (no joined
-      // storeLocation/palletNumber/colourCode) — look up the freshly
-      // loaded, fully-joined record instead so activeStore never shows
-      // "undefined".
       const freshList = (await API.get('/LocationMaster')).data || []
       const fullRecord = freshList.find((s) => s.id === res.data.id) || res.data
 
@@ -178,13 +249,6 @@ const LocationMaster = () => {
     setEditId(null)
   }
 
-  const handleEditStoreLink = (store) => {
-    setEditId(store.id)
-    setForm({ storeMasterId: store.storeMasterId })
-    setErrors({ storeMasterId: '' })
-    openStore(store)
-  }
-
   const handleDeleteStore = () => {
     if (!activeStore) return
     setConfirmDelete({
@@ -195,43 +259,22 @@ const LocationMaster = () => {
     })
   }
 
-  // ---------- Add Rack: client-side grid generation ----------
-
-  // Live preview, built directly from the Rack No / Rows / Columns inputs
-  // as they're typed — before "+" is ever clicked, matching the reference
-  // app's livePreview(). Uses sensible defaults (Front+Rear on, Fixture 6)
-  // since nothing's been fine-tuned in a generated grid yet.
-  const livePreviewGrid = useMemo(() => {
+  // ─────────────────────────────────────────────────────────────────
+  // ---------- Add Rack (inline panel) ----------
+  // The grid auto-syncs live from Rack No / Rows / Columns any time
+  // they change, instead of only updating once when "+ Generate" is
+  // clicked. Per-row edits are preserved by position.
+  // ─────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!showRackPanel) return
     const rackNo = rackFormNo.trim().toUpperCase()
     const rows = Number(rackFormRows)
     const cols = Number(rackFormCols)
+    if (!rackNo || !rows || rows < 1 || !cols || cols < 1) return
 
-    if (!rackNo || !rows || rows < 1 || !cols || cols < 1) return null
-
-    const grid = []
-    for (let c = 1; c <= cols; c++) {
-      for (let r = 1; r <= rows; r++) {
-        grid.push({
-          columnNo: `${rackNo}${c}`,
-          rowNo: `R${r}`,
-          hasFront: true,
-          hasRear: true,
-          fixture: 6,
-        })
-      }
-    }
-    return grid
-  }, [rackFormNo, rackFormRows, rackFormCols])
-
-  // The grid actually shown in the right panel: the fine-tuned draftGrid
-  // (after "+ Generate" and any per-row edits) takes priority; otherwise
-  // fall back to the raw live preview from the inputs alone.
-  const effectiveDraftGrid = draftGrid.length > 0 ? draftGrid : (livePreviewGrid || [])
-
-  useEffect(() => {
-    if (showRackPanel && livePreviewGrid) {
-      setSelectedRackKey('__PREVIEW__')
-    }
+    setDraftGrid((prev) => buildGridFromInputs(rackNo, rows, cols, prev))
+    setSelectedRackKey('__PREVIEW__')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rackFormNo, rackFormRows, rackFormCols, showRackPanel])
 
   const handleOpenAddRack = () => {
@@ -241,6 +284,7 @@ const LocationMaster = () => {
     setRackFormRows(5)
     setRackFormCols(1)
     setDraftGrid([])
+    setRackFormTouched(false)
   }
 
   const handleGenerateGrid = () => {
@@ -261,21 +305,10 @@ const LocationMaster = () => {
       return
     }
 
-    const grid = []
-    for (let c = 1; c <= cols; c++) {
-      for (let r = 1; r <= rows; r++) {
-        grid.push({
-          columnNo: `${rackNo}${c}`,
-          rowNo: `R${r}`,
-          hasFront: true,
-          hasRear: true,
-          fixture: 6,
-        })
-      }
-    }
-
-    setDraftGrid(grid)
+    setDraftGrid((prev) => buildGridFromInputs(rackNo, rows, cols, prev))
     setSelectedRackKey('__PREVIEW__')
+    setRackFormTouched(true)
+    toast.success('Grid generated — you can still change Rows/Columns any time')
   }
 
   const updateDraftRow = (index, field, value) => {
@@ -296,6 +329,7 @@ const LocationMaster = () => {
     setRackFormCols(1)
     setDraftGrid([])
     setEditingRackNo('')
+    setRackFormTouched(false)
     setSelectedRackKey(racks[0]?.id ?? null)
   }
 
@@ -307,28 +341,25 @@ const LocationMaster = () => {
       return
     }
     if (draftGrid.length === 0) {
-      toast.error('Click + to generate the grid first')
+      toast.error('Enter Rows and Columns to build the grid first')
       return
     }
 
     try {
       await API.post(`/LocationRack/store/${activeStore.id}/save-grid`, {
         rackNo,
-        rows: draftGrid,
+        rows: stripPositions(draftGrid),
       })
 
       toast.success(editingRackNo ? `Rack "${rackNo}" updated` : `Rack "${rackNo}" saved`)
 
-      // Clear the form first...
       setRackFormNo('')
       setRackFormRows(5)
       setRackFormCols(1)
       setDraftGrid([])
       setEditingRackNo('')
+      setRackFormTouched(false)
 
-      // ...then reload racks and explicitly select the one we just saved,
-      // so the populated grid shows immediately instead of requiring a
-      // manual reselect from the dropdown.
       const res = await API.get(`/LocationRack/store/${activeStore.id}`)
       const freshRacks = res.data || []
       setRacks(freshRacks)
@@ -348,27 +379,14 @@ const LocationMaster = () => {
     setRackFormNo(rack.rackNo)
     setRackFormRows(rack.columns[0]?.rows.length || 1)
     setRackFormCols(rack.columns.length || 1)
-
-    const grid = []
-    rack.columns.forEach((col) => {
-      col.rows.forEach((row) => {
-        grid.push({
-          columnNo: col.columnNo,
-          rowNo: row.rowNo,
-          hasFront: row.hasFront,
-          hasRear: row.hasRear,
-          fixture: row.fixture,
-        })
-      })
-    })
-
-    setDraftGrid(grid)
+    setDraftGrid(attachPositions(rack.columns))
+    setRackFormTouched(true)
     setSelectedRackKey('__PREVIEW__')
     toast.info(`Editing Rack ${rack.rackNo} — modify and click Save`)
   }
 
   const handleDeleteRack = (rackId, rackNo) => {
-    setConfirmDelete({ type: 'rack', id: rackId, label: `Rack ${rackNo}` })
+    setConfirmDelete({ type: 'rack', id: rackId, label: `Rack ${rackNo}`, source: 'list' })
   }
 
   const executeConfirmedDelete = async () => {
@@ -381,16 +399,28 @@ const LocationMaster = () => {
         setActiveStore(null)
         setRacks([])
         setShowRackPanel(false)
+        setShowManageModal(false)
         await loadStores()
       } else {
         await API.delete(`/LocationRack/${confirmDelete.id}`)
         toast.success(`${confirmDelete.label} deleted`)
-        if (selectedRackKey === confirmDelete.id) setSelectedRackKey(null)
+
+        if (sameId(selectedRackKey, confirmDelete.id)) setSelectedRackKey(null)
+
         await loadRacks(activeStore.id)
+
+        // If the delete was triggered from inside the Manage Racks modal,
+        // reset the modal back to "New Rack" state.
+        if (confirmDelete.source === 'modal') {
+          setModalSelectedRackId('')
+          resetModalRackForm()
+        }
       }
     } catch (err) {
       toast.error(getErrorMessage(err, 'Delete Failed'))
     } finally {
+      // Only close the delete-confirm modal here — never touch
+      // showManageModal, so the two modals never fight each other.
       setConfirmDelete(null)
     }
   }
@@ -444,24 +474,170 @@ const LocationMaster = () => {
 
   const rackOptions = [
     ...racks.map((r) => ({ value: r.id, label: `Rack ${r.rackNo}` })),
-    ...(effectiveDraftGrid.length > 0
+    ...(draftGrid.length > 0
       ? [{ value: '__PREVIEW__', label: `Rack ${rackFormNo.trim().toUpperCase() || '?'} (preview)` }]
       : []),
   ]
 
-  // Group the current draft grid into { columnNo: [rows] } for rendering,
-  // same shape as a saved rack's columns.
   const draftColumns = useMemo(() => {
     const map = new Map()
-    effectiveDraftGrid.forEach((r) => {
+    draftGrid.forEach((r) => {
       if (!map.has(r.columnNo)) map.set(r.columnNo, [])
       map.get(r.columnNo).push(r)
     })
     return Array.from(map.entries()).map(([columnNo, rows]) => ({ columnNo, rows }))
-  }, [effectiveDraftGrid])
+  }, [draftGrid])
 
-  const isPreviewSelected = selectedRackKey === '__PREVIEW__' && effectiveDraftGrid.length > 0
-  const selectedSavedRack = racks.find((r) => r.id === selectedRackKey)
+  const isPreviewSelected = selectedRackKey === '__PREVIEW__' && draftGrid.length > 0
+  const selectedSavedRack = racks.find((r) => sameId(r.id, selectedRackKey))
+
+  // =====================================================================
+  // ---------- "Manage Racks" MODAL (CoreUI CModal) -----------------------
+  // =====================================================================
+
+  const resetModalRackForm = () => {
+    setModalEditingRackNo('')
+    setModalRackNo('')
+    setModalRows(5)
+    setModalCols(1)
+    setModalGrid([])
+    setModalTouched(false)
+  }
+
+  const handleOpenManageModal = () => {
+    if (!activeStore) return
+    setModalSelectedRackId('')
+    resetModalRackForm()
+    setShowManageModal(true)
+  }
+
+  const closeManageModal = () => setShowManageModal(false)
+
+  // Same live auto-sync for the modal grid.
+  useEffect(() => {
+    if (!showManageModal) return
+    const rackNo = modalRackNo.trim().toUpperCase()
+    const rows = Number(modalRows)
+    const cols = Number(modalCols)
+    if (!rackNo || !rows || rows < 1 || !cols || cols < 1) return
+
+    setModalGrid((prev) => buildGridFromInputs(rackNo, rows, cols, prev))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modalRackNo, modalRows, modalCols, showManageModal])
+
+  const handleModalRackSelectChange = (rackIdRaw) => {
+    setModalSelectedRackId(rackIdRaw)
+
+    if (!rackIdRaw) {
+      // "— New Rack —"
+      resetModalRackForm()
+      return
+    }
+
+    // <select> always returns a string value. Compare against rack.id
+    // (which may be numeric) using String() on both sides.
+    const rack = findRackById(racks, rackIdRaw)
+    if (!rack) {
+      toast.error('Rack data not loaded')
+      return
+    }
+
+    setModalEditingRackNo(rack.rackNo)
+    setModalRackNo(rack.rackNo)
+    setModalRows(rack.columns[0]?.rows.length || 1)
+    setModalCols(rack.columns.length || 1)
+    setModalGrid(attachPositions(rack.columns))
+    setModalTouched(true)
+    toast.info(`Editing Rack ${rack.rackNo} — modify and click Update`)
+  }
+
+  const handleModalGenerateGrid = () => {
+    const rackNo = modalRackNo.trim().toUpperCase()
+    const rows = Number(modalRows)
+    const cols = Number(modalCols)
+
+    if (!rackNo) {
+      toast.error('Enter Rack No')
+      return
+    }
+    if (!/^[A-Z]{1,5}$/.test(rackNo)) {
+      toast.error('Rack No must be letters only (A-Z)')
+      return
+    }
+    if (!rows || rows < 1 || !cols || cols < 1) {
+      toast.error('Enter Rows and Columns')
+      return
+    }
+
+    setModalGrid((prev) => buildGridFromInputs(rackNo, rows, cols, prev))
+    setModalTouched(true)
+  }
+
+  const updateModalRow = (index, field, value) => {
+    setModalGrid((prev) => {
+      const next = [...prev]
+      next[index] = { ...next[index], [field]: value }
+      return next
+    })
+  }
+
+  const toggleModalAllView = (checked) => {
+    setModalGrid((prev) => prev.map((r) => ({ ...r, hasFront: checked, hasRear: checked })))
+  }
+
+  const handleModalSaveRack = async () => {
+    const rackNo = modalRackNo.trim().toUpperCase()
+
+    if (!rackNo) {
+      toast.error('Enter Rack No')
+      return
+    }
+    if (!/^[A-Z]{1,5}$/.test(rackNo)) {
+      toast.error('Rack No must be letters only (A-Z)')
+      return
+    }
+    if (modalGrid.length === 0) {
+      toast.error('Enter Rows and Columns to build the grid first')
+      return
+    }
+
+    const isEdit = !!modalEditingRackNo
+    setModalSaving(true)
+    try {
+      await API.post(`/LocationRack/store/${activeStore.id}/save-grid`, {
+        rackNo,
+        rows: stripPositions(modalGrid),
+      })
+
+      toast.success(isEdit ? `Rack "${rackNo}" updated` : `Rack "${rackNo}" added`)
+
+      const freshRacks = await loadRacks(activeStore.id)
+      await loadOccupancy(activeStore.id)
+
+      const savedRack = freshRacks.find((r) => r.rackNo === rackNo)
+      if (savedRack) setSelectedRackKey(savedRack.id)
+      resetModalRackForm()
+      setModalSelectedRackId('')
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Save Failed'))
+    } finally {
+      setModalSaving(false)
+    }
+  }
+
+  const handleModalDeleteRack = () => {
+    if (!modalSelectedRackId) {
+      toast.error('Select a rack to delete')
+      return
+    }
+    const rack = findRackById(racks, modalSelectedRackId)
+    setConfirmDelete({
+      type: 'rack',
+      id: modalSelectedRackId,
+      label: `Rack ${rack?.rackNo ?? ''}`,
+      source: 'modal',
+    })
+  }
 
   return (
     <div className="location-master-page">
@@ -493,14 +669,42 @@ const LocationMaster = () => {
             </div>
 
             <div className="loc-field">
-              <label className="custom-label">Pallet Number</label>
-              <CFormInput value={selectedStoreMaster?.palletNumber || ''} placeholder="Auto-filled from Store Master" disabled />
+              <label className="custom-label">
+                <strong>Pallet Number</strong>
+              </label>
+
+              <CFormInput
+                value={selectedStoreMaster?.palletNumber || ''}
+                placeholder="Auto-filled from Store Master"
+                disabled
+              />
             </div>
 
             <div className="loc-field">
-              <label className="custom-label">Colour Picker</label>
+              <label className="custom-label">
+                <strong>Part Number</strong>
+              </label>
+
+              <CFormInput
+                value={selectedStoreMaster?.partNumber || ''}
+                placeholder="Auto-filled from Store Master"
+                disabled
+              />
+            </div>
+
+            <div className="loc-field">
+              <label className="custom-label">
+                <strong>Colour Picker</strong>
+              </label>
+
               <div className="colour-picker-wrap colour-readonly loc-colour-with-add">
-                <span className="colour-swatch" style={{ background: selectedStoreMaster?.colourCode || '#e2e8f0' }} />
+                <span
+                  className="colour-swatch"
+                  style={{
+                    background: selectedStoreMaster?.colourCode || '#e2e8f0',
+                  }}
+                />
+
                 <input
                   type="text"
                   className="colour-hex-input"
@@ -508,6 +712,7 @@ const LocationMaster = () => {
                   placeholder="Auto-filled from Store Master"
                   disabled
                 />
+
                 <button
                   type="button"
                   className="loc-colour-add-btn"
@@ -539,8 +744,12 @@ const LocationMaster = () => {
                   <div className="sc-lbl">Action</div>
                   <div className="sc-val">
                     <span className="aicons">
-                      <FaEdit className="icon-edit" onClick={() => handleEditStoreLink(activeStore)} title="Change Linked Store" />
-                      <FaTrash className="icon-delete" onClick={handleDeleteStore} title="Delete Store" />
+                      {uPrivilege.canEdit && (
+                        <FaEdit className="icon-edit" onClick={handleOpenManageModal} title="Manage Racks" />
+                      )}
+                      {uPrivilege.canDelete && (
+                        <FaTrash className="icon-delete" onClick={handleDeleteStore} title="Delete Store" />
+                      )}
                     </span>
                   </div>
                 </div>
@@ -555,61 +764,65 @@ const LocationMaster = () => {
                 </div>
 
                 <div className="pb">
-                    <div className="sec-t">
-                      {editingRackNo ? `Edit Rack ${editingRackNo} — Store ${activeStore.storeCode}` : `Add Rack For Store ${activeStore.storeCode}`}
+                  <div className="sec-t">
+                    {editingRackNo ? `Edit Rack ${editingRackNo} — Store ${activeStore.storeCode}` : `Add Rack For Store ${activeStore.storeCode}`}
+                  </div>
+
+                  <div className="rack-input-grid">
+                    <div className="rack-input-field">
+                      <label className="rack-input-label">
+                        Rack No
+                        <span className="rack-input-help">Letters only — A, B, AB...</span>
+                      </label>
+                      <input
+                        className="ri-full"
+                        placeholder="e.g. A"
+                        value={rackFormNo}
+                        disabled={!!editingRackNo}
+                        onChange={(e) => setRackFormNo(e.target.value.replace(/[^a-zA-Z]/g, '').toUpperCase())}
+                      />
                     </div>
 
-                    <div className="rack-input-grid">
-                      <div className="rack-input-field">
-                        <label className="rack-input-label">
-                          Rack No
-                          <span className="rack-input-help">Letters only — A, B, AB...</span>
-                        </label>
-                        <input
-                          className="ri-full"
-                          placeholder="e.g. A"
-                          value={rackFormNo}
-                          disabled={!!editingRackNo}
-                          onChange={(e) => setRackFormNo(e.target.value.replace(/[^a-zA-Z]/g, '').toUpperCase())}
-                        />
-                      </div>
-
-                      <div className="rack-input-field">
-                        <label className="rack-input-label">
-                          Rows
-                          <span className="rack-input-help">How many rows tall</span>
-                        </label>
-                        <input
-                          className="ri-full"
-                          type="number"
-                          min={1}
-                          placeholder="e.g. 5"
-                          value={rackFormRows}
-                          onChange={(e) => setRackFormRows(e.target.value)}
-                        />
-                      </div>
-
-                      <div className="rack-input-field">
-                        <label className="rack-input-label">
-                          Columns
-                          <span className="rack-input-help">How many columns wide</span>
-                        </label>
-                        <input
-                          className="ri-full"
-                          type="number"
-                          min={1}
-                          placeholder="e.g. 1"
-                          value={rackFormCols}
-                          onChange={(e) => setRackFormCols(e.target.value)}
-                        />
-                      </div>
+                    <div className="rack-input-field">
+                      <label className="rack-input-label">
+                        Rows
+                        <span className="rack-input-help">Change any time — grid updates live</span>
+                      </label>
+                      <input
+                        className="ri-full"
+                        type="number"
+                        min={1}
+                        placeholder="e.g. 5"
+                        value={rackFormRows}
+                        onChange={(e) => setRackFormRows(e.target.value)}
+                      />
                     </div>
 
-                    <button className="rack-generate-btn" type="button" onClick={handleGenerateGrid}>
-                      <FaPlus size={12} /> Generate Grid
-                    </button>
+                    <div className="rack-input-field">
+                      <label className="rack-input-label">
+                        Columns
+                        <span className="rack-input-help">Change any time — grid updates live</span>
+                      </label>
+                      <input
+                        className="ri-full"
+                        type="number"
+                        min={1}
+                        placeholder="e.g. 1"
+                        value={rackFormCols}
+                        onChange={(e) => setRackFormCols(e.target.value)}
+                      />
+                    </div>
+                  </div>
 
-                    {draftGrid.length > 0 && (
+                  <button className="rack-generate-btn" type="button" onClick={handleGenerateGrid}>
+                    <FaPlus size={12} /> {rackFormTouched ? 'Regenerate Grid' : 'Generate Grid'}
+                  </button>
+
+                  {draftGrid.length > 0 && (
+                    <>
+                      <small style={{ display: 'block', margin: '6px 0', color: '#4e73df', fontWeight: 600, fontSize: 10.5 }}>
+                        {draftGrid.length} slot row(s) — edit Front/Rear/Fixture below, or change Rows/Columns above any time.
+                      </small>
                       <table className="rgt">
                         <thead>
                           <tr>
@@ -630,7 +843,7 @@ const LocationMaster = () => {
                         </thead>
                         <tbody>
                           {draftGrid.map((row, index) => (
-                            <tr key={`${row.columnNo}-${row.rowNo}`}>
+                            <tr key={`${row._c}-${row._r}`}>
                               <td>{row.columnNo}</td>
                               <td>{row.rowNo}</td>
                               <td>
@@ -664,12 +877,13 @@ const LocationMaster = () => {
                           ))}
                         </tbody>
                       </table>
-                    )}
+                    </>
+                  )}
 
-                    <div className="pf">
-                      <button className="bs" onClick={handleSaveRack}>{editingRackNo ? 'Update' : 'Save'}</button>
-                      <button className="bc" onClick={handleClearRackForm}>Clear</button>
-                    </div>
+                  <div className="pf">
+                    <button className="bs" onClick={handleSaveRack}>{editingRackNo ? 'Update' : 'Save'}</button>
+                    <button className="bc" onClick={handleClearRackForm}>Clear</button>
+                  </div>
                 </div>
               </div>
             )}
@@ -760,7 +974,6 @@ const LocationMaster = () => {
                                   ) : (
                                     slotNumbers.map((slotNumber) => {
                                       if (isPreviewSelected) {
-                                        // Draft rows have no `id`, so they're not clickable/occupiable yet.
                                         return (
                                           <span key={slotNumber} className={`rack-slot-box ${viewSide === 'front' ? 'occupied-front' : 'occupied-rear'}`}>
                                             {buildSlotCode(col.columnNo, row.rowNo, slotNumber, viewSide)}
@@ -807,57 +1020,219 @@ const LocationMaster = () => {
                   </div>
                 </div>
 
-                {racks.length > 0 && (
-                  <div className="rack-manage-list">
-                    {racks.map((r) => (
-                      <div key={r.id} className="rack-list-item">
-                        <span>Rack {r.rackNo}</span>
-                        <span className="rack-actions">
-                          <FaEdit className="icon-edit" onClick={() => handleEditRack(r)} title="Edit" />
-                          <FaTrash className="icon-delete" onClick={() => handleDeleteRack(r.id, r.rackNo)} title="Delete" />
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
+              
               </>
             )}
           </CCardBody>
         </CCard>
       </div>
 
-      {confirmDelete && (
-        <div className="loc-confirm-overlay" onClick={() => setConfirmDelete(null)}>
-          <div className="loc-confirm-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="loc-confirm-header">
-              <span className="loc-confirm-warning">⚠</span>
-              <span className="loc-confirm-title">Confirm Delete</span>
-              <button className="loc-confirm-close" onClick={() => setConfirmDelete(null)}>✕</button>
-            </div>
+      {/* ═══════════ MANAGE RACKS — CoreUI CModal (clean header/footer) ═══════════ */}
+      <CModal
+        visible={showManageModal}
+        onClose={closeManageModal}
+        size="lg"
+        alignment="center"
+        backdrop="static"
+      >
+        <CModalHeader className="border-0">
+          <CModalTitle className="w-100 text-center fw-bold" style={{ color: '#1d5cff' }}>
+            <FaWarehouse style={{ marginRight: 8 }} />
+            Manage Racks{activeStore ? ` — ${activeStore.storeLocation} (${activeStore.storeCode})` : ''}
+          </CModalTitle>
+        </CModalHeader>
 
-            <div className="loc-confirm-body">
-              <p>
-                Are you sure you want to delete this {confirmDelete.type === 'store' ? 'Store' : 'Rack'}?
-                {confirmDelete.type === 'store' && ' This removes all its racks too.'}
-                {confirmDelete.type === 'rack' && ' This removes all its locations and cannot be undone.'}
-              </p>
-
-              <div className="loc-confirm-id-box">
-                <strong>{confirmDelete.type === 'store' ? 'Store' : 'Rack'} :</strong>{' '}
-                <span className="loc-confirm-id-value">
-                  {confirmDelete.label}
-                  {confirmDelete.extra ? ` (${confirmDelete.extra})` : ''}
-                </span>
+        <CModalBody>
+          {racks.length > 0 && (
+            <div className="mb-3">
+              <CFormLabel className="fw-bold small">Select Rack</CFormLabel>
+              <div className="d-flex gap-2">
+                <CFormSelect
+                  value={modalSelectedRackId}
+                  onChange={(e) => handleModalRackSelectChange(e.target.value)}
+                >
+                  <option value="">— New Rack —</option>
+                  {racks.map((r) => (
+                    <option key={r.id} value={r.id}>Rack {r.rackNo}</option>
+                  ))}
+                </CFormSelect>
+                <CButton
+                  color="danger"
+                  variant="outline"
+                  disabled={!modalSelectedRackId}
+                  onClick={handleModalDeleteRack}
+                  className="text-nowrap"
+                >
+                  <FaTrash className="me-1" /> Delete
+                </CButton>
               </div>
             </div>
+          )}
 
-            <div className="loc-confirm-footer">
-              <CButton color="secondary" onClick={() => setConfirmDelete(null)}>Cancel</CButton>
-              <CButton color="danger" onClick={executeConfirmedDelete}>Delete</CButton>
+          {modalEditingRackNo && (
+            <div className="mb-3">
+              <CBadge color="warning" shape="rounded-pill" className="px-3 py-2">
+                ✏️ Editing Rack: {modalEditingRackNo}
+              </CBadge>
+            </div>
+          )}
+
+          <div className="fw-bold small mb-1">
+            {modalEditingRackNo ? `Edit Rack ${modalEditingRackNo}` : 'Add New Rack'}
+          </div>
+          <div className="text-muted mb-2" style={{ fontSize: 11 }}>
+            Rack No: letters only (A, B, AB…). Rows/Columns update the grid live — change them any time.
+          </div>
+
+          <div className="row g-2 align-items-end mb-3">
+            <div className="col-4">
+              <CFormLabel className="small mb-1">Rack No</CFormLabel>
+              <CFormInput
+                placeholder="A"
+                value={modalRackNo}
+                disabled={!!modalEditingRackNo}
+                onChange={(e) => setModalRackNo(e.target.value.replace(/[^a-zA-Z]/g, '').toUpperCase())}
+              />
+            </div>
+            <div className="col-3">
+              <CFormLabel className="small mb-1">Rows</CFormLabel>
+              <CFormInput
+                type="number"
+                min={1}
+                value={modalRows}
+                onChange={(e) => setModalRows(e.target.value)}
+              />
+            </div>
+            <div className="col-3">
+              <CFormLabel className="small mb-1">Columns</CFormLabel>
+              <CFormInput
+                type="number"
+                min={1}
+                value={modalCols}
+                onChange={(e) => setModalCols(e.target.value)}
+              />
+            </div>
+            <div className="col-2">
+              <CButton color="primary" className="w-100" onClick={handleModalGenerateGrid}>
+                <FaPlus size={12} /> {modalTouched ? 'Redo' : 'Go'}
+              </CButton>
             </div>
           </div>
-        </div>
-      )}
+
+          {modalGrid.length > 0 && (
+            <div style={{ maxHeight: 320, overflowY: 'auto', border: '1px solid #e0e8f8', borderRadius: 6 }}>
+              <CTable small bordered className="mb-0">
+                <CTableHead style={{ position: 'sticky', top: 0, background: '#d4e4f5', zIndex: 1 }}>
+                  <CTableRow>
+                    <CTableHeaderCell>Column</CTableHeaderCell>
+                    <CTableHeaderCell>Row</CTableHeaderCell>
+                    <CTableHeaderCell className="text-center">
+                      <CFormCheck
+                        label="View"
+                        checked={modalGrid.every((r) => r.hasFront && r.hasRear)}
+                        onChange={(e) => toggleModalAllView(e.target.checked)}
+                      />
+                    </CTableHeaderCell>
+                    <CTableHeaderCell>Fixture</CTableHeaderCell>
+                  </CTableRow>
+                </CTableHead>
+                <CTableBody>
+                  {modalGrid.map((row, index) => (
+                    <CTableRow key={`${row._c}-${row._r}`}>
+                      <CTableDataCell className="fw-bold text-primary">{row.columnNo}</CTableDataCell>
+                      <CTableDataCell>{row.rowNo}</CTableDataCell>
+                      <CTableDataCell>
+                        <div className="d-flex gap-2 justify-content-center">
+                          <CFormCheck
+                            label="Front"
+                            checked={row.hasFront}
+                            onChange={(e) => updateModalRow(index, 'hasFront', e.target.checked)}
+                          />
+                          <CFormCheck
+                            label="Rear"
+                            checked={row.hasRear}
+                            onChange={(e) => updateModalRow(index, 'hasRear', e.target.checked)}
+                          />
+                        </div>
+                      </CTableDataCell>
+                      <CTableDataCell>
+                        <CFormInput
+                          type="number"
+                          min={1}
+                          size="sm"
+                          style={{ width: 60 }}
+                          value={row.fixture}
+                          onChange={(e) => updateModalRow(index, 'fixture', Number(e.target.value) || 1)}
+                        />
+                      </CTableDataCell>
+                    </CTableRow>
+                  ))}
+                </CTableBody>
+              </CTable>
+            </div>
+          )}
+        </CModalBody>
+
+        <CModalFooter className="border-0 d-flex justify-content-center">
+          <CButton color="secondary" variant="outline" onClick={resetModalRackForm}>
+            Clear
+          </CButton>
+          <CButton color="primary" onClick={handleModalSaveRack} disabled={modalSaving}>
+            {modalSaving && <CSpinner size="sm" className="me-2" />}
+            {modalEditingRackNo ? 'Update' : 'Save'}
+          </CButton>
+        </CModalFooter>
+      </CModal>
+
+      {/* ═══════════ CONFIRM DELETE — matches ItemGroupMaster style ═══════════ */}
+      <CModal
+        visible={!!confirmDelete}
+        onClose={() => setConfirmDelete(null)}
+        alignment="center"
+        backdrop="static"
+        keyboard={false}
+        portal
+      >
+        <CModalHeader className="border-0">
+          <CModalTitle className="w-100 text-center text-danger fw-bold">
+            ⚠ Confirm Delete
+          </CModalTitle>
+        </CModalHeader>
+
+        <CModalBody className="text-center">
+          <p>
+            Are you sure you want to delete this {confirmDelete?.type === 'store' ? 'Store' : 'Rack'}?
+            {confirmDelete?.type === 'store' && ' This removes all its racks too.'}
+            {confirmDelete?.type === 'rack' && ' This removes all its locations and cannot be undone.'}
+          </p>
+
+          <div
+            style={{
+              background: '#f8f9fa',
+              padding: '12px',
+              borderRadius: '8px',
+              marginTop: '10px',
+            }}
+          >
+            <div>
+              <strong>{confirmDelete?.type === 'store' ? 'Store Name' : 'Rack'} :</strong>{' '}
+              <span>
+                {confirmDelete?.label}{confirmDelete?.extra ? ` (${confirmDelete.extra})` : ''}
+              </span>
+            </div>
+          </div>
+        </CModalBody>
+
+        <CModalFooter className="border-0 d-flex justify-content-center">
+          <CButton color="secondary" onClick={() => setConfirmDelete(null)}>
+            Cancel
+          </CButton>
+
+          <CButton color="danger" onClick={executeConfirmedDelete}>
+            Delete
+          </CButton>
+        </CModalFooter>
+      </CModal>
     </div>
   )
 }

@@ -1,193 +1,421 @@
 import React, { useEffect, useState } from 'react'
+import DataTable from 'react-data-table-component'
 import { CCard, CCardBody } from '@coreui/react'
 import {
-  FaBoxOpen,
-  FaTruck,
-  FaUsers,
+  FaCube,
+  FaArrowUp,
+  FaExpandArrowsAlt,
+  FaFileAlt,
   FaWarehouse,
-  FaFileInvoice,
-  FaRupeeSign,
-  FaCheckCircle,
-  FaHourglassHalf,
-} from 'react-icons/fa'
-import { toast } from 'react-toastify'
-import API from '../../api.js'
-import '../../assets/CSS/dashboard.css'
+  FaClipboardList,
+  FaCheckDouble,
+  FaArrowDown,
+  FaExchangeAlt,
+  FaDolly,
+} from 'react-icons/fa';
+import { toast } from 'react-toastify';
+import API from '../../api.js';
+import '../../assets/CSS/dashboard.css';
+import DatePicker from 'react-datepicker'
+import 'react-datepicker/dist/react-datepicker.css'
 
-const formatDate = (value) => {
+const formatDateTime = (value) => {
   if (!value) return ''
   const d = new Date(value)
   if (Number.isNaN(d.getTime())) return ''
-  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
+  const datePart = d.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' })
+  const timePart = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+  return `${datePart} ${timePart}`
 }
 
-const shortDay = (isoDate) => {
-  const d = new Date(isoDate)
-  if (Number.isNaN(d.getTime())) return ''
-  return d.toLocaleDateString('en-US', { weekday: 'short' })
+const pct = (part, total) => (total > 0 ? Math.round((part / total) * 100) : 0)
+
+// ★ Safe formatter — every .toLocaleString() call in this file goes
+// through here instead of calling it directly on a raw API value.
+// A single missing/undefined field from the backend (e.g. a still-
+// building dev server serving a stale/partial response) used to
+// crash the whole page with "Cannot read properties of undefined
+// (reading 'toLocaleString')"; this just renders "0" instead.
+const num = (value) => Number(value || 0).toLocaleString()
+
+// ★ NEW: activity type -> icon + color, used both for the Recent
+// Activities table row label and its leading icon.
+const ACTIVITY_META = {
+  'GRN Entry': { icon: FaArrowDown, color: '#1e7e34' },
+  'Material Issue': { icon: FaExchangeAlt, color: '#e8792b' },
+  'Store Movement': { icon: FaDolly, color: '#8b5cf6' },
+}
+
+const formatRangeDate = (date) => {
+  if (!date) return ''
+
+  return date.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
+const formatApiDate = (date) => {
+  if (!date) return ''
+
+  const yyyy = date.getFullYear()
+  const mm = String(date.getMonth() + 1).padStart(2, '0')
+  const dd = String(date.getDate()).padStart(2, '0')
+
+  return `${yyyy}-${mm}-${dd}`
 }
 
 const Dashboard = () => {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
 
+  const getCurrentWeek = () => {
+    const today = new Date()
+
+    const day = today.getDay()
+
+    const from = new Date(today)
+    from.setDate(today.getDate() - day)
+
+    const to = new Date(from)
+    to.setDate(from.getDate() + 6)
+
+    return {
+      from: formatDateForInput(from),
+      to: formatDateForInput(to),
+    }
+  }
+
+  const formatDateForInput = (date) => {
+    const yyyy = date.getFullYear()
+    const mm = String(date.getMonth() + 1).padStart(2, '0')
+    const dd = String(date.getDate()).padStart(2, '0')
+
+    return `${yyyy}-${mm}-${dd}`
+  }
+
+  const initialRange = getCurrentWeek()
+
+  const [dateRange, setDateRange] = useState([
+    new Date(`${initialRange.from}T00:00:00`),
+    new Date(`${initialRange.to}T00:00:00`),
+  ])
+
+  const [fromDate, toDate] = dateRange
   useEffect(() => {
     loadSummary()
   }, [])
 
-  const loadSummary = async () => {
+  const loadSummary = async (
+    selectedFrom = fromDate,
+    selectedTo = toDate
+  ) => {
+    if (!selectedFrom || !selectedTo) return
+
+    const apiFromDate = formatApiDate(selectedFrom)
+    const apiToDate = formatApiDate(selectedTo)
+
+    if (apiFromDate > apiToDate) {
+      toast.error('From Date cannot be greater than To Date')
+      return
+    }
+
     setLoading(true)
+
     try {
-      const res = await API.get('/Dashboard/summary')
+      const res = await API.get('/Dashboard/summary', {
+        params: {
+          fromDate: apiFromDate,
+          toDate: apiToDate,
+        },
+      })
+
       setData(res.data)
-    } catch {
+    } catch (err) {
       toast.error('Failed to load dashboard')
     } finally {
       setLoading(false)
     }
   }
+  if (loading && !data) {
+    return <div className="dashboard-page"><div className="dashboard-loading">Loading dashboard...</div></div>
+  }
 
-  const kpiCards = data
-    ? [
-        { label: 'Total Items', value: data.totalItems, icon: <FaBoxOpen />, color: '#1d5cff' },
-        { label: 'Total Suppliers', value: data.totalSuppliers, icon: <FaTruck />, color: '#f59e0b' },
-        { label: 'Total Customers', value: data.totalCustomers, icon: <FaUsers />, color: '#8b5cf6' },
-        { label: 'Total Stores', value: data.totalStores, icon: <FaWarehouse />, color: '#0ea5e9' },
-        { label: 'Total GRNs', value: data.totalGrns, icon: <FaFileInvoice />, color: '#e53935' },
-        { label: 'Stock Value (₹)', value: `₹${Number(data.totalStockValue).toLocaleString()}`, icon: <FaRupeeSign />, color: '#1e7e34' },
-      ]
-    : []
+  if (!data) return null
 
-  const maxTrendCount = data ? Math.max(1, ...data.trend.map((t) => t.count)) : 1
+  const totalPallets = data.totalPallets || 0
+  const availablePallets = data.availablePallets || 0
+  const issuedPallets = data.issuedPallets || 0
+  const closedPallets = data.palletStatus?.closed || 0
+
+  const kpiCards = [
+    {
+      label: 'TOTAL PALLETS',
+      value: num(totalPallets),
+      sub: 'Across all locations',
+      icon: <FaCube />,
+      tone: 'blue',
+    },
+    {
+      label: 'AVAILABLE PALLETS',
+      value: num(availablePallets),
+      sub: `${pct(availablePallets, totalPallets)}% of total`,
+      icon: <FaArrowUp />,
+      tone: 'green',
+    },
+    {
+      label: 'ISSUED PALLETS',
+      value: num(issuedPallets),
+      sub: `${pct(issuedPallets, totalPallets)}% of total`,
+      icon: <FaExpandArrowsAlt />,
+      tone: 'orange',
+    },
+    {
+      label: 'TOTAL ISSUES',
+      value: num(data.totalIssuesThisWeek),
+      sub: 'This week',
+      icon: <FaFileAlt />,
+      tone: 'purple',
+    },
+  ]
+
+  // Donut chart built with a conic-gradient — no charting library
+  // needed. Segment order: Available (blue) -> Issued (orange) ->
+  // Closed/Others (grey).
+  const availDeg = pct(availablePallets, totalPallets)
+  const issuedDeg = pct(issuedPallets, totalPallets)
+  const donutStyle = {
+    background: `conic-gradient(
+      #1d5cff 0% ${availDeg}%,
+      #f97316 ${availDeg}% ${availDeg + issuedDeg}%,
+      #cbd5e1 ${availDeg + issuedDeg}% 100%
+    )`,
+  }
+
+  const locations = Array.isArray(data.locations) ? data.locations : []
+  const maxLocationQty = Math.max(1, ...locations.map((l) => l.availableCount || 0))
+
+  const transactionRows = [
+    { label: 'GRN Entries', value: data.transactionSummary?.grnEntries ?? 0, icon: FaFileAlt, tone: 'blue' },
+    { label: 'Pallets Received', value: data.transactionSummary?.palletsReceived ?? 0, icon: FaArrowDown, tone: 'green' },
+    { label: 'Material Issues', value: data.transactionSummary?.materialIssues ?? 0, icon: FaExchangeAlt, tone: 'orange' },
+    { label: 'Pallets Issued', value: data.transactionSummary?.palletsIssued ?? 0, icon: FaDolly, tone: 'orange' },
+    { label: 'Store Verifications', value: data.transactionSummary?.storeVerifications ?? 0, icon: FaCheckDouble, tone: 'blue' },
+  ]
+
+  const recentActivities = Array.isArray(data.recentActivities) ? data.recentActivities : []
 
   return (
     <div className="dashboard-page">
-      {loading && !data ? (
-        <div className="dashboard-loading">Loading dashboard...</div>
-      ) : (
-        <>
-          <div className="dashboard-kpi-grid">
-            {kpiCards.map((k) => (
-              <CCard key={k.label} className="dashboard-kpi-card">
-                <CCardBody>
-                  <div className="dashboard-kpi-icon" style={{ background: `${k.color}1a`, color: k.color }}>
-                    {k.icon}
-                  </div>
-                  <div>
-                    <div className="dashboard-kpi-value">{k.value}</div>
-                    <div className="dashboard-kpi-label">{k.label}</div>
-                  </div>
-                </CCardBody>
-              </CCard>
-            ))}
-          </div>
+      <div className="dashboard-header">
+  <div className="dashboard-date-filter">
+    <DatePicker
+      selectsRange
+      startDate={fromDate}
+      endDate={toDate}
+      onChange={(update) => {
+        setDateRange(update)
 
-          <div className="dashboard-mid-grid">
-            <CCard className="dashboard-status-card">
-              <CCardBody>
-                <div className="section-title">GRN Item Status</div>
+        const [start, end] = update
 
-                <div className="dashboard-status-row">
-                  <div className="dashboard-status-item">
-                    <div className="dashboard-status-icon posted"><FaCheckCircle /></div>
-                    <div>
-                      <div className="dashboard-status-value">{data.postedLines}</div>
-                      <div className="dashboard-status-label">Posted Items</div>
-                    </div>
-                  </div>
+        if (start && end) {
+          loadSummary(start, end)
+        }
+      }}
+      dateFormat="dd MMM yyyy"
+      isClearable={false}
+      showPopperArrow={false}
+      placeholderText="Select date range"
+      customInput={
+        <button
+          type="button"
+          className="dashboard-date-range-button"
+        >
+          <span className="dashboard-calendar-icon">
+            📅
+          </span>
 
-                  <div className="dashboard-status-item">
-                    <div className="dashboard-status-icon unposted"><FaHourglassHalf /></div>
-                    <div>
-                      <div className="dashboard-status-value">{data.unpostedLines}</div>
-                      <div className="dashboard-status-label">Awaiting Post</div>
-                    </div>
-                  </div>
-                </div>
+          <span className="dashboard-date-range-text">
+            {fromDate && toDate
+              ? `${formatRangeDate(fromDate)} - ${formatRangeDate(toDate)}`
+              : 'Select date range'}
+          </span>
 
-                <div className="dashboard-status-bar">
-                  <div
-                    className="dashboard-status-bar-fill"
-                    style={{
-                      width: `${data.totalLines ? (data.postedLines / data.totalLines) * 100 : 0}%`,
-                    }}
-                  />
-                </div>
-                <div className="dashboard-status-bar-caption">
-                  {data.totalLines ? Math.round((data.postedLines / data.totalLines) * 100) : 0}% of all GRN items posted
-                </div>
-              </CCardBody>
-            </CCard>
+          <span className="dashboard-date-range-arrow">
+            ˅
+          </span>
+        </button>
+      }
+    />
+  </div>
+</div>
 
-            <CCard className="dashboard-trend-card">
-              <CCardBody>
-                <div className="section-title">GRNs — Last 7 Days</div>
-
-                <div className="dashboard-trend-chart">
-                  {data.trend.map((t) => (
-                    <div key={t.date} className="dashboard-trend-col">
-                      <div className="dashboard-trend-bar-track">
-                        <div
-                          className="dashboard-trend-bar"
-                          style={{ height: `${(t.count / maxTrendCount) * 100}%` }}
-                          title={`${t.count} GRN(s)`}
-                        />
-                      </div>
-                      <div className="dashboard-trend-count">{t.count}</div>
-                      <div className="dashboard-trend-day">{shortDay(t.date)}</div>
-                    </div>
-                  ))}
-                </div>
-              </CCardBody>
-            </CCard>
-          </div>
-
-          <CCard className="mt-3">
+      {/* ---------- KPI cards ---------- */}
+      <div className="dashboard-kpi-grid">
+        {kpiCards.map((k) => (
+          <CCard key={k.label} className={`dashboard-kpi-card tone-${k.tone}`}>
             <CCardBody>
-              <div className="section-title">Recent GRNs</div>
-
-              {data.recentGrns.length === 0 ? (
-                <div className="dashboard-empty">No GRNs recorded yet</div>
-              ) : (
-                <table className="dashboard-recent-table">
-                  <thead>
-                    <tr>
-                      <th>GRN NO</th>
-                      <th>SUPPLIER</th>
-                      <th>PO DATE</th>
-                      <th>PARTS</th>
-                      <th>TOTAL VALUE (₹)</th>
-                      <th>STATUS</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.recentGrns.map((g) => (
-                      <tr key={g.grnNumber}>
-                        <td>{g.grnNumber}</td>
-                        <td>{g.supplierName}</td>
-                        <td>{formatDate(g.poDate)}</td>
-                        <td>{g.lineCount}</td>
-                        <td>{Number(g.totalValue).toFixed(2)}</td>
-                        <td>
-                          <span className={`dashboard-status-badge ${g.postedLineCount === g.lineCount && g.lineCount > 0 ? 'posted' : g.postedLineCount > 0 ? 'partial' : 'unposted'}`}>
-                            {g.postedLineCount === g.lineCount && g.lineCount > 0
-                              ? 'Fully Posted'
-                              : g.postedLineCount > 0
-                                ? `${g.postedLineCount}/${g.lineCount} Posted`
-                                : 'Not Posted'}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
+              <div className="dashboard-kpi-icon">{k.icon}</div>
+              <div className="dashboard-kpi-label">{k.label}</div>
+              <div className="dashboard-kpi-value">{k.value}</div>
+              <div className="dashboard-kpi-sub">{k.sub}</div>
             </CCardBody>
           </CCard>
-        </>
-      )}
+        ))}
+      </div>
+
+      {/* ---------- Status donut / Location bars / Transaction summary ---------- */}
+      <div className="dashboard-mid-grid-3">
+        <CCard className="dashboard-status-card">
+          <CCardBody>
+            <div className="section-title">PALLET STATUS OVERVIEW</div>
+
+            <div className="dashboard-donut-row">
+              <div className="dashboard-donut" style={donutStyle}>
+                <div className="dashboard-donut-center">
+                  <div className="dashboard-donut-total">{num(totalPallets)}</div>
+                  <div className="dashboard-donut-total-label">TOTAL</div>
+                </div>
+              </div>
+
+              <div className="dashboard-donut-legend">
+                <div className="dashboard-legend-item">
+                  <span className="dashboard-legend-dot dot-blue" />
+                  <div>
+                    <div className="dashboard-legend-value">{num(availablePallets)} ({pct(availablePallets, totalPallets)}%)</div>
+                    <div className="dashboard-legend-label">Available</div>
+                  </div>
+                </div>
+                <div className="dashboard-legend-item">
+                  <span className="dashboard-legend-dot dot-orange" />
+                  <div>
+                    <div className="dashboard-legend-value">{num(issuedPallets)} ({pct(issuedPallets, totalPallets)}%)</div>
+                    <div className="dashboard-legend-label">Issued</div>
+                  </div>
+                </div>
+                <div className="dashboard-legend-item">
+                  <span className="dashboard-legend-dot dot-grey" />
+                  <div>
+                    <div className="dashboard-legend-value">{num(closedPallets)} ({pct(closedPallets, totalPallets)}%)</div>
+                    <div className="dashboard-legend-label">Closed / Others</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CCardBody>
+        </CCard>
+
+        <CCard className="dashboard-location-card">
+          <CCardBody>
+            <div className="section-title">PALLETS BY LOCATION (AVAILABILITY)</div>
+
+            {locations.length === 0 ? (
+              <div className="dashboard-empty">No stuffed pallets yet</div>
+            ) : (
+              <div className="dashboard-location-list">
+                {locations.map((loc, idx) => (
+                  <div key={loc.storeLocation || idx} className="dashboard-location-row">
+                    <div className="dashboard-location-label">{loc.storeLocation || 'Unassigned'}</div>
+                    <div className="dashboard-location-bar-track">
+                      <div
+                        className="dashboard-location-bar-fill"
+                        style={{ width: `${((loc.availableCount || 0) / maxLocationQty) * 100}%` }}
+                      />
+                    </div>
+                    <div className="dashboard-location-value">{num(loc.availableCount)}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CCardBody>
+        </CCard>
+
+        <CCard className="dashboard-transaction-card">
+          <CCardBody>
+            <div className="section-title">TRANSACTION SUMMARY (THIS WEEK)</div>
+
+            <div className="dashboard-transaction-list">
+              {transactionRows.map((t) => {
+                const Icon = t.icon
+                return (
+                  <div key={t.label} className="dashboard-transaction-row">
+                    <div className="dashboard-transaction-left">
+                      <span className={`dashboard-transaction-icon tone-${t.tone}`}><Icon /></span>
+                      <span className="dashboard-transaction-label">{t.label}</span>
+                    </div>
+                    <div className="dashboard-transaction-value">{num(t.value)}</div>
+                  </div>
+                )
+              })}
+            </div>
+          </CCardBody>
+        </CCard>
+      </div>
+
+      {/* ---------- Recent Activities ---------- */}
+      <CCard className="mt-3">
+        <CCardBody>
+          <div className="section-title">RECENT ACTIVITIES</div>
+
+          <DataTable
+            columns={[
+              { name: 'DATE & TIME', selector: (row) => row.date, cell: (row) => formatDateTime(row.date), minWidth: '160px' },
+              {
+                name: 'ACTIVITY',
+                minWidth: '150px',
+                cell: (row) => {
+                  const meta = ACTIVITY_META[row.type] || ACTIVITY_META['GRN Entry']
+                  const Icon = meta.icon
+                  return (
+                    <span className="dashboard-activity-label" style={{ color: meta.color }}>
+                      <Icon size={11} /> {row.type}
+                    </span>
+                  )
+                },
+              },
+              { name: 'REF NO', selector: (row) => row.refNo ?? '—' },
+              { name: 'PALLET NO', selector: (row) => row.palletNo ?? '—' },
+              { name: 'LOCATION', selector: (row) => row.location ?? '—' },
+              { name: 'QUANTITY', selector: (row) => num(row.quantity), center: true },
+              // Real, dynamic creator (GrnHeader.CreatedBy /
+              // StoreMovement.CreatedBy / MaterialIssue.IssuedBy) — no
+              // hardcoded "Vendor"/"Admin" placeholder.
+              { name: 'CREATED BY', selector: (row) => row.createdBy || '—' },
+            ]}
+            data={recentActivities}
+            pagination
+            paginationPerPage={5}
+            paginationRowsPerPageOptions={[5, 10, 25, 50]}
+            persistTableHead
+            striped
+            responsive
+            highlightOnHover
+            noDataComponent={<div className="dashboard-empty">No recent activity yet</div>}
+            customStyles={{
+              rows: { style: { minHeight: '46px' } },
+              headRow: { style: { backgroundColor: '#fff', borderBottom: '1px solid #eef1f8' } },
+              headCells: {
+                style: {
+                  fontSize: '10px',
+                  fontWeight: 700,
+                  color: '#94a3b8',
+                  letterSpacing: '0.03em',
+                  textTransform: 'uppercase',
+                },
+              },
+              cells: {
+                style: {
+                  fontSize: '13px',
+                  color: '#1f2937',
+                },
+              },
+            }}
+          />
+        </CCardBody>
+      </CCard>
     </div>
   )
-} 
+}
 
 export default Dashboard

@@ -18,8 +18,7 @@ import {
   cilCloudUpload,
   cilCheckCircle,
   cilTransfer,
-
-
+  cilNotes,
 } from '@coreui/icons'
 
 import { CNavGroup, CNavItem } from '@coreui/react'
@@ -132,7 +131,12 @@ const _nav = [
         to: '/transaction/storemovement',
         icon: <CIcon icon={cilTransfer} customClassName="nav-icon" />,
       },
-
+      {
+        component: CNavItem,
+        name: 'Material Issue Slip',
+        to: '/transaction/materialissueslip',
+        icon: <CIcon icon={cilNotes} customClassName="nav-icon" />,
+      },
     ],
   },
 

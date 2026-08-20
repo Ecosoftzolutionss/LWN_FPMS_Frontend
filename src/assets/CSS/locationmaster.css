@@ -1015,7 +1015,8 @@
 }
 
 /* =========================================================
-   CONFIRM DELETE MODAL (matches User Master's style)
+   CONFIRM DELETE MODAL (legacy — kept for reference, unused now
+   that CoreUI CModal handles the delete confirmation)
 ========================================================= */
 
 .location-master-page .loc-confirm-overlay {
@@ -1105,4 +1106,24 @@
   color: #1a3060;
   text-transform: uppercase;
   letter-spacing: 0.03em;
+}
+
+/* =========================================================
+   CoreUI MODAL POLISH (Manage Racks + Confirm Delete)
+   Applies to both modals since they're rendered via CoreUI's
+   default .modal-content/.modal-header/.modal-footer classes.
+========================================================= */
+
+.modal-content {
+  border-radius: 12px;
+  overflow: hidden;
+  border: none;
+}
+
+.modal-header {
+  border-bottom: 1px solid #eef1f8;
+}
+
+.modal-footer {
+  border-top: 1px solid #eef1f8;
 }

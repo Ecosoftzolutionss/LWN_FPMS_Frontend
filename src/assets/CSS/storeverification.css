@@ -332,3 +332,76 @@
   justify-content: center;
   gap: 6px;
 }
+
+.sv-scan-input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #d6dbe6;
+  border-radius: 10px;
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+.sv-detail-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  font-size: 13px;
+  border-bottom: 1px solid #f0f2f7;
+}
+.sv-detail-row:last-child { border-bottom: none; }
+
+
+/* Scan input keeps working exactly as before, but the typed/scanned
+   text itself is invisible — only the blinking cursor shows. The
+   placeholder stays visible since it's styled separately below. */
+/* Real input that captures the scanner: zero visual footprint, but
+   still focusable and still receives every keystroke normally. This
+   guarantees the scanned text can never render on screen, regardless
+   of any framework CSS (CoreUI/Bootstrap) that might override a
+   simple color:transparent trick. */
+.sv-scan-input-wrap {
+  position: relative;
+  margin-bottom: 10px;
+}
+
+.sv-scan-input-real {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: none;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Purely decorative box standing in for the input visually — always
+   empty, just shows a blinking caret so the operator can see the
+   field is active and ready to scan. */
+.sv-scan-fake-box {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid #d6dbe6;
+  border-radius: 10px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  cursor: text;
+  box-sizing: border-box;
+}
+
+.sv-scan-caret {
+  width: 2px;
+  height: 18px;
+  background: #1d5cff;
+  animation: sv-caret-blink 1s steps(1) infinite;
+}
+
+.sv-scan-fake-placeholder {
+  font-size: 13px;
+  color: #94a3b8;
+}
+
+@keyframes sv-caret-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}

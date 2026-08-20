@@ -96,6 +96,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: nowrap;
 }
 
 .icon-btn {
@@ -140,6 +141,8 @@
   padding: 6px 12px;
   border-radius: 5px;
   cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .post-btn:hover {
@@ -158,6 +161,8 @@
   padding: 6px 12px;
   border-radius: 5px;
   cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .reprint-btn:hover {
@@ -346,33 +351,61 @@
 
 /* =========================================================
    FIFO CARD
+   ---------------------------------------------------------
+   The card is always built at one fixed "master" size
+   (BASE_CARD_WIDTH_MM x BASE_CARD_HEIGHT_MM in the JS, 150mm x
+   100mm). Every label size is produced by placing this exact
+   card inside a `.fifo-label-frame` sized to the physical
+   label and applying a CSS `translate(...) scale(...)`
+   transform computed in JS. That keeps the layout/design
+   identical (same logo, boxes, QR, meta grid, part row,
+   footer) at every size — it only ever shrinks or grows
+   uniformly, so nothing overflows or gets clipped.
 ========================================================= */
 
+/* Outer clipping frame = the exact physical label size. This is
+   the node captured for Print / Download. */
+.fifo-label-frame {
+  position: relative;
+  overflow: hidden;
+  background: #fff;
+  margin: 0 auto;
+}
+
 .fifo-card {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  box-sizing: border-box;
   border: 3px solid #1f2937;
   border-radius: 6px;
-  padding: 20px;
+  padding: 12px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
 }
 
 .fifo-card-header {
   display: flex;
   align-items: center;
   border-bottom: 3px solid #1f2937;
-  padding-bottom: 12px;
-  margin-bottom: 16px;
+  padding-bottom: 8px;
+  margin-bottom: 10px;
+  flex-shrink: 0;
 }
 
 .fifo-logo-wrap {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-shrink: 0;
 }
 
 .fifo-logo-text {
   color: #1d5cff;
   font-weight: 800;
-  font-size: 18px;
+  font-size: 16px;
   letter-spacing: 0.02em;
 }
 
@@ -381,55 +414,61 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 16px;
+  gap: 14px;
 }
 
 .fifo-dash {
-  width: 40px;
+  width: 32px;
   height: 2px;
   background: #1f2937;
 }
 
 .fifo-logo-img {
-  height: 28px;
+  height: 22px;
   width: auto;
   object-fit: contain;
 }
 
 .fifo-title {
-  font-size: 32px;
+  font-size: 26px;
   font-weight: 900;
   color: #1f2937;
   letter-spacing: 0.01em;
+  white-space: nowrap;
 }
 
 .fifo-card-main {
   display: flex;
-  gap: 16px;
+  align-items: stretch;
+  gap: 14px;
+  flex: 1;
+  min-height: 0;
 }
 
 .fifo-left-col {
-  width: 130px;
+  width: 118px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 7px;
+  justify-content: flex-start;
 }
-
 .fifo-box {
   border: 1px solid #1f2937;
   border-radius: 4px;
   text-align: center;
-  padding: 8px 4px;
+  padding: 6px 4px;
+  flex-shrink: 0;
 }
 
 .fifo-qr-box {
   text-align: center;
+  flex-shrink: 0;
 }
 
 .fifo-qr-img {
   width: 100%;
-  max-width: 130px;
+  max-width: 108px;
   height: auto;
   border: 1px solid #cbd5e1;
   border-radius: 4px;
@@ -450,45 +489,49 @@
   font-weight: 700;
   color: #fff;
   background: #1f2937;
-  margin: -8px -4px 6px;
+  margin: -6px -4px 5px;
   padding: 3px 0;
   border-radius: 4px 4px 0 0;
 }
 
 .fifo-box-value {
-  font-size: 20px;
+  font-size: 17px;
   font-weight: 800;
   color: #1f2937;
 }
 
 .fifo-box-value.small {
-  font-size: 15px;
+  font-size: 13px;
 }
 
 .fifo-right-col {
   flex: 1;
+  min-width: 0;
   border-left: 1px solid #cbd5e1;
-  padding-left: 16px;
+  padding-left: 14px;
+
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .fifo-meta-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 10px 16px;
-  font-size: 12px;
+  gap: 8px 12px;
+  font-size: 11px;
   color: #1f2937;
-  margin-bottom: 16px;
 }
 
 .fifo-meta-grid div {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
 }
 
 .fifo-meta-icon {
   color: #64748b;
-  font-size: 12px;
+  font-size: 11px;
   flex-shrink: 0;
 }
 
@@ -500,10 +543,15 @@
 
 .fifo-part-row {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
+
+  flex: 1;
+  min-height: 0;
+
   border-top: 1px solid #cbd5e1;
-  padding-top: 12px;
+  margin-top: 10px;
+  padding: 12px 0;
 }
 
 .fifo-part-label {
@@ -514,13 +562,13 @@
 }
 
 .fifo-part-value {
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 800;
   color: #1f2937;
 }
 
 .fifo-part-name {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   color: #1f2937;
   letter-spacing: 0.03em;
@@ -531,7 +579,7 @@
 }
 
 .fifo-qty-value {
-  font-size: 26px;
+  font-size: 24px;
   font-weight: 800;
   color: #1f2937;
 }
@@ -540,8 +588,9 @@
   display: flex;
   justify-content: space-around;
   border-top: 1px solid #cbd5e1;
-  margin-top: 16px;
-  padding-top: 24px;
+  margin-top: 10px;
+  padding-top: 12px;
+  flex-shrink: 0;
 }
 
 .fifo-sign {
@@ -550,7 +599,7 @@
   color: #64748b;
   border-top: 1px solid #1f2937;
   padding-top: 4px;
-  width: 140px;
+  width: 120px;
   text-align: center;
 }
 
@@ -611,4 +660,32 @@
 .grn-modal-items-table .icon-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+/* Label size selector row inside the FIFO Label modal */
+.grn-label-size-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.grn-label-size-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #23395d;
+  white-space: nowrap;
+}
+
+/* Centers the scaled label frame and lets it scroll if the chosen
+   size (at 1:1 physical mm) is wider than the modal's available
+   width — e.g. the 150x100mm option on a narrow screen. */
+.fifo-print-preview-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: auto;
+  padding: 16px 0;
+  background: #eef1f8;
+  border-radius: 8px;
 }
