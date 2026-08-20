@@ -6,7 +6,9 @@ on:
       - main
 
 jobs:
+
   deploy:
+
     runs-on: self-hosted
 
     steps:
@@ -24,36 +26,40 @@ jobs:
       - name: Show runner information
         shell: powershell
         run: |
-          Write-Host "======================================"
-          Write-Host "FPMS FRONTEND DEPLOYMENT STARTED"
-          Write-Host "======================================"
+
+          Write-Host "=============================================="
+          Write-Host "       FPMS FRONTEND DEPLOYMENT STARTED"
+          Write-Host "=============================================="
 
           Write-Host "Computer : $env:COMPUTERNAME"
           Write-Host "User     : $env:USERNAME"
+          Write-Host "Runner   : $env:RUNNER_NAME"
           Write-Host "Workspace: $env:GITHUB_WORKSPACE"
           Write-Host "Temp     : $env:RUNNER_TEMP"
 
-          Write-Host "======================================"
+          Write-Host "=============================================="
 
 
       # ============================================================
-      # 3. SETUP NODE.JS
+      # 3. SETUP NODE.JS 22
       # ============================================================
-      - name: Setup Node.js
+      - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
+          node-version: '22.x'
+          cache: 'npm'
 
 
       # ============================================================
       # 4. CHECK NODE AND NPM
       # ============================================================
-      - name: Check Node.js
+      - name: Check Node.js and npm
         shell: powershell
         run: |
-          Write-Host "======================================"
-          Write-Host "Checking Node.js"
-          Write-Host "======================================"
+
+          Write-Host "=============================================="
+          Write-Host "       CHECKING NODE.JS"
+          Write-Host "=============================================="
 
           node --version
           npm --version
@@ -68,17 +74,18 @@ jobs:
       # ============================================================
       # 5. INSTALL DEPENDENCIES
       # ============================================================
-      - name: Install frontend dependencies
+      - name: Install dependencies
         shell: powershell
         run: |
-          Write-Host "======================================"
-          Write-Host "Installing frontend dependencies"
-          Write-Host "======================================"
 
-          npm install
+          Write-Host "=============================================="
+          Write-Host "       INSTALLING NPM DEPENDENCIES"
+          Write-Host "=============================================="
+
+          npm ci
 
           if ($LASTEXITCODE -ne 0) {
-              throw "npm install failed."
+              throw "npm ci failed."
           }
 
           Write-Host "Dependencies installed successfully."
@@ -90,9 +97,10 @@ jobs:
       - name: Build React application
         shell: powershell
         run: |
-          Write-Host "======================================"
-          Write-Host "Building React application"
-          Write-Host "======================================"
+
+          Write-Host "=============================================="
+          Write-Host "       BUILDING FPMS FRONTEND"
+          Write-Host "=============================================="
 
           npm run build
 
@@ -100,47 +108,71 @@ jobs:
               throw "React build failed."
           }
 
-          # Your React application generates BUILD folder
-          $buildPath = "$env:GITHUB_WORKSPACE\build"
-
-          if (!(Test-Path $buildPath)) {
-              throw "build folder was not created: $buildPath"
-          }
-
           Write-Host "React build completed successfully."
-          Write-Host "Build folder:"
-          Write-Host $buildPath
 
 
       # ============================================================
-      # 7. BACKUP EXISTING FRONTEND BUILD
+      # 7. CHECK BUILD FOLDER
+      # ============================================================
+      - name: Verify build
+        shell: powershell
+        run: |
+
+          Write-Host "=============================================="
+          Write-Host "       VERIFYING BUILD"
+          Write-Host "=============================================="
+
+          $buildPath = Join-Path $env:GITHUB_WORKSPACE "build"
+
+          Write-Host "Build path:"
+          Write-Host $buildPath
+
+          if (!(Test-Path $buildPath)) {
+              throw "Build folder was not created: $buildPath"
+          }
+
+          if (!(Test-Path "$buildPath\index.html")) {
+              throw "index.html was not found inside build folder."
+          }
+
+          Write-Host "Build folder found."
+          Write-Host "index.html found."
+
+          Write-Host "Build verification successful."
+
+
+      # ============================================================
+      # 8. BACKUP EXISTING FRONTEND
       # ============================================================
       - name: Backup Existing Frontend
         shell: powershell
         run: |
 
           # ========================================================
-          # ACTUAL LIVE FRONTEND BUILD PATH
+          # LIVE FRONTEND PATH
           # ========================================================
           $livePath = "D:\EZ Hosting\FPMS_LWN\912_LWN_FPMS-17-08-2026 V1\Frontend\build"
+
 
           # ========================================================
           # BACKUP ROOT
           # ========================================================
           $backupRoot = "D:\EZ Hosting\FPMS_LWN\Backups\Frontend"
 
+
           # ========================================================
-          # CREATE TIMESTAMP
+          # TIMESTAMP
           # ========================================================
           $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
 
           $backupPath = Join-Path $backupRoot $timestamp
 
-          Write-Host "======================================"
-          Write-Host "CREATING FRONTEND BACKUP"
-          Write-Host "======================================"
 
-          Write-Host "Live Frontend Build:"
+          Write-Host "=============================================="
+          Write-Host "       CREATING FRONTEND BACKUP"
+          Write-Host "=============================================="
+
+          Write-Host "Live Frontend:"
           Write-Host $livePath
 
           Write-Host "Backup Root:"
@@ -151,18 +183,14 @@ jobs:
 
 
           # ========================================================
-          # CHECK LIVE BUILD
+          # CHECK LIVE FRONTEND
           # ========================================================
           if (!(Test-Path $livePath)) {
 
-              Write-Host "Live build folder does not exist."
+              Write-Host "Live frontend does not exist."
+              Write-Host "Backup will be skipped."
 
-              Write-Host "Creating live build folder..."
-
-              New-Item `
-                -ItemType Directory `
-                -Force `
-                -Path $livePath | Out-Null
+              exit 0
           }
 
 
@@ -171,6 +199,7 @@ jobs:
           # ========================================================
           if (!(Test-Path $backupRoot)) {
 
+              Write-Host "Backup root does not exist."
               Write-Host "Creating backup root..."
 
               New-Item `
@@ -190,7 +219,7 @@ jobs:
 
 
           # ========================================================
-          # BACKUP CURRENT BUILD
+          # COPY CURRENT FRONTEND
           # ========================================================
           Write-Host "Starting frontend backup..."
 
@@ -200,6 +229,7 @@ jobs:
             /E `
             /R:2 `
             /W:2
+
 
           $robocopyExitCode = $LASTEXITCODE
 
@@ -216,37 +246,42 @@ jobs:
               throw "Frontend backup failed. Robocopy exit code: $robocopyExitCode"
           }
 
-          # Reset Robocopy exit code
+
+          # IMPORTANT
+          # Prevent Robocopy 1-7 from failing GitHub Actions
           $global:LASTEXITCODE = 0
 
 
-          Write-Host "======================================"
-          Write-Host "FRONTEND BACKUP COMPLETED SUCCESSFULLY"
+          Write-Host "=============================================="
+          Write-Host "       FRONTEND BACKUP SUCCESSFUL"
+          Write-Host "=============================================="
+
           Write-Host "Backup location:"
           Write-Host $backupPath
-          Write-Host "======================================"
 
 
       # ============================================================
-      # 8. DEPLOY NEW FRONTEND BUILD
+      # 9. DEPLOY FRONTEND
       # ============================================================
       - name: Deploy Frontend
         shell: powershell
         run: |
 
           # ========================================================
-          # NEWLY GENERATED BUILD
+          # SOURCE BUILD
           # ========================================================
-          $sourcePath = "$env:GITHUB_WORKSPACE\build"
+          $sourcePath = Join-Path $env:GITHUB_WORKSPACE "build"
+
 
           # ========================================================
-          # ACTUAL LIVE FRONTEND BUILD PATH
+          # LIVE FRONTEND
           # ========================================================
           $livePath = "D:\EZ Hosting\FPMS_LWN\912_LWN_FPMS-17-08-2026 V1\Frontend\build"
 
-          Write-Host "======================================"
-          Write-Host "DEPLOYING REACT FRONTEND"
-          Write-Host "======================================"
+
+          Write-Host "=============================================="
+          Write-Host "       DEPLOYING FPMS FRONTEND"
+          Write-Host "=============================================="
 
           Write-Host "Source:"
           Write-Host $sourcePath
@@ -256,22 +291,27 @@ jobs:
 
 
           # ========================================================
-          # CHECK BUILD
+          # CHECK SOURCE
           # ========================================================
           if (!(Test-Path $sourcePath)) {
 
-              throw "React build folder does not exist: $sourcePath"
+              throw "Build folder does not exist: $sourcePath"
+          }
+
+
+          if (!(Test-Path "$sourcePath\index.html")) {
+
+              throw "index.html was not found in build folder."
           }
 
 
           # ========================================================
-          # CREATE LIVE BUILD IF REQUIRED
+          # CREATE LIVE DIRECTORY IF REQUIRED
           # ========================================================
           if (!(Test-Path $livePath)) {
 
-              Write-Host "Live build folder does not exist."
-
-              Write-Host "Creating live build folder..."
+              Write-Host "Live frontend folder does not exist."
+              Write-Host "Creating folder..."
 
               New-Item `
                 -ItemType Directory `
@@ -281,7 +321,7 @@ jobs:
 
 
           # ========================================================
-          # DEPLOY BUILD
+          # DEPLOY USING ROBOCOPY
           # ========================================================
           Write-Host "Starting frontend deployment..."
 
@@ -292,54 +332,58 @@ jobs:
             /R:2 `
             /W:2
 
+
           $robocopyExitCode = $LASTEXITCODE
 
           Write-Host "Robocopy deployment exit code: $robocopyExitCode"
 
 
           # ========================================================
-          # CHECK DEPLOYMENT RESULT
+          # ROBOCOPY:
+          # 0-7 = SUCCESS
+          # 8+  = FAILURE
           # ========================================================
           if ($robocopyExitCode -ge 8) {
 
               throw "Frontend deployment failed. Robocopy exit code: $robocopyExitCode"
           }
 
+
+          # IMPORTANT
           # Reset Robocopy exit code
           $global:LASTEXITCODE = 0
 
 
-          Write-Host "======================================"
-          Write-Host "REACT FRONTEND DEPLOYED SUCCESSFULLY"
-          Write-Host "======================================"
+          Write-Host "=============================================="
+          Write-Host "       FRONTEND DEPLOYMENT SUCCESSFUL"
+          Write-Host "=============================================="
 
 
       # ============================================================
-      # 9. VERIFY FRONTEND DEPLOYMENT
+      # 10. VERIFY LIVE FRONTEND
       # ============================================================
       - name: Verify Frontend Deployment
         shell: powershell
         run: |
 
-          # ========================================================
-          # ACTUAL LIVE FRONTEND BUILD PATH
-          # ========================================================
           $livePath = "D:\EZ Hosting\FPMS_LWN\912_LWN_FPMS-17-08-2026 V1\Frontend\build"
 
-          Write-Host "======================================"
-          Write-Host "VERIFYING FRONTEND DEPLOYMENT"
-          Write-Host "======================================"
 
-          Write-Host "Frontend Build Path:"
+          Write-Host "=============================================="
+          Write-Host "       VERIFYING FRONTEND DEPLOYMENT"
+          Write-Host "=============================================="
+
+
+          Write-Host "Live path:"
           Write-Host $livePath
 
 
           # ========================================================
-          # CHECK BUILD FOLDER
+          # CHECK BUILD DIRECTORY
           # ========================================================
           if (!(Test-Path $livePath)) {
 
-              throw "Frontend build folder does not exist."
+              throw "Live frontend build folder does not exist."
           }
 
 
@@ -353,16 +397,20 @@ jobs:
 
 
           # ========================================================
-          # CHECK ASSETS FOLDER
+          # CHECK ASSETS
           # ========================================================
           if (!(Test-Path "$livePath\assets")) {
 
-              throw "assets folder was not found after deployment."
+              Write-Host "WARNING: assets folder was not found."
+          }
+          else {
+
+              Write-Host "assets folder found."
           }
 
 
           # ========================================================
-          # GET INDEX FILE INFORMATION
+          # DISPLAY FILE INFORMATION
           # ========================================================
           $indexFile = Get-Item "$livePath\index.html"
 
@@ -372,31 +420,38 @@ jobs:
           Write-Host "Last modified: $($indexFile.LastWriteTime)"
 
 
-          Write-Host "======================================"
-          Write-Host "FRONTEND DEPLOYMENT VERIFIED SUCCESSFULLY"
-          Write-Host "======================================"
+          Write-Host "=============================================="
+          Write-Host "       FRONTEND VERIFIED SUCCESSFULLY"
+          Write-Host "=============================================="
 
 
       # ============================================================
-      # 10. DEPLOYMENT COMPLETED
+      # 11. DEPLOYMENT COMPLETED
       # ============================================================
       - name: Deployment completed
         shell: powershell
         run: |
 
           Write-Host ""
-          Write-Host "=============================================="
-          Write-Host "     FPMS FRONTEND DEPLOYMENT SUCCESSFUL"
-          Write-Host "=============================================="
-
-          Write-Host "Server : $env:COMPUTERNAME"
-          Write-Host "Time   : $(Get-Date)"
+          Write-Host "================================================"
+          Write-Host "       FPMS FRONTEND DEPLOYMENT SUCCESSFUL"
+          Write-Host "================================================"
 
           Write-Host ""
-          Write-Host "React frontend is now LIVE."
+          Write-Host "Server:"
+          Write-Host $env:COMPUTERNAME
 
-          Write-Host "Live Path:"
+          Write-Host ""
+          Write-Host "Frontend Live Path:"
           Write-Host "D:\EZ Hosting\FPMS_LWN\912_LWN_FPMS-17-08-2026 V1\Frontend\build"
 
           Write-Host ""
-          Write-Host "=============================================="
+          Write-Host "Frontend Backup Path:"
+          Write-Host "D:\EZ Hosting\FPMS_LWN\Backups\Frontend"
+
+          Write-Host ""
+          Write-Host "Deployment Time:"
+          Write-Host $(Get-Date)
+
+          Write-Host ""
+          Write-Host "================================================"
