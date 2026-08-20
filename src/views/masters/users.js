@@ -21,7 +21,7 @@ import { MENU_CONFIG } from '../menuConfig.js'
 import CIcon from '@coreui/icons-react'
 import usePrivilege from '../hooks/usePrivilege.js'
 import CreatableSelect from 'react-select/creatable'
-//usermaster
+
 
 // Small helper so we never hand toast a non-string (fixes "[object Object]" toasts)
 const getErrorMessage = (err, fallback) => {
