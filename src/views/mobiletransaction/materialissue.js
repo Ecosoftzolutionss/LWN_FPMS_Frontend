@@ -732,6 +732,7 @@ const MaterialIssue = () => {
       for (const row of confirmedRows) {
         await queuePendingIssue({
           palletId: row.palletId,
+          grnPalletId: row.palletId,
           itemId: row.itemId,
           quantity: row.qty,
           issuedTo: issuedTo.trim(),

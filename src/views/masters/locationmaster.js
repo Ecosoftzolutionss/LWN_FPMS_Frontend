@@ -985,11 +985,16 @@ const LocationMaster = () => {
                                       const occ = occupancyMap.get(key)
                                       const cls = occ ? (viewSide === 'front' ? 'occupied-front' : 'occupied-rear') : 'available'
 
+                                      const tooltipText = occ
+                                        ? `${occ.palletNo ? occ.palletNo : 'Occupied'} — Qty ${occ.quantity}`
+                                        : 'Available'
+
                                       return (
                                         <span
                                           key={slotNumber}
                                           className={`rack-slot-box clickable ${cls}`}
-                                          title={occ ? `Qty: ${occ.quantity} — click to vacate` : 'Click to occupy'}
+                                          data-tooltip={tooltipText}
+                                          data-tooltip-type={occ ? 'occupied' : 'available'}
                                           onClick={() => handleSlotClick(row, slotNumber, viewSide)}
                                         >
                                           {buildSlotCode(col.columnNo, row.rowNo, slotNumber, viewSide)}
@@ -1020,7 +1025,7 @@ const LocationMaster = () => {
                   </div>
                 </div>
 
-              
+
               </>
             )}
           </CCardBody>

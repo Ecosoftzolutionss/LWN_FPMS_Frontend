@@ -104,7 +104,7 @@ const StoreMovement = () => {
     }
   }
 
-const loadRackSlots = async (itemId) => {
+  const loadRackSlots = async (itemId) => {
     try {
       const url = itemId
         ? `/StoreMovement/rack-slots?itemId=${itemId}`
@@ -154,6 +154,11 @@ const loadRackSlots = async (itemId) => {
 
   const isSlotOccupied = (row, slotNumber) =>
     row.occupiedSlots.some((o) => o.slotNumber === slotNumber && o.side === side)
+
+  const getOccupiedPalletNo = (row, slotNumber) => {
+    const match = row.occupiedSlots.find((o) => o.slotNumber === slotNumber && o.side === side)
+    return match?.palletNo || null
+  }
 
   const handleSelectSlot = async (rackRowId, slotNumber) => {
     if (!activePallet) {
@@ -566,8 +571,13 @@ const loadRackSlots = async (itemId) => {
                                     <div className="sm-rack-row-slots">
                                       {slotNumbers.map((slotNumber) => {
                                         const occupied = isSlotOccupied(row, slotNumber)
+                                        const occupiedPalletNo = occupied ? getOccupiedPalletNo(row, slotNumber) : null
                                         const isSelected =
                                           selectedSlot?.rackRowId === row.id && selectedSlot?.slotNumber === slotNumber
+
+                                        const tooltipText = occupied
+                                          ? `Occupied — ${occupiedPalletNo || 'Unknown Pallet'}`
+                                          : 'Available'
 
                                         return (
                                           <button
@@ -575,6 +585,8 @@ const loadRackSlots = async (itemId) => {
                                             type="button"
                                             className={`sm-slot-btn ${occupied ? 'occupied' : 'available'} ${isSelected ? 'selected' : ''}`}
                                             disabled={occupied}
+                                            data-tooltip={tooltipText}
+                                            data-tooltip-type={occupied ? 'occupied' : 'available'}
                                             onClick={() => handleSelectSlot(row.id, slotNumber)}
                                           >
                                             {isSelected && <FaCheckCircle size={10} />} {col.columnNo}-{row.rowNo}-{slotNumber}

@@ -755,3 +755,66 @@
   gap: 10px;
   margin-top: 16px;
 }
+
+/* Custom slot tooltip — replaces the native browser title tooltip */
+.sm-slot-btn {
+  position: relative;
+}
+
+.sm-slot-btn[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;                      /* was 50% */
+  transform: translateY(4px);   /* removed translateX(-50%) */
+  white-space: nowrap;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  z-index: 50;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+  max-width: 160px;
+}
+
+.sm-slot-btn[data-tooltip]::before {
+  content: '';
+  position: absolute;
+  bottom: calc(100% + 3px);
+  left: 12px;                   /* was 50% */
+  transform: translateY(4px);   /* removed translateX(-50%) */
+  border: 5px solid transparent;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  z-index: 50;
+}
+
+.sm-slot-btn[data-tooltip]:hover::after,
+.sm-slot-btn[data-tooltip]:hover::before {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+
+/* Color by state */
+.sm-slot-btn[data-tooltip-type="available"]::after {
+  background-color: #16a34a; /* green */
+}
+.sm-slot-btn[data-tooltip-type="available"]::before {
+  border-top-color: #16a34a;
+}
+
+.sm-slot-btn[data-tooltip-type="occupied"]::after {
+  background-color: #dc2626; /* red */
+}
+.sm-slot-btn[data-tooltip-type="occupied"]::before {
+  border-top-color: #dc2626;
+}

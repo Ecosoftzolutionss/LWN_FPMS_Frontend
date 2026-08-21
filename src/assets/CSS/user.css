@@ -507,3 +507,47 @@
     margin-top: 40px;
   }
 }
+
+
+/* =========================================================
+   DATATABLE PAGINATION - SIDEBAR THEME COLOR
+   ========================================================= */
+
+.rdt_Pagination {
+    color: #1f4278 !important;
+}
+
+/* First / Previous / Next / Last buttons */
+.rdt_Pagination button {
+    color: #1f4278 !important;
+    transition: all 0.2s ease;
+}
+
+/* Icon inside pagination buttons */
+.rdt_Pagination button svg {
+    fill: currentColor !important;
+}
+
+/* Hover */
+.rdt_Pagination button:not(:disabled):hover {
+    color: #ffffff !important;
+    background-color: #1f4278 !important;
+    border-radius: 5px;
+}
+
+/* Disabled buttons */
+.rdt_Pagination button:disabled {
+    color: #c5ccd6 !important;
+    background-color: transparent !important;
+    cursor: not-allowed;
+}
+
+/* Rows per page text */
+.rdt_Pagination select {
+    color: #1f4278 !important;
+}
+
+/* Page count text: 1-3 of 3 */
+.rdt_Pagination > div {
+    color: #1f4278;
+}

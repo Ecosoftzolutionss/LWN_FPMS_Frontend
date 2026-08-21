@@ -19,6 +19,7 @@ import {
   queuePendingVerification,
   getAllPendingVerifications,
   getAllVerifiedIds,
+  getAllPalletStatus,
 } from './offlineDb';
 
 // ==========================================
@@ -81,7 +82,11 @@ const StoreVerification = () => {
 
   const [saving, setSaving] = useState(false);
 
+
   const scanInputRef = useRef(null);
+
+
+  const [palletStatus, setPalletStatus] = useState([]);
 
   useEffect(() => {
     const loadPallets = async () => {
@@ -96,10 +101,19 @@ const StoreVerification = () => {
     };
     loadPallets();
 
-    // FIX: combine BOTH sources — unsynced local queue AND the
-    // server-confirmed cache. Previously only the local queue was
-    // read, so a pallet became re-scannable the moment it synced
-    // and its local record was removed.
+    // NEW — broader status cache (in-stock + issued), used to give a
+    // precise rejection reason instead of a generic "not found" when
+    // a scanned pallet has already been issued out.
+    const loadPalletStatus = async () => {
+      try {
+        const cached = await getAllPalletStatus();
+        setPalletStatus(cached);
+      } catch (err) {
+        console.error('Failed to load pallet status cache:', err);
+      }
+    };
+    loadPalletStatus();
+
     const loadAlreadyVerified = async () => {
       try {
         const [pending, syncedIds] = await Promise.all([
@@ -236,13 +250,29 @@ const StoreVerification = () => {
     }
 
     if (!match) {
+
+      // Not in the in-stock list — check the broader status cache before
+      // giving up, so an issued pallet gets an accurate reason instead
+      // of the generic "not found" message.
+      const statusMatch = palletStatus.find((p) =>
+        (scannedPalletNo && p.palletNo === scannedPalletNo) ||
+        (scannedFifoNo && p.fifoPalletNo === scannedFifoNo)
+      );
+
+      if (statusMatch && statusMatch.status === 'ISSUED') {
+        reject(
+          `Pallet ${statusMatch.palletNo} (GRN ${statusMatch.grnNo || '—'}) has already been issued out ` +
+          `and is no longer in the warehouse. It cannot be verified.`
+        );
+        return;
+      }
+
       reject(
         `Pallet "${scannedPalletNo || scannedFifoNo}" was not found in synced data. This GRN may not ` +
         `exist, may not be posted/stuffed yet, or hasn't been synced to this device. Run Data Sync and try again.`
       );
       return;
     }
-
     if (scannedGrn && match.grnNo && String(match.grnNo) !== String(scannedGrn)) {
       reject(`Pallet ${match.palletNo} belongs to GRN ${match.grnNo}, not ${scannedGrn} — scan rejected. Check the label.`);
       return;
@@ -406,8 +436,8 @@ const StoreVerification = () => {
             {scanState === 'error'
               ? scannedError
               : scanState === 'success'
-              ? `${result.palletNo} — GRN ${result.grnNo}`
-              : 'Scanned value will appear here'}
+                ? `${result.palletNo} — GRN ${result.grnNo}`
+                : 'Scanned value will appear here'}
           </div>
 
         </div>
@@ -431,8 +461,8 @@ const StoreVerification = () => {
               {isMatched
                 ? 'Label verified against synced data. You can save now.'
                 : scanState === 'error'
-                ? scannedError
-                : 'Please scan the GRN label to verify.'}
+                  ? scannedError
+                  : 'Please scan the GRN label to verify.'}
             </div>
           </div>
         </div>
@@ -451,9 +481,7 @@ const StoreVerification = () => {
       </div>
 
     </div>
-
   );
-
 };
 
 export default StoreVerification;
