@@ -1127,3 +1127,70 @@
 .modal-footer {
   border-top: 1px solid #eef1f8;
 }
+
+
+.rack-slot-box {
+  position: relative;
+}
+
+.rack-slot-box[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  transform: translateY(4px);
+  white-space: nowrap;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  z-index: 50;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+  max-width: 180px;
+}
+
+.rack-slot-box[data-tooltip]::before {
+  content: '';
+  position: absolute;
+  bottom: calc(100% + 3px);
+  left: 12px;
+  transform: translateY(4px);
+  border: 5px solid transparent;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  z-index: 50;
+}
+
+.rack-slot-box[data-tooltip]:hover::after,
+.rack-slot-box[data-tooltip]:hover::before {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.rack-slot-box[data-tooltip-type="available"]::after {
+  background-color: #16a34a;
+}
+.rack-slot-box[data-tooltip-type="available"]::before {
+  border-top-color: #16a34a;
+}
+
+.rack-slot-box[data-tooltip-type="occupied"]::after {
+  background-color: #dc2626;
+}
+.rack-slot-box[data-tooltip-type="occupied"]::before {
+  border-top-color: #dc2626;
+}
+
+.rack-preview-column,
+.rack-preview-row,
+.rack-preview-outer {
+  overflow: visible;
+}

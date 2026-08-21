@@ -227,7 +227,7 @@ const MaterialIssueSlip = () => {
             cell: row => (
 
                 <div className="mis-action-wrapper">
-{/* 
+                    {/* 
                     <CButton
                         className="mis-edit-btn"
                         title="View Material Issue Slip"
@@ -389,25 +389,25 @@ const MaterialIssueSlip = () => {
                     TITLE
                 ============================== */}
 
-                      <div className="slip-title">
+                                <div className="slip-title">
 
-    <div className="leewon-brand">
-        <img
-            src="/GLOVIS.png"
-            alt="LEEWON Logo"
-            className="leewon-logo"
-        />
+                                    <div className="leewon-brand">
+                                        <img
+                                            src="/GLOVIS.png"
+                                            alt="LEEWON Logo"
+                                            className="leewon-logo"
+                                        />
 
-        <span className="leewon-text">
-            LEEWON
-        </span>
-    </div>
+                                        <span className="leewon-text">
+                                            LEEWON
+                                        </span>
+                                    </div>
 
-    <span className="slip-heading">
-        MATERIAL ISSUE SLIP
-    </span>
+                                    <span className="slip-heading">
+                                        MATERIAL ISSUE SLIP
+                                    </span>
 
-</div>
+                                </div>
 
 
                                 {/* ==============================
@@ -484,89 +484,89 @@ const MaterialIssueSlip = () => {
                     FROM / TO
                 ============================== */}
 
-                              <div className="from-to">
+                                <div className="from-to">
 
-    {/* ==============================
+                                    {/* ==============================
         FROM - BILLING ADDRESS
     ============================== */}
 
-    <div className="from-to-box">
+                                    <div className="from-to-box">
 
-        <strong>
-            FROM
-        </strong>
+                                        <strong>
+                                            FROM
+                                        </strong>
 
-        <div className="address-content">
+                                        <div className="address-content">
 
-            <div>
-                <strong>
-                    {selectedSlip.supplier?.billingCompanyName ||
-                        selectedSlip.supplier?.supplierName ||
-                        '—'}
-                </strong>
-            </div>
-            <div>
-                {selectedSlip.supplier?.billingAddressLine1 || ''}
-            </div>
-            {selectedSlip.supplier?.billingAddressLine2 && (
-                <div>
-                    {selectedSlip.supplier.billingAddressLine2}
-                </div>
-            )}
-            <div>
-                {selectedSlip.supplier?.billingState || ''}
-                {selectedSlip.supplier?.billingStateCode
-                    ? ` - ${selectedSlip.supplier.billingStateCode}`
-                    : ''}
-            </div>
-            <div>
-                PIN: {selectedSlip.supplier?.billingPinCode || '—'}
-            </div>
-            {selectedSlip.supplier?.gstNo && (
-                <div>
-                    GSTIN: {selectedSlip.supplier.gstNo}
-                </div>
-            )}
-        </div>
-    </div>
+                                            <div>
+                                                <strong>
+                                                    {selectedSlip.supplier?.billingCompanyName ||
+                                                        selectedSlip.supplier?.supplierName ||
+                                                        '—'}
+                                                </strong>
+                                            </div>
+                                            <div>
+                                                {selectedSlip.supplier?.billingAddressLine1 || ''}
+                                            </div>
+                                            {selectedSlip.supplier?.billingAddressLine2 && (
+                                                <div>
+                                                    {selectedSlip.supplier.billingAddressLine2}
+                                                </div>
+                                            )}
+                                            <div>
+                                                {selectedSlip.supplier?.billingState || ''}
+                                                {selectedSlip.supplier?.billingStateCode
+                                                    ? ` - ${selectedSlip.supplier.billingStateCode}`
+                                                    : ''}
+                                            </div>
+                                            <div>
+                                                PIN: {selectedSlip.supplier?.billingPinCode || '—'}
+                                            </div>
+                                            {selectedSlip.supplier?.gstNo && (
+                                                <div>
+                                                    GSTIN: {selectedSlip.supplier.gstNo}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
 
 
-    {/* ==============================
+                                    {/* ==============================
         TO - SHIPPING ADDRESS
     ============================== */}
 
-    <div className="from-to-box">
-        <strong>
-            TO
-        </strong>
-        <div className="address-content">
-            <div>
-                <strong>
-                    {selectedSlip.supplier?.shippingCompanyName ||
-                        selectedSlip.supplier?.supplierName ||
-                        '—'}
-                </strong>
-            </div>
-            <div>
-                {selectedSlip.supplier?.shippingAddressLine1 || ''}
-            </div>
-            {selectedSlip.supplier?.shippingAddressLine2 && (
-                <div>
-                    {selectedSlip.supplier.shippingAddressLine2}
-                </div>
-            )}
-            <div>
-                {selectedSlip.supplier?.shippingState || ''}
-                {selectedSlip.supplier?.shippingStateCode
-                    ? ` - ${selectedSlip.supplier.shippingStateCode}`
-                    : ''}
-            </div>
-            <div>
-                PIN: {selectedSlip.supplier?.shippingPinCode || '—'}
-            </div>
-        </div>
-    </div>
-</div>
+                                    <div className="from-to-box">
+                                        <strong>
+                                            TO
+                                        </strong>
+                                        <div className="address-content">
+                                            <div>
+                                                <strong>
+                                                    {selectedSlip.supplier?.shippingCompanyName ||
+                                                        selectedSlip.supplier?.supplierName ||
+                                                        '—'}
+                                                </strong>
+                                            </div>
+                                            <div>
+                                                {selectedSlip.supplier?.shippingAddressLine1 || ''}
+                                            </div>
+                                            {selectedSlip.supplier?.shippingAddressLine2 && (
+                                                <div>
+                                                    {selectedSlip.supplier.shippingAddressLine2}
+                                                </div>
+                                            )}
+                                            <div>
+                                                {selectedSlip.supplier?.shippingState || ''}
+                                                {selectedSlip.supplier?.shippingStateCode
+                                                    ? ` - ${selectedSlip.supplier.shippingStateCode}`
+                                                    : ''}
+                                            </div>
+                                            <div>
+                                                PIN: {selectedSlip.supplier?.shippingPinCode || '—'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
 
 
                                 {/* ==============================
@@ -701,7 +701,6 @@ const MaterialIssueSlip = () => {
                             </div>
 
                         </>
-
                     )}
 
                 </CModalBody>

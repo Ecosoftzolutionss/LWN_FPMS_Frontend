@@ -60,6 +60,11 @@ if (!db.objectStoreNames.contains('verifiedPalletIds')) {
  if (!db.objectStoreNames.contains('localVerifiedPallets')) {
         db.createObjectStore('localVerifiedPallets', { keyPath: 'palletId' })
       }
+
+      // bump DB_VERSION and add the store in onupgradeneeded, alongside the others:
+if (!db.objectStoreNames.contains('palletStatusCache')) {
+  db.createObjectStore('palletStatusCache', { keyPath: 'id' })
+}
     }
 
     request.onsuccess = () => resolve(request.result)
@@ -243,3 +248,27 @@ export const clearLocalVerifiedPallets = async () => {
     tx.onerror = () => reject(tx.error)
   })
 }
+
+export const replacePalletStatusCache = async (pallets) => {
+  const db = await openDB()
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('palletStatusCache', 'readwrite')
+    const store = tx.objectStore('palletStatusCache')
+    store.clear()
+    pallets
+      .filter((p) => p.id !== undefined && p.id !== null)
+      .forEach((p) => store.put(p))
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+  })
+}
+
+export const getAllPalletStatus = () =>
+  new Promise(async (resolve, reject) => {
+    const db = await openDB()
+    const tx = db.transaction('palletStatusCache', 'readonly')
+    const store = tx.objectStore('palletStatusCache')
+    const request = store.getAll()
+    request.onsuccess = () => resolve(request.result || [])
+    request.onerror = () => reject(request.error)
+  })

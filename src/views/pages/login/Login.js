@@ -567,7 +567,7 @@ const Login = () => {
             </span>
 
             <span className="lg-build">
-              Build Date:25-06-2026
+              Build Date:25-08-2026
             </span>
 
           </div>

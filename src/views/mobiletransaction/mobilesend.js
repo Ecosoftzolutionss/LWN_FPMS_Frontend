@@ -28,6 +28,7 @@ import {
   countPendingVerifications,
   clearAllPendingVerifications,
   replaceVerifiedIdsCache,
+  replacePalletStatusCache, 
 } from './offlineDb';
 
 // ==========================================
@@ -154,6 +155,43 @@ const Mobility = () => {
       );
 
       for (const issue of pendingIssues) {
+
+        // Refresh the broader pallet-status cache (in-stock + issued), used
+// by Store Verification to give an accurate reason when a scanned
+// pallet isn't in the "available" list — e.g. because it was
+// already issued out, rather than never existing at all.
+try {
+
+  const statusRes = await API.get(
+    '/StoreMovement/all-pallets-status'
+  );
+
+  const statusPallets =
+    Array.isArray(statusRes.data)
+      ? statusRes.data
+      : [];
+
+  console.log(
+    '[DATA SYNC] Downloaded pallet status records:',
+    statusPallets.length
+  );
+
+  await replacePalletStatusCache(statusPallets);
+
+} catch (err) {
+
+  console.error(
+    '[DATA SYNC] Pallet status download failed:',
+    {
+      status: err?.response?.status,
+      responseData: err?.response?.data,
+      message: err?.message
+    }
+  );
+
+  // Same reasoning as the other downloads — don't let this failure
+  // undo successfully uploaded/downloaded data.
+}
         try {
 
           const {
