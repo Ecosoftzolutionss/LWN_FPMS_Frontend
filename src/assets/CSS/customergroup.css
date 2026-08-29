@@ -289,7 +289,7 @@
 }
 
 .customer-group-page .rdt_TableRow {
-  min-height: 56px !important;
+  min-height: 38px !important;
 }
 
 .customer-group-page .rdt_TableRow:nth-child(even) {

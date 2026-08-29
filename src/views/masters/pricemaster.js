@@ -151,11 +151,24 @@ const PriceMaster = () => {
       temp.rate = 'Rate must be greater than 0'
     }
 
-    if (!form.effectiveDate) temp.effectiveDate = 'Effective Date is required'
+    if (!form.effectiveDate) {
+      temp.effectiveDate = 'Effective Date is required'
+    } else if (form.effectiveDate < getTodayDate()) {
+      temp.effectiveDate = 'Effective Date cannot be a past date'
+    }
 
     setErrors(temp)
 
     return !Object.values(temp).some((x) => x)
+  }
+
+  const getTodayDate = () => {
+    const today = new Date()
+    const year = today.getFullYear()
+    const month = String(today.getMonth() + 1).padStart(2, '0')
+    const day = String(today.getDate()).padStart(2, '0')
+
+    return `${year}-${month}-${day}`
   }
 
   const handleSubmit = async () => {
@@ -179,7 +192,6 @@ const PriceMaster = () => {
 
       await loadPrices()
       resetForm()
-      setShowForm(false)
     } catch (err) {
       toast.error(getErrorMessage(err, 'Save Failed'))
     }
@@ -408,13 +420,27 @@ const PriceMaster = () => {
                 </label>
                 <CFormInput
                   ref={rateRef}
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
                   name="rate"
                   placeholder="Enter Rate"
                   value={form.rate}
                   className={errors.rate ? 'error-input' : ''}
                   onChange={(e) => {
-                    setForm({ ...form, rate: e.target.value })
+                    const value = e.target.value.replace(/[^0-9.]/g, '')
+
+                    // Allow only one decimal point
+                    const parts = value.split('.')
+                    const validValue =
+                      parts.length > 2
+                        ? `${parts[0]}.${parts.slice(1).join('')}`
+                        : value
+
+                    setForm((prev) => ({
+                      ...prev,
+                      rate: validValue,
+                    }))
+
                     clearError('rate')
                   }}
                 />
@@ -429,7 +455,13 @@ const PriceMaster = () => {
                   type="date"
                   name="effectiveDate"
                   value={form.effectiveDate}
+                  min={getTodayDate()}
                   className={errors.effectiveDate ? 'error-input' : ''}
+                  onClick={(e) => {
+                    if (e.target.showPicker) {
+                      e.target.showPicker()
+                    }
+                  }}
                   onChange={(e) => {
                     setForm({ ...form, effectiveDate: e.target.value })
                     clearError('effectiveDate')

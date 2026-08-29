@@ -289,7 +289,7 @@
 }
 
 .supplier-group-page .rdt_TableRow {
-  min-height: 56px !important;
+  min-height: 38px !important;
 }
 
 .supplier-group-page .rdt_TableRow:nth-child(even) {

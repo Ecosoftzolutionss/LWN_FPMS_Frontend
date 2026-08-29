@@ -250,7 +250,6 @@ const CustomerMaster = () => {
 
       await loadCustomers()
       resetForm()
-      setShowForm(false)
     } catch (err) {
       toast.error(getErrorMessage(err, 'Save Failed'))
     }
@@ -330,14 +329,15 @@ const CustomerMaster = () => {
     }
   }
 
-  const filteredCustomers = customers.filter(
-    (c) =>
-      (c.customerName || '').toLowerCase().includes(search.toLowerCase()) ||
-      (c.customerCode || '').toLowerCase().includes(search.toLowerCase()) ||
-      (c.customerDivision || '').toLowerCase().includes(search.toLowerCase()) ||
-      (c.emailId || '').toLowerCase().includes(search.toLowerCase()) ||
-      (c.gstNo || '').toLowerCase().includes(search.toLowerCase()),
-  )
+ const filteredCustomers = customers.filter(
+  (c) =>
+    (c.customerName || '').toLowerCase().includes(search.toLowerCase()) ||
+    (c.customerCode || '').toLowerCase().includes(search.toLowerCase()) ||
+    (c.customerDivision || '').toLowerCase().includes(search.toLowerCase()) ||
+    (c.mobileNumber || '').toString().includes(search.trim()) ||
+    (c.emailId || '').toLowerCase().includes(search.toLowerCase()) ||
+    (c.gstNo || '').toLowerCase().includes(search.toLowerCase()),
+)
 
   const TooltipCell = ({ value }) => {
     if (value === null || value === undefined || value === '') return <span>—</span>
@@ -562,7 +562,7 @@ const CustomerMaster = () => {
             <div className="table-title">Customer List</div>
 
             <CFormInput
-              placeholder="Search..."
+             placeholder="Search by Customer ID, Name, Mobile Number..."
               className="search-box"
               style={{ width: '320px' }}
               onChange={(e) => setSearch(e.target.value)}

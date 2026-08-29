@@ -7,6 +7,7 @@ import { toast } from 'react-toastify'
 import Select from 'react-select'
 import API from '../../api.js'
 import '../../assets/CSS/grnEntry.css'
+import usePrivilege from '../hooks/usePrivilege.js'
 
 const GRN_TYPE_OPTIONS = [
   { value: 'Regular', label: 'Regular' },
@@ -70,15 +71,20 @@ const GRNEntry = () => {
   // backend reseeds the counter from that value so future GRNs continue
   // from there.
   const [editGrnNo, setEditGrnNo] = useState(false)
+  const { privileges: userPrivileges = [] } = usePrivilege()
+ const grnPrivilege =
+  userPrivileges.find((p) => p.menuName === 'GRN Entry') || {}
 
-const getCurrentUsername = () => {
-  try {
-    const user = JSON.parse(sessionStorage.getItem('user') || '{}')
-    return user?.username || ''
-  } catch {
-    return ''
+const canEditGRN = grnPrivilege.canEdit === true
+
+  const getCurrentUsername = () => {
+    try {
+      const user = JSON.parse(sessionStorage.getItem('user') || '{}')
+      return user?.username || ''
+    } catch {
+      return ''
+    }
   }
-}
 
   useEffect(() => {
     loadItems()
@@ -182,9 +188,9 @@ const getCurrentUsername = () => {
     }
   }
 
- const loadItems = async () => {
+  const loadItems = async () => {
     try {
-      const res = await API.get('/StoreMaster/configured-parts')   
+      const res = await API.get('/StoreMaster/configured-parts')
       setItems(res.data || [])
     } catch {
       toast.error('Failed to load part numbers')
@@ -235,6 +241,10 @@ const getCurrentUsername = () => {
   // field and clears the current value so the user types a fresh one;
   // turning it off restores the last auto-generated preview value.
   const handleToggleEditGrnNo = async (checked) => {
+    if (!canEditGRN) {
+      toast.error('You do not have permission to edit GRN No')
+      return
+    }
     setEditGrnNo(checked)
     clearError('grnNo')
 
@@ -256,8 +266,9 @@ const getCurrentUsername = () => {
 
   // Field is editable whenever the counter hasn't been seeded yet
   // (first-ever GRN) OR the user has explicitly ticked "Edit GRN No".
-  const grnNoEditable = grnNoIsManual || editGrnNo
-
+ const grnNoEditable =
+  canEditGRN && (grnNoIsManual || editGrnNo)
+  
   const validateAdd = () => {
     const temp = {}
 
@@ -571,7 +582,7 @@ const getCurrentUsername = () => {
               {errors.grnNo && <small className="text-danger">{errors.grnNo}</small>}
 
               {/* Checkbox to unlock GRN No even once auto-generation is active */}
-              {!grnNoIsManual && !isEditMode && (
+              {!grnNoIsManual && !isEditMode && canEditGRN && (
                 <div className="mt-1">
                   <CFormCheck
                     id="editGrnNoCheck"
@@ -615,7 +626,14 @@ const getCurrentUsername = () => {
                 placeholder="Enter PO Number"
                 value={header.poNumber}
                 className={errors.poNumber ? 'error-input' : ''}
-                onChange={handleHeaderChange}
+                onChange={(e) =>
+                  handleHeaderChange({
+                    target: {
+                      name: 'poNumber',
+                      value: e.target.value.replace(/[^a-zA-Z0-9]/g, ''),
+                    },
+                  })
+                }
               />
               {errors.poNumber && <small className="text-danger">{errors.poNumber}</small>}
             </CCol>
@@ -787,7 +805,7 @@ const getCurrentUsername = () => {
               highlightOnHover
               noDataComponent={<div className="grn-empty-row">No parts added yet</div>}
               customStyles={{
-                rows: { style: { minHeight: '48px' } },
+                rows: { style: { minHeight: '38px' } },
                 headRow: { style: { backgroundColor: '#f1f4fa' } },
                 headCells: {
                   style: {

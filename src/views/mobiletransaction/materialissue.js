@@ -178,6 +178,13 @@ const MaterialIssue = () => {
 
   const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
 
+const handleLogout = () => {
+  sessionStorage.removeItem('user');
+  sessionStorage.removeItem('token');
+  window.dispatchEvent(new Event('authChange'));
+  navigate('/login', { replace: true });
+};
+
   const scanInputRef = useRef(null);
 
   useEffect(() => {
@@ -195,8 +202,6 @@ const MaterialIssue = () => {
 
     load();
 
-    // Seed the persistent duplicate guard from whatever's already
-    // queued locally (unsynced) — e.g. from before a page refresh.
     const loadAlreadyIssued = async () => {
       try {
         const pending = await getAllPendingIssues();
@@ -218,11 +223,7 @@ const MaterialIssue = () => {
     setTimeout(() => scanInputRef.current?.focus(), 50);
   };
 
-  // Pallets already used this session — checked across ALL THREE:
-  // Scanned Items, Confirmed Items, AND the persistent issuedPalletIds
-  // set (pallets already saved to local DB, even after their grid
-  // row was cleared). Keyed by the unique pallet `id`, not the
-  // recyclable palletNo label — see issuedPalletIds comment above.
+ 
   const usedPalletIds = useMemo(() => {
     const used = new Set();
     scannedRows.forEach((r) => { if (r.palletId !== undefined && r.palletId !== null) used.add(r.palletId); });
@@ -245,32 +246,37 @@ const MaterialIssue = () => {
     return totals;
 
   }, [pallets]);
+const handleSummaryCardClick = (typeKey) => {
+  if (typeKey === 'CHANGE_PART') return;
 
-  const handleSummaryCardClick = (typeKey) => {
+  const matches = pallets.filter(
+    (p) =>
+      (p.type || 'REGULAR').toUpperCase() === typeKey &&
+      !usedPalletIds.has(p.id)
+  );
 
-    // CHANGE_PART is a static counter card — it has no pallet pool
-    // and doesn't drive the queue/dropdown filtering below.
-    if (typeKey === 'CHANGE_PART') return;
-
-    const matches = pallets.filter(
-      (p) => (p.type || 'REGULAR').toUpperCase() === typeKey && !usedPalletIds.has(p.id)
-    );
-
-    const ordered = typeKey === 'REGULAR'
-      ? [...matches].sort((a, b) => new Date(a.movementDate) - new Date(b.movementDate))
+  const ordered =
+    typeKey === 'REGULAR'
+      ? [...matches].sort(
+          (a, b) =>
+            new Date(a.movementDate) - new Date(b.movementDate)
+        )
       : matches;
 
-    setActiveType(typeKey);
-    setQueue(ordered);
-    setQueueIndex(0);
+  setActiveType(typeKey);
+  setQueue(ordered);
+  setQueueIndex(0);
 
-    if (ordered.length > 0) {
-      applyPalletToForm(ordered[0]);
-    } else {
-      setForm(EMPTY_FORM);
-    }
-
-  };
+  // Do NOT auto-select the first part.
+  // User must manually select the Part.
+  setForm((f) => ({
+    ...f,
+    itemId: '',
+    storeLocation: '',
+    palletNo: '',
+    quantity: '',
+  }));
+};
 
   const applyPalletToForm = (pallet) => {
     setForm((f) => ({
@@ -498,7 +504,7 @@ const MaterialIssue = () => {
     // Catch that here with a specific reason instead of failing
     // confusingly later (e.g. NaN silently reaching the grid).
     if (scannedGrn !== undefined && scannedGrn !== null &&
-        typeof scannedGrn !== 'string' && typeof scannedGrn !== 'number') {
+      typeof scannedGrn !== 'string' && typeof scannedGrn !== 'number') {
       toast.error('Scanned code has an invalid GRN value.');
       resetScanInput();
       return;
@@ -947,7 +953,12 @@ const MaterialIssue = () => {
           </div>
         </div>
 
-        <button type="button" className="mi-icon-btn" aria-label="Logout">
+        <button
+          type="button"
+          className="mi-icon-btn"
+          aria-label="Logout"
+          onClick={handleLogout}
+        >
           <FaSignOutAlt />
         </button>
 

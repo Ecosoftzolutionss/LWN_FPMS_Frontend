@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { CButton, CForm, CFormInput } from '@coreui/react';
-import { v4 as uuidv4 } from 'uuid';
 
 import './Login.css';
 
@@ -18,7 +17,8 @@ const Login = () => {
 
   const navigate = useNavigate();
 
-  const [showPassword, setShowPassword] = useState(false);
+  const [showPassword, setShowPassword] =
+    useState(false);
 
   const [form, setForm] = useState({
     username: '',
@@ -42,34 +42,12 @@ const Login = () => {
 
     setForm((prev) => ({
       ...prev,
-      [name]: type === 'checkbox'
-        ? checked
-        : value,
+
+      [name]:
+        type === 'checkbox'
+          ? checked
+          : value,
     }));
-
-  };
-
-
-  // ==========================================
-  // Device ID
-  // ==========================================
-
-  const getDeviceId = () => {
-
-    let id = localStorage.getItem('deviceId');
-
-    if (!id) {
-
-      id = uuidv4();
-
-      localStorage.setItem(
-        'deviceId',
-        id
-      );
-
-    }
-
-    return id;
   };
 
 
@@ -81,12 +59,25 @@ const Login = () => {
 
     e.preventDefault();
 
+    console.log(
+      '[LOGIN] Checkbox:',
+      form.mobilityWithoutCheck
+    );
+
+    console.log(
+      '[LOGIN] Username:',
+      form.username
+    );
+
 
     // ========================================
-    // Validation
+    // BASIC VALIDATION
     // ========================================
 
-    if (!form.username || !form.password) {
+    if (
+      !form.username?.trim() ||
+      !form.password
+    ) {
 
       toast.error(
         'Please enter username & password'
@@ -96,156 +87,280 @@ const Login = () => {
     }
 
 
-    try {
+    // =========================================================
+    // MOBILITY LOGIN
+    //
+    // CHECKBOX UNCHECKED
+    //
+    // NO API
+    // NO DATABASE
+    // =========================================================
 
-      // ======================================
-      // Login Request
-      // ======================================
+    if (!form.mobilityWithoutCheck) {
 
-      const request = {
+      const MOBILITY_USERNAME = 'Store';
 
-        username: form.username,
-
-        password: form.password,
-
-        mobilityWithoutCheck:
-          form.mobilityWithoutCheck,
-
-        deviceId: getDeviceId(),
-
-      };
+      const MOBILITY_PASSWORD = 'Store@123';
 
 
-      const res = await API.post(
-        '/Auth/login',
-        request
-      );
+      // -----------------------------------------
+      // Validate Mobility credentials
+      // -----------------------------------------
 
-
-      // ======================================
-      // Already Logged In
-      // ======================================
-
-      if (res.data.alreadyLoggedIn) {
-
-        toast.warning(
-          res.data.message
-        );
-
-        return;
-      }
-
-
-      // ======================================
-      // Login Failed
-      // ======================================
-
-      if (!res.data.user) {
+      if (
+        form.username.trim() !==
+        MOBILITY_USERNAME ||
+        form.password !==
+        MOBILITY_PASSWORD
+      ) {
 
         toast.error(
-          res.data.message || 'Login Failed'
+          'Invalid username or password'
         );
 
         return;
       }
 
 
-      // ======================================
-      // User Data
-      // ======================================
+      // -----------------------------------------
+      // Mobility User
+      //
+      // IMPORTANT:
+      //
+      // Existing App.js contains:
+      //
+      // mobilityWithoutCheck !== true
+      //
+      // Therefore Mobility MUST be false.
+      // -----------------------------------------
 
-      const userData = {
+      const mobilityUser = {
 
-        id: res.data.user.id,
+        id: 999999,
 
-        username: res.data.user.userName,
+        username: 'Store',
 
-        departmentId:
-          res.data.user.departmentId,
+        departmentId: 0,
 
-        departmentName:
-          res.data.user.departmentName,
+        departmentName: 'Mobility',
 
-        gateId:
-          res.data.user.gateId,
+        gateId: 0,
 
-        sessionId:
-          res.data.sessionId,
-
-        // IMPORTANT
-        mobilityWithoutCheck:
-          form.mobilityWithoutCheck,
-
+        mobilityWithoutCheck: false,
       };
 
 
-      // ======================================
-      // Save User Session
-      // ======================================
+      // -----------------------------------------
+      // Save Mobility User
+      // -----------------------------------------
 
       sessionStorage.setItem(
         'user',
-        JSON.stringify(userData)
+        JSON.stringify(mobilityUser)
       );
 
 
-      // ======================================
-      // Notify App
-      // ======================================
+      // -----------------------------------------
+      // Notify App.js
+      // -----------------------------------------
 
       window.dispatchEvent(
-        new Event('storage')
+        new Event('authChange')
       );
 
 
-      // ======================================
-      // Success Message
-      // ======================================
+      // -----------------------------------------
+      // Success
+      // -----------------------------------------
 
       toast.success(
         'Login Successful'
       );
 
 
-      // ======================================
-      // Redirect
-      //
-      // Mobility Without Check = TRUE
-      //              ↓
-      //          Dashboard
-      //
-      // Mobility Without Check = FALSE
-      //              ↓
-      //          Mobile Send
-      // ======================================
+      // -----------------------------------------
+      // Go to Mobility Page
+      // -----------------------------------------
 
-      if (form.mobilityWithoutCheck) {
+      navigate(
+        '/m/send',
+        {
+          replace: true,
+        }
+      );
+
+
+      return;
+    }
+
+
+    // =========================================================
+    // NORMAL LOGIN
+    //
+    // CHECKBOX CHECKED
+    //
+    // API CALL
+    // =========================================================
+
+    if (form.mobilityWithoutCheck) {
+
+      try {
+
+        // -----------------------------------------
+        // API Request
+        // -----------------------------------------
+
+        const request = {
+
+          username:
+            form.username.trim(),
+
+          password:
+            form.password,
+        };
+
+
+        console.log(
+          '[LOGIN] Calling API:',
+          request
+        );
+
+
+        // -----------------------------------------
+        // API Call
+        // -----------------------------------------
+
+        const res =
+          await API.post(
+            '/Auth/login',
+            request
+          );
+
+
+        console.log(
+          '[LOGIN] API Response:',
+          res.data
+        );
+
+
+        // -----------------------------------------
+        // Validate API Response
+        // -----------------------------------------
+
+        if (!res.data?.user) {
+
+          toast.error(
+            res.data?.message ||
+            'Login Failed'
+          );
+
+          return;
+        }
+
+
+        // -----------------------------------------
+        // Normal User
+        //
+        // IMPORTANT:
+        //
+        // Existing App.js contains:
+        //
+        // mobilityWithoutCheck !== true
+        //
+        // For normal user:
+        //
+        // true !== true = false
+        //
+        // Therefore it goes Dashboard.
+        // -----------------------------------------
+
+        const userData = {
+
+          id:
+            res.data.user.id,
+
+          username:
+            res.data.user.userName,
+
+          employeeId:
+            res.data.user.employeeId,
+
+          userId:
+            res.data.user.userId,
+
+          departmentId:
+            res.data.user.departmentId,
+
+          departmentName:
+            res.data.user.departmentName,
+
+          gateId:
+            res.data.user.gateId,
+
+          mobilityWithoutCheck: true,
+        };
+
+
+        // -----------------------------------------
+        // Save Normal User
+        // -----------------------------------------
+
+        sessionStorage.setItem(
+          'user',
+          JSON.stringify(userData)
+        );
+
+
+        // -----------------------------------------
+        // Notify App.js
+        // -----------------------------------------
+
+        window.dispatchEvent(
+          new Event('authChange')
+        );
+
+        window.dispatchEvent(
+          new Event('storage')
+        );
+
+
+        // -----------------------------------------
+        // Success
+        // -----------------------------------------
+
+        toast.success(
+          'Login Successful'
+        );
+
+
+        // -----------------------------------------
+        // Go to Dashboard
+        // -----------------------------------------
 
         navigate(
           '/dashboard',
-          { replace: true }
+          {
+            replace: true,
+          }
         );
 
-      } else {
+      } catch (err) {
 
-        navigate(
-          '/m/send',
-          { replace: true }
+        console.error(
+          '[LOGIN] API Error:',
+          err
         );
 
+
+        toast.error(
+          err.response?.data?.message ||
+          err.message ||
+          'Login Failed'
+        );
       }
 
-
-    } catch (err) {
-
-      toast.error(
-        err.response?.data?.message ||
-        err.message ||
-        'Login Failed'
-      );
-
+      return;
     }
-
   };
 
 
@@ -256,10 +371,6 @@ const Login = () => {
   return (
 
     <div className="lg-root">
-
-      {/* ====================================
-          Left
-      ==================================== */}
 
       <div className="lg-left">
 
@@ -279,11 +390,6 @@ const Login = () => {
       <div className="lg-right">
 
         <div className="lg-card">
-
-
-          {/* ==================================
-              Login Icon
-          ================================== */}
 
           <div className="lg-icon-wrap">
 
@@ -331,24 +437,15 @@ const Login = () => {
           </div>
 
 
-          {/* ==================================
-              Title
-          ================================== */}
-
           <h2 className="lg-title">
             Sign in to continue to your account
           </h2>
 
 
-          {/* ==================================
-              Form
-          ================================== */}
-
           <CForm
             onSubmit={handleLogin}
             className="lg-form"
           >
-
 
             {/* =================================
                 Username
@@ -552,13 +649,8 @@ const Login = () => {
               Sign In
             </CButton>
 
-
           </CForm>
 
-
-          {/* ==================================
-              Footer
-          ================================== */}
 
           <div className="lg-footer-info">
 
@@ -572,15 +664,12 @@ const Login = () => {
 
           </div>
 
-
         </div>
 
       </div>
 
     </div>
-
   );
-
 };
 
 

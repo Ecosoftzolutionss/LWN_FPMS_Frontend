@@ -259,7 +259,7 @@ const StoreMovement = () => {
             highlightOnHover
             noDataComponent={<div className="sm-empty">No posted GRNs to display</div>}
             customStyles={{
-              rows: { style: { minHeight: '48px' } },
+              rows: { style: { minHeight: '38px' } },
               headRow: { style: { backgroundColor: '#f1f4fa' } },
               headCells: {
                 style: {

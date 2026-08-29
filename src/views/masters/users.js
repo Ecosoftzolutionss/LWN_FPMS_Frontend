@@ -92,6 +92,7 @@ const UserMaster = () => {
   const sessionUser = JSON.parse(sessionStorage.getItem('user') || 'null')
   const isAdminDepartment = sessionUser?.departmentName?.toUpperCase() === 'ADMIN'
 
+
   useEffect(() => {
     loadUsers()
     loadDepartments()
@@ -135,16 +136,16 @@ const UserMaster = () => {
     }
   }
 
-const handleChange = (e) => {
+  const handleChange = (e) => {
     const { name, value } = e.target;
 
     setForm((prev) => ({
-        ...prev,
-        [name]: value,
+      ...prev,
+      [name]: value,
     }));
 
     clearError(name);
-};
+  };
 
   const validate = () => {
     const temp = {
@@ -210,19 +211,19 @@ const handleChange = (e) => {
     // it's optional — only validated if the person actually typed
     // something into either field.
     // Password is mandatory for both Add and Edit
-  if (!form.password) {
-    temp.password = 'Password is required';
-}
+    if (!form.password) {
+      temp.password = 'Password is required';
+    }
 
-if (!form.confirmPassword) {
-    temp.confirmPassword = 'Confirm Password is required';
-} else if (form.password !== form.confirmPassword) {
-    temp.confirmPassword = 'Password mismatch';
-}
+    if (!form.confirmPassword) {
+      temp.confirmPassword = 'Confirm Password is required';
+    } else if (form.password !== form.confirmPassword) {
+      temp.confirmPassword = 'Password mismatch';
+    }
 
-console.log(temp);
+    console.log(temp);
 
-setErrors(temp);
+    setErrors(temp);
 
     return !Object.values(temp).some((x) => x)
   }
@@ -260,7 +261,6 @@ setErrors(temp);
 
       await loadUsers()
       resetForm()
-      setShowForm(false)
     } catch (err) {
       toast.error(getErrorMessage(err, 'Save Failed'))
     }
@@ -288,8 +288,8 @@ setErrors(temp);
             menuName: m.name,
             icon: m.icon,
             canView: existing?.canView || false,
-            canEdit: existing?.canEdit || false,
-            canDelete: existing?.canDelete || false,
+            canEdit: m.name === 'Reports' ? false : (existing?.canEdit || false),
+            canDelete: m.name === 'Reports' ? false : (existing?.canDelete || false),
           }
         })
       })
@@ -309,13 +309,13 @@ setErrors(temp);
       setShowForm(true)
 
       setForm({
-    userId: res.data.userId || '',
-    userName: res.data.userName || res.data.UserName || '',
-    employeeId: (res.data.employeeId || res.data.EmployeeId || '').toUpperCase(),
-    departmentId: res.data.departmentId || res.data.DepartmentId || '',
-    password: res.data.password || res.data.Password || '',
-    confirmPassword: res.data.password || res.data.Password || ''
-})
+        userId: res.data.userId || '',
+        userName: res.data.userName || res.data.UserName || '',
+        employeeId: (res.data.employeeId || res.data.EmployeeId || '').toUpperCase(),
+        departmentId: res.data.departmentId || res.data.DepartmentId || '',
+        password: res.data.password || res.data.Password || '',
+        confirmPassword: res.data.password || res.data.Password || ''
+      })
 
       setDepartmentInput(row.departmentName || '')
       setErrors({
@@ -336,6 +336,11 @@ setErrors(temp);
 
     const updated = [...privileges]
 
+    // Reports should have View access only
+    if (updated[index]?.menuName === 'Reports' && field !== 'canView') {
+      return
+    }
+
     if (field === 'all') {
       const val =
         !(updated[index].canView && updated[index].canEdit && updated[index].canDelete)
@@ -348,6 +353,8 @@ setErrors(temp);
       }
     } else if (field === 'canView') {
       updated[index].canView = !updated[index].canView
+      updated[index].canEdit = false
+      updated[index].canDelete = false
     } else if (field === 'canEdit') {
       updated[index].canEdit = !updated[index].canEdit
     } else if (field === 'canDelete') {
@@ -359,6 +366,16 @@ setErrors(temp);
 
   const handleHeaderChange = (field, value) => {
     const updated = privileges.map((p) => {
+      // Reports = View only
+      if (p.menuName === 'Reports') {
+        return {
+          ...p,
+          canView: field === 'canView' ? value : p.canView,
+          canEdit: false,
+          canDelete: false,
+        }
+      }
+
       if (field === 'all') {
         return {
           ...p,
@@ -901,6 +918,7 @@ setErrors(temp);
                         )
 
                         const cp = privileges[childIndex] || {}
+                        const isReports = child.name === 'Reports'
 
                         return (
                           <tr key={child.name}>
@@ -915,13 +933,15 @@ setErrors(temp);
                             </td>
 
                             <td>
-                              <input
-                                type="checkbox"
-                                checked={cp.canView && cp.canEdit && cp.canDelete}
-                                onChange={() =>
-                                  handlePrivilegeChange(childIndex, 'all')
-                                }
-                              />
+                              {!isReports && (
+                                <input
+                                  type="checkbox"
+                                  checked={cp.canView && cp.canEdit && cp.canDelete}
+                                  onChange={() =>
+                                    handlePrivilegeChange(childIndex, 'all')
+                                  }
+                                />
+                              )}
                             </td>
 
                             <td>
@@ -935,23 +955,27 @@ setErrors(temp);
                             </td>
 
                             <td>
-                              <input
-                                type="checkbox"
-                                checked={cp.canEdit || false}
-                                onChange={() =>
-                                  handlePrivilegeChange(childIndex, 'canEdit')
-                                }
-                              />
+                              {!isReports && (
+                                <input
+                                  type="checkbox"
+                                  checked={cp.canEdit || false}
+                                  onChange={() =>
+                                    handlePrivilegeChange(childIndex, 'canEdit')
+                                  }
+                                />
+                              )}
                             </td>
 
                             <td>
-                              <input
-                                type="checkbox"
-                                checked={cp.canDelete || false}
-                                onChange={() =>
-                                  handlePrivilegeChange(childIndex, 'canDelete')
-                                }
-                              />
+                              {!isReports && (
+                                <input
+                                  type="checkbox"
+                                  checked={cp.canDelete || false}
+                                  onChange={() =>
+                                    handlePrivilegeChange(childIndex, 'canDelete')
+                                  }
+                                />
+                              )}
                             </td>
                           </tr>
                         )
@@ -959,9 +983,9 @@ setErrors(temp);
                     </React.Fragment>
                   )
                 }
-
                 const index = privileges.findIndex((x) => x.menuName === menu.name)
                 const p = privileges[index] || {}
+                const isReports = menu.name === 'Reports'
 
                 return (
                   <tr key={menu.name}>
@@ -973,11 +997,13 @@ setErrors(temp);
                     </td>
 
                     <td>
-                      <input
-                        type="checkbox"
-                        checked={p.canView && p.canEdit && p.canDelete}
-                        onChange={() => handlePrivilegeChange(index, 'all')}
-                      />
+                      {!isReports && (
+                        <input
+                          type="checkbox"
+                          checked={p.canView && p.canEdit && p.canDelete}
+                          onChange={() => handlePrivilegeChange(index, 'all')}
+                        />
+                      )}
                     </td>
 
                     <td>
@@ -989,19 +1015,23 @@ setErrors(temp);
                     </td>
 
                     <td>
-                      <input
-                        type="checkbox"
-                        checked={p.canEdit || false}
-                        onChange={() => handlePrivilegeChange(index, 'canEdit')}
-                      />
+                      {!isReports && (
+                        <input
+                          type="checkbox"
+                          checked={p.canEdit || false}
+                          onChange={() => handlePrivilegeChange(index, 'canEdit')}
+                        />
+                      )}
                     </td>
 
                     <td>
-                      <input
-                        type="checkbox"
-                        checked={p.canDelete || false}
-                        onChange={() => handlePrivilegeChange(index, 'canDelete')}
-                      />
+                      {!isReports && (
+                        <input
+                          type="checkbox"
+                          checked={p.canDelete || false}
+                          onChange={() => handlePrivilegeChange(index, 'canDelete')}
+                        />
+                      )}
                     </td>
                   </tr>
                 )

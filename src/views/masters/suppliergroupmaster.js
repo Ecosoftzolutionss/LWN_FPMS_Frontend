@@ -75,7 +75,7 @@ const SupplierGroupMaster = () => {
   const [deleteId, setDeleteId] = useState(null)
   const [deleteGroup, setDeleteGroup] = useState(null)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
-    const { privileges: userPrivileges = [] } = usePrivilege()
+  const { privileges: userPrivileges = [] } = usePrivilege()
   const uPrivilege = userPrivileges.find((p) => p.menuName === 'Supplier Group Master') || {}
 
   useEffect(() => {
@@ -153,7 +153,6 @@ const SupplierGroupMaster = () => {
 
       await loadGroups()
       resetForm()
-      setShowForm(false)
     } catch (err) {
       toast.error(getErrorMessage(err, 'Save Failed'))
     }
@@ -236,23 +235,23 @@ const SupplierGroupMaster = () => {
       cell: (row) => (
         <div className="action-wrapper">
           {uPrivilege?.canEdit && (
-          <button className="table-action-btn edit-btn" title="Edit" onClick={() => handleEdit(row)}>
-            <FaEdit />
-          </button>
+            <button className="table-action-btn edit-btn" title="Edit" onClick={() => handleEdit(row)}>
+              <FaEdit />
+            </button>
           )}
           {uPrivilege?.canDelete && (
 
-          <button
-            className="table-action-btn delete-btn"
-            title="Delete"
-            onClick={() => {
-              setDeleteId(row.id)
-              setDeleteGroup(row)
-              setShowDeleteModal(true)
-            }}
-          >
-            <FaTrash />
-          </button>
+            <button
+              className="table-action-btn delete-btn"
+              title="Delete"
+              onClick={() => {
+                setDeleteId(row.id)
+                setDeleteGroup(row)
+                setShowDeleteModal(true)
+              }}
+            >
+              <FaTrash />
+            </button>
           )}
         </div>
       ),
@@ -307,7 +306,7 @@ const SupplierGroupMaster = () => {
 
               <CCol md={6}>
                 <label className="custom-label">
-                  <strong>Description</strong> <span className="required">*</span>
+                  <strong>Description</strong>
                 </label>
 
                 <CFormInput

@@ -160,7 +160,6 @@ const ItemGroupMaster = () => {
 
       await loadGroups()
       resetForm()
-      setShowForm(false)
     } catch (err) {
       toast.error(getErrorMessage(err, 'Save Failed'))
     }
@@ -246,15 +245,15 @@ const ItemGroupMaster = () => {
       name: 'DESCRIPTION',
       selector: (row) => row.description,
     },
-    {
-      name: 'STATUS',
-      center: true,
-      cell: (row) => (
-        <span className={row.isActive ? 'status-badge active' : 'status-badge inactive'}>
-          {row.isActive ? 'Active' : 'Inactive'}
-        </span>
-      ),
-    },
+    // {
+    //   name: 'STATUS',
+    //   center: true,
+    //   cell: (row) => (
+    //     <span className={row.isActive ? 'status-badge active' : 'status-badge inactive'}>
+    //       {row.isActive ? 'Active' : 'Inactive'}
+    //     </span>
+    //   ),
+    // },
     {
       name: 'ACTIONS',
       center: true,
@@ -334,7 +333,7 @@ const ItemGroupMaster = () => {
 
             <CRow className="g-3">
 
-              <CCol md={4}>
+              <CCol md={6}>
                 <label className="custom-label">
                   <strong>Group Name</strong> <span className="required">*</span>
                 </label>
@@ -353,7 +352,7 @@ const ItemGroupMaster = () => {
                 )}
               </CCol>
 
-              <CCol md={4}>
+              <CCol md={6}>
                 <label className="custom-label">
                   <strong>Description</strong>
                 </label>

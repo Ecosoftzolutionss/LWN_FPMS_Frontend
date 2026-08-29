@@ -383,7 +383,7 @@ const getCurrentUsername = () => {
           onRowClicked={handleView}
           noDataComponent={<div className="grn-post-empty">No records to display</div>}
           customStyles={{
-            rows: { style: { minHeight: '48px' } },
+            rows: { style: { minHeight: '38px' } },
             headRow: {
               style: {
                 backgroundColor: '#f1f4fa',
@@ -511,7 +511,7 @@ const getCurrentUsername = () => {
                 highlightOnHover
                 noDataComponent={<div className="grn-post-empty">No items on this GRN</div>}
                 customStyles={{
-                  rows: { style: { minHeight: '48px' } },
+                  rows: { style: { minHeight: '38px' } },
                   headRow: { style: { backgroundColor: '#f1f4fa' } },
                   headCells: {
                     style: {
