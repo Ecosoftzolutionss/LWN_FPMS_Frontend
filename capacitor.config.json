@@ -1,0 +1,8 @@
+{
+  "appId": "com.ecosoft.fpms",
+  "appName": "FPMS",
+  "webDir": "build",
+  "server": {
+    "androidScheme": "http"
+  }
+}

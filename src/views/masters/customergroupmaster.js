@@ -149,7 +149,6 @@ const CustomerGroupMaster = () => {
 
       await loadGroups()
       resetForm()
-      setShowForm(false)
     } catch (err) {
       toast.error(getErrorMessage(err, 'Save Failed'))
     }
@@ -299,7 +298,7 @@ const CustomerGroupMaster = () => {
 
               <CCol md={6}>
                 <label className="custom-label">
-                  <strong>Description</strong> <span className="required">*</span>
+                  <strong>Description</strong> 
                 </label>
 
                 <CFormInput

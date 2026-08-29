@@ -29,7 +29,7 @@ const routes = [
   { path: '/masters/users', name: 'User Master', element: Users },
   { path: '/masters/Itemgroupmaster', name: 'Item Group Master', element: ItemGroupMaster },
   { path: '/masters/Itemmaster', name: 'Item Master', element: ItemMaster },
-  { path: '/masters/suppliermaster', name: 'Supplier Group Master', element: SupplierMaster},
+  { path: '/masters/suppliermaster', name: 'Supplier Master', element: SupplierMaster},
   { path: '/masters/suppliergroupmaster', name: 'Supplier Group Master', element: SupplierGroupMaster},
   { path: '/masters/customergroupmaster', name: 'Customer Group Master', element: CustomerGroupMaster },
   { path: '/masters/customermaster', name: 'Customer Master', element: CustomerMaster },

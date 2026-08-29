@@ -652,14 +652,6 @@ const Reports = () => {
               />
             </div>
 
-            {/* ==========================================
-                CHECKBOX FILTERS
-                Inward / Outward / Closed = row filters (OR'd
-                together). Rate / Value = column visibility
-                toggles only, they never remove rows.
-            ========================================== */}
-            
-
             <div className="reports-filter-field">
               <label className="custom-label">
                 Item Group-wise Report

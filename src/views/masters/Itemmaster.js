@@ -59,37 +59,37 @@ const getErrorMessage = (err, fallback) => {
 }
 
 const ItemMaster = () => {
-  const itemNameRef = useRef()
+  const itemNumberRef = useRef()
 
- const customStyles = {
-  rows: {
-    style: {
-      minHeight: '34px',
+  const customStyles = {
+    rows: {
+      style: {
+        minHeight: '34px',
+      },
     },
-  },
 
-  headCells: {
-    style: {
-      justifyContent: 'center',
-      fontSize: '13px',
-      fontWeight: '700',
-      paddingTop: '6px',
-      paddingBottom: '6px',
-      whiteSpace: 'normal',
-      overflow: 'visible',
-      textOverflow: 'clip',
+    headCells: {
+      style: {
+        justifyContent: 'center',
+        fontSize: '13px',
+        fontWeight: '700',
+        paddingTop: '6px',
+        paddingBottom: '6px',
+        whiteSpace: 'normal',
+        overflow: 'visible',
+        textOverflow: 'clip',
+      },
     },
-  },
 
-  cells: {
-    style: {
-      justifyContent: 'center',
-      fontSize: '13px',
-      paddingTop: '0px',
-      paddingBottom: '0px',
+    cells: {
+      style: {
+        justifyContent: 'center',
+        fontSize: '13px',
+        paddingTop: '0px',
+        paddingBottom: '0px',
+      },
     },
-  },
-}
+  }
 
   const [items, setItems] = useState([])
   const [itemGroups, setItemGroups] = useState([])
@@ -100,6 +100,7 @@ const ItemMaster = () => {
   // come from GET /ItemMaster/uom-list; the value is stored as a plain
   // string on form.uom (ItemMaster.Uom is a string column, not a FK).
   const [uomOptions, setUomOptions] = useState([])
+  const [uomInputValue, setUomInputValue] = useState('')
 
   const [showForm, setShowForm] = useState(false)
 
@@ -135,7 +136,7 @@ const ItemMaster = () => {
   useEffect(() => {
     if (showForm) {
       setTimeout(() => {
-        itemNameRef.current?.focus()
+        itemNumberRef.current?.focus()
       }, 200)
     }
   }, [showForm])
@@ -283,7 +284,6 @@ const ItemMaster = () => {
       await loadItemTypes()
       await loadUomOptions()
       resetForm()
-      setShowForm(false)
     } catch (err) {
       toast.error(getErrorMessage(err, 'Save Failed'))
     }
@@ -355,7 +355,7 @@ const ItemMaster = () => {
     setEditId(null)
 
     setTimeout(() => {
-      itemNameRef.current?.focus()
+      itemNumberRef.current?.focus()
     }, 100)
   }
 
@@ -405,105 +405,106 @@ const ItemMaster = () => {
     )
   }
 
-const columns = [
-  {
-    name: 'SL.NO',
-    selector: (row, index) => index + 1,
-    width: '90px',
-    center: true,
-  },
-  {
-    name: 'ITEM NUMBER',
-    selector: (row) => row.itemNumber,
-    minWidth: '150px',
-    width: '150px',
-    cell: (row) => <TooltipCell value={row.itemNumber} />,
-  },
-  {
-    name: 'ITEM NAME',
-    selector: (row) => row.itemName,
-    minWidth: '120px',
-    wrap: true,
-    cell: (row) => <TooltipCell value={row.itemName} />,
-  },
-  {
-    name: 'ITEM TYPE',
-    selector: (row) => row.itemTypeName,
-    minWidth: '130px',
-    wrap: true,
-    cell: (row) => <TooltipCell value={row.itemTypeName} />,
-  },
-  {
-    name: 'ITEM GROUP',
-    selector: (row) => row.itemGroupName,
-    minWidth: '120px',
-    wrap: true,
-    cell: (row) => <TooltipCell value={row.itemGroupName} />,
-  },
-  {
-    name: 'HSN CODE',
-    selector: (row) => row.hsnCode,
-    minWidth: '130px',
-    cell: (row) => <TooltipCell value={row.hsnCode} />,
-  },
-  {
-    name: 'UNIT PRICE (₹)',
-    selector: (row) => row.unitPrice,
-    minWidth: '150px',
-    width: '150px',
-    center: true,
-    cell: (row) => (
-      <TooltipCell value={Number(row.unitPrice || 0).toFixed(2)} />
-    ),
-  },
-  {
-    name: 'DESCRIPTION',
-    selector: (row) => row.description,
-    minWidth: '130px',
-    wrap: true,
-    cell: (row) => <TooltipCell value={row.description} />,
-  },
-  {
-    name: 'STUFF QUANTITY',
-    selector: (row) => row.stuffQuantity,
-    minWidth: '160px',
-    width: '160px',
-    center: true,
-    cell: (row) => <TooltipCell value={row.stuffQuantity} />,
-  },
-  {
-    name: 'ACTION',
-    center: true,
-    width: '120px',
-    cell: (row) => (
-      <div className="action-wrapper">
-        {uPrivilege?.canEdit && (
-        <button
-          className="table-action-btn edit-btn"
-          title="Edit"
-          onClick={() => handleEdit(row)}
-        >
-          <FaEdit />
-        </button>
-        )}
-        {uPrivilege?.canDelete && (
+  const columns = [
+    {
+      name: 'SL.NO',
+      selector: (row, index) => index + 1,
+      width: '90px',
+      center: true,
+    },
+    {
+      name: 'ITEM NUMBER',
+      selector: (row) => row.itemNumber,
+      minWidth: '150px',
+      width: '150px',
+      cell: (row) => <TooltipCell value={row.itemNumber} />,
+    },
+    {
+      name: 'ITEM NAME',
+      selector: (row) => row.itemName,
+      minWidth: '120px',
+      wrap: true,
+      cell: (row) => <TooltipCell value={row.itemName} />,
+    },
+    {
+      name: 'ITEM TYPE',
+      selector: (row) => row.itemTypeName,
+      minWidth: '130px',
+      wrap: true,
+      cell: (row) => <TooltipCell value={row.itemTypeName} />,
+    },
+    {
+      name: 'ITEM GROUP',
+      selector: (row) => row.itemGroupName,
+      minWidth: '120px',
+      wrap: true,
+      cell: (row) => <TooltipCell value={row.itemGroupName} />,
+    },
+    {
+      name: 'HSN CODE',
+      selector: (row) => row.hsnCode,
+      minWidth: '130px',
+      cell: (row) => <TooltipCell value={row.hsnCode} />,
+    },
+    {
+      name: 'UNIT PRICE (₹)',
+      selector: (row) => row.unitPrice,
+      minWidth: '150px',
+      width: '150px',
+      center: true,
+      cell: (row) => (
+        <TooltipCell value={Number(row.unitPrice || 0).toFixed(2)} />
+      ),
+    },
+  
+    {
+      name: 'STUFF QUANTITY',
+      selector: (row) => row.stuffQuantity,
+      minWidth: '160px',
+      width: '160px',
+      center: true,
+      cell: (row) => <TooltipCell value={row.stuffQuantity} />,
+    },
+      {
+      name: 'DESCRIPTION',
+      selector: (row) => row.description,
+      minWidth: '130px',
+      wrap: true,
+      cell: (row) => <TooltipCell value={row.description} />,
+    },
+    {
+      name: 'ACTION',
+      center: true,
+      width: '120px',
+      cell: (row) => (
+        <div className="action-wrapper">
+          {uPrivilege?.canEdit && (
+            <button
+              className="table-action-btn edit-btn"
+              title="Edit"
+              onClick={() => handleEdit(row)}
+            >
+              <FaEdit />
+            </button>
+          )}
+          {uPrivilege?.canDelete && (
 
-        <button
-          className="table-action-btn delete-btn"
-          title="Delete"
-          onClick={() => {
-            setDeleteId(row.id)
-            setDeleteItem(row)
-            setShowDeleteModal(true)
-          }}
-        >
-          <FaTrash />
-        </button>
-        )}
-      </div>
-    ),
-  },
-]
+            <button
+              className="table-action-btn delete-btn"
+              title="Delete"
+              onClick={() => {
+                setDeleteId(row.id)
+                setDeleteItem(row)
+                setShowDeleteModal(true)
+              }}
+            >
+              <FaTrash />
+            </button>
+          )}
+        </div>
+      ),
+    },
+  ]
 
   return (
     <div className="item-master-page">
@@ -537,6 +538,7 @@ const columns = [
                   <strong>Item Number</strong> <span className="required">*</span>
                 </label>
                 <CFormInput
+                  ref={itemNumberRef}
                   name="itemNumber"
                   placeholder="Enter Item Number"
                   value={form.itemNumber}
@@ -551,7 +553,6 @@ const columns = [
                   <strong>Item Name</strong> <span className="required">*</span>
                 </label>
                 <CFormInput
-                  ref={itemNameRef}
                   name="itemName"
                   placeholder="Enter Item Name"
                   value={form.itemName}
@@ -615,12 +616,25 @@ const columns = [
               </CCol>
 
               <CCol md={4}>
-                <label className="custom-label"><strong>HSN Code</strong></label>
+                <label className="custom-label">
+                  <strong>HSN Code</strong>
+                </label>
+
                 <CFormInput
                   name="hsnCode"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={8}
                   placeholder="Enter HSN Code"
                   value={form.hsnCode}
-                  onChange={handleChange}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, '').slice(0, 8)
+
+                    setForm((prev) => ({
+                      ...prev,
+                      hsnCode: value,
+                    }))
+                  }}
                 />
               </CCol>
 
@@ -652,15 +666,50 @@ const columns = [
                     placeholder="Select or type UOM (e.g. KG, PCS)"
                     options={uomOptions}
                     value={form.uom ? { value: form.uom, label: form.uom } : null}
+                    inputValue={uomInputValue}
+
+                    onInputChange={(inputValue, { action }) => {
+                      if (action === 'input-change') {
+                        // Allow alphabetic characters only
+                        const alphabeticValue = inputValue.replace(/[^a-zA-Z]/g, '')
+
+                        setUomInputValue(alphabeticValue)
+                      }
+
+                      return inputValue
+                    }}
+
                     onChange={(selected) => {
-                      setForm({ ...form, uom: selected?.value || '' })
+                      setForm((prev) => ({
+                        ...prev,
+                        uom: selected?.value || '',
+                      }))
+
+                      setUomInputValue('')
                       clearError('uom')
                     }}
+
                     onCreateOption={(inputValue) => {
+                      // Extra validation before creating a new UOM
+                      if (!/^[a-zA-Z]+$/.test(inputValue)) {
+                        return
+                      }
+
                       const upperValue = inputValue.toUpperCase()
-                      setForm({ ...form, uom: upperValue })
+
+                      setForm((prev) => ({
+                        ...prev,
+                        uom: upperValue,
+                      }))
+
+                      setUomInputValue('')
                       clearError('uom')
                     }}
+
+                    isValidNewOption={(inputValue) => {
+                      return /^[a-zA-Z]+$/.test(inputValue)
+                    }}
+
                     formatCreateLabel={(inputValue) => `Create "${inputValue.toUpperCase()}"`}
                   />
                 </div>
@@ -704,12 +753,22 @@ const columns = [
               </CCol>
 
               <CCol md={4}>
-                <label className="custom-label"><strong>Usage</strong></label>
+                <label className="custom-label">
+                  <strong>Usage</strong>
+                </label>
+
                 <CFormInput
                   name="usage"
                   placeholder="Enter Usage"
                   value={form.usage}
-                  onChange={handleChange}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^a-zA-Z\s]/g, '')
+
+                    setForm((prev) => ({
+                      ...prev,
+                      usage: value,
+                    }))
+                  }}
                 />
               </CCol>
 
@@ -791,10 +850,21 @@ const columns = [
                 </label>
                 <CFormInput
                   name="dangerLevel"
+                  type="text"
+                  inputMode="numeric"
                   placeholder="Enter Danger Level"
                   value={form.dangerLevel}
                   className={errors.dangerLevel ? 'error-input' : ''}
-                  onChange={handleChange}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, '')
+
+                    setForm((prev) => ({
+                      ...prev,
+                      dangerLevel: value,
+                    }))
+
+                    clearError('dangerLevel')
+                  }}
                 />
                 {errors.dangerLevel && <small className="text-danger">{errors.dangerLevel}</small>}
               </CCol>

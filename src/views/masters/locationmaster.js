@@ -44,22 +44,43 @@ const buildRearSlots = (fixture) => Array.from({ length: fixture }, (_, i) => i 
 // updates immediately and never silently discards your edits.
 // ─────────────────────────────────────────────────────────────────────
 const buildGridFromInputs = (rackNo, rows, cols, prevGrid = []) => {
-  const prevByPos = new Map(prevGrid.map((r) => [`${r._c}-${r._r}`, r]))
+  const prevByPos = new Map(
+    prevGrid.map((r) => [`${r._c}-${r._r}`, r])
+  )
+
   const grid = []
+
   for (let c = 1; c <= cols; c++) {
+
+    // Ground location
+    const prevGround = prevByPos.get(`${c}-0`)
+
+    grid.push({
+      columnNo: `${rackNo}${c}`,
+      rowNo: 'G',
+      hasFront: prevGround ? prevGround.hasFront : true,
+      hasRear: prevGround ? prevGround.hasRear : true,
+      fixture: prevGround ? prevGround.fixture : 1,
+      _c: c,
+      _r: 0,
+    })
+
+    // Rack rows
     for (let r = 1; r <= rows; r++) {
       const prev = prevByPos.get(`${c}-${r}`)
+
       grid.push({
         columnNo: `${rackNo}${c}`,
         rowNo: `R${r}`,
         hasFront: prev ? prev.hasFront : true,
         hasRear: prev ? prev.hasRear : true,
-        fixture: prev ? prev.fixture : 1, // ★ default fixture count changed from 6 -> 1
+        fixture: prev ? prev.fixture : 1,
         _c: c,
         _r: r,
       })
     }
   }
+
   return grid
 }
 
@@ -67,19 +88,29 @@ const buildGridFromInputs = (rackNo, rows, cols, prevGrid = []) => {
 // rack (API), so it can be merged correctly if the user regenerates it.
 const attachPositions = (columns) => {
   const grid = []
+
   columns.forEach((col, cIdx) => {
-    col.rows.forEach((row, rIdx) => {
+    col.rows.forEach((row) => {
+
+      const isGround = row.rowNo?.toUpperCase() === 'G'
+
       grid.push({
         columnNo: col.columnNo,
         rowNo: row.rowNo,
         hasFront: row.hasFront,
         hasRear: row.hasRear,
         fixture: row.fixture,
+
+        // G = position 0
+        // R1 = position 1
+        // R2 = position 2
+        // R3 = position 3
         _c: cIdx + 1,
-        _r: rIdx + 1,
+        _r: isGround ? 0 : Number(row.rowNo.replace('R', '')),
       })
     })
   })
+
   return grid
 }
 
@@ -340,6 +371,28 @@ const LocationMaster = () => {
       toast.error('Enter Rack No')
       return
     }
+
+
+    if (!/^[A-Z]{1,5}$/.test(rackNo)) {
+      toast.error('Rack No must be letters only (A-Z)')
+      return
+    }
+
+    const duplicateRack = racks.some(
+      (r) =>
+        r.rackNo?.trim().toUpperCase() === rackNo &&
+        r.rackNo?.trim().toUpperCase() !== editingRackNo?.trim().toUpperCase()
+    )
+
+    if (duplicateRack) {
+      toast.error(`Rack "${rackNo}" already exists in this store`)
+      return
+    }
+
+    if (draftGrid.length === 0) {
+      toast.error('Enter Rows and Columns to build the grid first')
+      return
+    }
     if (draftGrid.length === 0) {
       toast.error('Enter Rows and Columns to build the grid first')
       return
@@ -377,7 +430,13 @@ const LocationMaster = () => {
     setShowRackPanel(true)
     setEditingRackNo(rack.rackNo)
     setRackFormNo(rack.rackNo)
-    setRackFormRows(rack.columns[0]?.rows.length || 1)
+  const rackRows = rack.columns[0]?.rows || []
+
+const normalRowCount = rackRows.filter(
+  (row) => row.rowNo?.toUpperCase() !== 'G'
+).length
+
+setRackFormRows(normalRowCount || 1)
     setRackFormCols(rack.columns.length || 1)
     setDraftGrid(attachPositions(rack.columns))
     setRackFormTouched(true)
@@ -544,7 +603,13 @@ const LocationMaster = () => {
 
     setModalEditingRackNo(rack.rackNo)
     setModalRackNo(rack.rackNo)
-    setModalRows(rack.columns[0]?.rows.length || 1)
+  const rackRows = rack.columns[0]?.rows || []
+
+const normalRowCount = rackRows.filter(
+  (row) => row.rowNo?.toUpperCase() !== 'G'
+).length
+
+setModalRows(normalRowCount || 1)
     setModalCols(rack.columns.length || 1)
     setModalGrid(attachPositions(rack.columns))
     setModalTouched(true)
@@ -821,7 +886,7 @@ const LocationMaster = () => {
                   {draftGrid.length > 0 && (
                     <>
                       <small style={{ display: 'block', margin: '6px 0', color: '#4e73df', fontWeight: 600, fontSize: 10.5 }}>
-                        {draftGrid.length} slot row(s) — edit Front/Rear/Fixture below, or change Rows/Columns above any time.
+                        {draftGrid.length} slot row(s) — edit Front/Rear/Pallet below, or change Rows/Columns above any time.
                       </small>
                       <table className="rgt">
                         <thead>
@@ -838,7 +903,7 @@ const LocationMaster = () => {
                                 View
                               </label>
                             </th>
-                            <th>Fixture</th>
+                            <th>Pallet</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1138,7 +1203,7 @@ const LocationMaster = () => {
                         onChange={(e) => toggleModalAllView(e.target.checked)}
                       />
                     </CTableHeaderCell>
-                    <CTableHeaderCell>Fixture</CTableHeaderCell>
+                    <CTableHeaderCell>Pallet</CTableHeaderCell>
                   </CTableRow>
                 </CTableHead>
                 <CTableBody>

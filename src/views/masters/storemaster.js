@@ -193,7 +193,6 @@ const StoreMaster = () => {
       await loadStores()
       await loadPalletTypes() // refresh "next" preview since a sequence moved
       resetForm()
-      setShowForm(false)
     } catch (err) {
       toast.error(getErrorMessage(err, 'Save Failed'))
     }

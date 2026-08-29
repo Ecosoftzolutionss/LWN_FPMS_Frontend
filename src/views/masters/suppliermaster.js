@@ -69,7 +69,7 @@ const getErrorMessage = (err, fallback) => {
 }
 
 const SupplierMaster = () => {
-  const nameRef = useRef()
+  const supplierIdRef = useRef()
 
   const customStyles = {
     rows: { style: { minHeight: '34px' } },
@@ -113,14 +113,13 @@ const SupplierMaster = () => {
     loadSupplierGroups()
   }, [])
 
-  useEffect(() => {
-    if (showForm) {
-      setTimeout(() => {
-        nameRef.current?.focus()
-      }, 200)
-    }
-  }, [showForm])
-
+ useEffect(() => {
+  if (showForm) {
+    setTimeout(() => {
+      supplierIdRef.current?.focus()
+    }, 200)
+  }
+}, [showForm])
   // Keep shipping address mirrored to billing while the checkbox is on.
   useEffect(() => {
     if (sameAsBilling) {
@@ -319,7 +318,6 @@ const SupplierMaster = () => {
 
       await loadSuppliers()
       resetForm()
-      setShowForm(false)
     } catch (err) {
       toast.error(getErrorMessage(err, 'Save Failed'))
     }
@@ -378,9 +376,9 @@ const SupplierMaster = () => {
     setErrors({})
     setEditId(null)
 
-    setTimeout(() => {
-      nameRef.current?.focus()
-    }, 100)
+   setTimeout(() => {
+  supplierIdRef.current?.focus()
+}, 100)
   }
 
   const handleAddNew = () => {
@@ -482,22 +480,22 @@ const SupplierMaster = () => {
       cell: (row) => (
         <div className="action-wrapper">
           {uPrivilege?.canEdit && (
-          <button className="table-action-btn edit-btn" title="Edit" onClick={() => handleEdit(row)}>
-            <FaEdit />
-          </button>
+            <button className="table-action-btn edit-btn" title="Edit" onClick={() => handleEdit(row)}>
+              <FaEdit />
+            </button>
           )}
           {uPrivilege?.canDelete && (
-          <button
-            className="table-action-btn delete-btn"
-            title="Delete"
-            onClick={() => {
-              setDeleteId(row.id)
-              setDeleteSupplier(row)
-              setShowDeleteModal(true)
-            }}
-          >
-            <FaTrash />
-          </button>
+            <button
+              className="table-action-btn delete-btn"
+              title="Delete"
+              onClick={() => {
+                setDeleteId(row.id)
+                setDeleteSupplier(row)
+                setShowDeleteModal(true)
+              }}
+            >
+              <FaTrash />
+            </button>
           )}
         </div>
       ),
@@ -642,6 +640,7 @@ const SupplierMaster = () => {
                 <label className="custom-label"><strong>Supplier ID</strong> <span className="required">*</span></label>
                 <CFormInput
                   name="supplierCode"
+                    ref={supplierIdRef}
                   placeholder="Enter Supplier ID"
                   value={form.supplierCode}
                   className={errors.supplierCode ? 'error-input' : ''}
@@ -657,12 +656,20 @@ const SupplierMaster = () => {
                   <strong>Supplier Name</strong> <span className="required">*</span>
                 </label>
                 <CFormInput
-                  ref={nameRef}
+      
                   name="supplierName"
                   placeholder="Enter Supplier Name"
                   value={form.supplierName}
                   className={errors.supplierName ? 'error-input' : ''}
-                  onChange={handleSupplierNameChange}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^a-zA-Z\s]/g, '')
+
+                    handleSupplierNameChange({
+                      target: {
+                        value,
+                      },
+                    })
+                  }}
                 />
                 {errors.supplierName && <small className="text-danger">{errors.supplierName}</small>}
               </CCol>
@@ -676,7 +683,14 @@ const SupplierMaster = () => {
                   placeholder="Enter Vendor Code"
                   value={form.vendorCode}
                   className={errors.vendorCode ? 'error-input' : ''}
-                  onChange={handleChange}
+                  onChange={(e) =>
+                    handleChange({
+                      target: {
+                        name: 'vendorCode',
+                        value: e.target.value.replace(/[^a-zA-Z0-9]/g, ''),
+                      },
+                    })
+                  }
                 />
                 {errors.vendorCode && <small className="text-danger">{errors.vendorCode}</small>}
               </CCol>

@@ -358,7 +358,7 @@
 }
 
 .customer-master-page .rdt_TableRow {
-  min-height: 56px !important;
+  min-height: 38px !important;
 }
 
 .customer-master-page .rdt_TableRow:nth-child(even) {
