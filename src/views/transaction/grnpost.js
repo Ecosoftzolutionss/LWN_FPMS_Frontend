@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DataTable from 'react-data-table-component';
 import { CButton, CFormInput, CFormSelect, CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter } from '@coreui/react';
-import { FaEye, FaEdit, FaTrash, FaCheckCircle, FaFileAlt, FaPrint, FaTimes, FaDownload, FaRegCalendarAlt, FaBoxOpen, FaRegFileAlt } from 'react-icons/fa';
+import { FaEye, FaEdit, FaTrash, FaCheckCircle, FaFileAlt, FaPrint, FaTimes, FaDownload, FaRegCalendarAlt, FaBoxOpen, FaRegFileAlt, FaLayerGroup } from 'react-icons/fa';
 import { toast } from 'react-toastify'
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
@@ -73,6 +73,21 @@ const LABEL_SIZE_OPTIONS = [
 const BASE_CARD_WIDTH_MM = 150
 const BASE_CARD_HEIGHT_MM = 100
 
+// Shared scale-to-fit math used both by the single-label preview and the
+// bulk-label preview, so both stay pixel-for-pixel identical.
+const computeCardTransform = (activeSize) => {
+  if (!activeSize) return { scale: 0, offsetXmm: 0, offsetYmm: 0 }
+  const scale = Math.min(
+    activeSize.widthMm / BASE_CARD_WIDTH_MM,
+    activeSize.heightMm / BASE_CARD_HEIGHT_MM
+  )
+  return {
+    scale,
+    offsetXmm: (activeSize.widthMm - BASE_CARD_WIDTH_MM * scale) / 2,
+    offsetYmm: (activeSize.heightMm - BASE_CARD_HEIGHT_MM * scale) / 2,
+  }
+}
+
 const GRNPost = () => {
   const navigate = useNavigate()
   const [tab, setTab] = useState('unposted') // 'unposted' | 'reprint'
@@ -92,6 +107,19 @@ const GRNPost = () => {
 
   // Chosen label size, defaults to the first option.
   const [labelSize, setLabelSize] = useState('')
+
+  // ★ NEW: rows checked in the GRN Details items table, used to drive
+  // Bulk Post / Bulk Print. Reset (via toggleClearSelectedLines) after
+  // any bulk action so stale selections don't linger.
+  const [selectedLines, setSelectedLines] = useState([])
+  const [toggleClearSelectedLines, setToggleClearSelectedLines] = useState(false)
+  const [bulkPosting, setBulkPosting] = useState(false)
+
+  // ★ NEW: bulk FIFO label modal — same card design as the single-label
+  // modal, one frame per selected line, sized/scaled together.
+  const [bulkLabelGrn, setBulkLabelGrn] = useState(null) // { grnNumber, supplierInvoiceNumber, supplierInvoiceDate, totalQuantity, lines: [...] }
+  const [showBulkLabel, setShowBulkLabel] = useState(false)
+  const [bulkLabelSize, setBulkLabelSize] = useState('')
 
   const [deleteLineTarget, setDeleteLineTarget] = useState(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -132,6 +160,7 @@ const getCurrentUsername = () => {
     try {
       const res = await API.get(`/GrnEntry/${row.id}`)
       setDetailsGrn(res.data)
+      setSelectedLines([])
       setShowDetails(true)
     } catch {
       toast.error('Failed to load GRN details')
@@ -170,6 +199,76 @@ const getCurrentUsername = () => {
     setLabelSize('')
     setLabelGrn(buildLabelFromLine(detailsGrn, line))
     setShowLabel(true)
+  }
+
+  // ★ NEW: Bulk GRN Post — posts every currently-unposted line the user
+  // has checked, in one API call. Successes and failures are reported
+  // back per-line (e.g. a part with no Store Master pallet config won't
+  // block the rest of the batch), then the freshly posted lines are
+  // offered straight into the Bulk Print view.
+  const handleBulkPost = async () => {
+    const targets = selectedLines.filter((l) => !l.isPosted)
+    if (targets.length === 0) {
+      toast.info('Select at least one unposted item to post')
+      return
+    }
+
+    setBulkPosting(true)
+    try {
+      const res = await API.put('/GrnEntry/lines/post-bulk', {
+        lineIds: targets.map((l) => l.id),
+        postedBy: getCurrentUsername(),
+      })
+
+      const postedList = res.data?.posted || []
+      const errorList = res.data?.errors || []
+
+      if (postedList.length > 0) {
+        toast.success(`${postedList.length} item(s) posted successfully`)
+      }
+      errorList.forEach((e) => toast.error(e.message || 'Failed to post an item'))
+
+      const refreshed = await API.get(`/GrnEntry/${detailsGrn.id}`)
+      setDetailsGrn(refreshed.data)
+      await loadRows()
+
+      setSelectedLines([])
+      setToggleClearSelectedLines((prev) => !prev)
+
+      if (postedList.length > 0) {
+        const postedIds = new Set(postedList.map((p) => p.id))
+        const postedLines = refreshed.data.lines.filter((l) => postedIds.has(l.id))
+        openBulkLabel(refreshed.data, postedLines)
+      }
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Bulk Post Failed'))
+    } finally {
+      setBulkPosting(false)
+    }
+  }
+
+  // ★ NEW: Bulk GRN Print — opens the multi-label preview for every
+  // already-posted line the user has checked, without touching anything
+  // on the server (pure reprint of existing pallet/FIFO numbers).
+  const handleBulkPrint = () => {
+    const targets = selectedLines.filter((l) => l.isPosted)
+    if (targets.length === 0) {
+      toast.info('Select at least one posted item to print')
+      return
+    }
+    openBulkLabel(detailsGrn, targets)
+  }
+
+  const openBulkLabel = (grn, lines) => {
+    setBulkLabelGrn({
+      grnNumber: grn.grnNumber,
+      supplierInvoiceNumber: grn.supplierInvoiceNumber,
+      supplierInvoiceDate: grn.supplierInvoiceDate,
+      totalQuantity: totalQuantity(grn),
+      lines,
+    })
+    setBulkLabelSize('')
+    setShowBulkLabel(true)
   }
 
   // The View/eye action opens the read-only GRN Details modal for this
@@ -304,6 +403,90 @@ const getCurrentUsername = () => {
     }
   }
 
+  // ★ NEW: bulk-print page-size styling. Identical @page sizing to the
+  // single-label version, but adds a page-break after every label frame
+  // so each posted line prints on its own physical label/page, with no
+  // break after the very last one.
+  const applyBulkPrintPageSize = () => {
+    const size = LABEL_SIZE_OPTIONS.find((s) => s.value === bulkLabelSize) || LABEL_SIZE_OPTIONS[0]
+    const styleTag = document.createElement('style')
+    styleTag.id = 'grn-bulk-label-print-size'
+    styleTag.innerHTML = `
+      @page { size: ${size.widthMm}mm ${size.heightMm}mm; margin: 0; }
+      @media print {
+        body * { visibility: hidden; }
+        #fifo-bulk-print-area, #fifo-bulk-print-area * { visibility: visible; }
+        #fifo-bulk-print-area {
+          position: fixed;
+          top: 0;
+          left: 0;
+        }
+        .fifo-bulk-label-frame {
+          width: ${size.widthMm}mm;
+          height: ${size.heightMm}mm;
+          margin: 0;
+          page-break-after: always;
+        }
+        .fifo-bulk-label-frame:last-child {
+          page-break-after: auto;
+        }
+      }
+    `
+    document.head.appendChild(styleTag)
+    return styleTag
+  }
+
+  const handlePrintBulkLabel = () => {
+    const styleTag = applyBulkPrintPageSize()
+    window.print()
+    setTimeout(() => {
+      styleTag.remove()
+    }, 1000)
+  }
+
+  // ★ NEW: bulk download — captures each label frame individually (by
+  // its own id) and stitches them into one multi-page PDF, one page per
+  // selected line, all at the chosen label size.
+  const handleDownloadBulkLabel = async () => {
+    if (!bulkLabelGrn?.lines?.length) {
+      toast.error('No labels to download')
+      return
+    }
+
+    const size = LABEL_SIZE_OPTIONS.find((s) => s.value === bulkLabelSize) || LABEL_SIZE_OPTIONS[0]
+    const orientation = size.widthMm >= size.heightMm ? 'landscape' : 'portrait'
+
+    try {
+      const pdf = new jsPDF({
+        orientation,
+        unit: 'mm',
+        format: [size.widthMm, size.heightMm],
+      })
+
+      for (let i = 0; i < bulkLabelGrn.lines.length; i++) {
+        const line = bulkLabelGrn.lines[i]
+        const node = document.getElementById(`fifo-bulk-frame-${line.id}`)
+        if (!node) continue
+
+        const canvas = await html2canvas(node, {
+          scale: 3,
+          backgroundColor: '#ffffff',
+          useCORS: true,
+        })
+        const imgData = canvas.toDataURL('image/png')
+
+        if (i > 0) {
+          pdf.addPage([size.widthMm, size.heightMm], orientation)
+        }
+        pdf.addImage(imgData, 'PNG', 0, 0, size.widthMm, size.heightMm)
+      }
+
+      pdf.save(`FIFO-Labels-Bulk-${bulkLabelGrn.grnNumber}-${size.value}.pdf`)
+    } catch (err) {
+      toast.error('Failed to generate the bulk label PDF for download')
+    }
+  }
+
   const totalQuantity = (grn) => (grn?.lines || []).reduce((sum, l) => sum + Number(l.quantity || 0), 0)
   const totalPalletQuantity = (grn) => (grn?.lines || []).reduce((sum, l) => sum + Number(l.palletQuantity || 0), 0)
   const totalValue = (grn) => (grn?.lines || []).reduce((sum, l) => sum + Number(l.totalValue || 0), 0)
@@ -322,20 +505,101 @@ const getCurrentUsername = () => {
   // keeps the design identical — logo, boxes, QR, meta grid, part row,
   // footer — across every label size instead of needing bespoke,
   // easily-broken layouts per size.
-  const cardScale = activeSize
-    ? Math.min(
-      activeSize.widthMm / BASE_CARD_WIDTH_MM,
-      activeSize.heightMm / BASE_CARD_HEIGHT_MM
-    )
-    : 0
+  const { scale: cardScale, offsetXmm: cardOffsetXmm, offsetYmm: cardOffsetYmm } = computeCardTransform(activeSize)
 
-  const cardOffsetXmm = activeSize
-    ? (activeSize.widthMm - BASE_CARD_WIDTH_MM * cardScale) / 2
-    : 0
+  // ★ NEW: same scale-to-fit math, driven by the bulk modal's own size
+  // selector so a user can pick a different label size for a bulk run
+  // than whatever was last used for a single reprint.
+  const bulkActiveSize = LABEL_SIZE_OPTIONS.find((s) => s.value === bulkLabelSize)
+  const { scale: bulkCardScale, offsetXmm: bulkCardOffsetXmm, offsetYmm: bulkCardOffsetYmm } = computeCardTransform(bulkActiveSize)
 
-  const cardOffsetYmm = activeSize
-    ? (activeSize.heightMm - BASE_CARD_HEIGHT_MM * cardScale) / 2
-    : 0
+  // Renders the actual FIFO card markup for one line. Shared by both the
+  // single-label modal and the bulk-label modal so the design can never
+  // drift between the two — only the wrapping frame differs.
+  const renderFifoCard = (grnMeta, line, scale, offsetXmm, offsetYmm) => (
+    <div
+      className="fifo-card"
+      style={{
+        width: `${BASE_CARD_WIDTH_MM}mm`,
+        height: `${BASE_CARD_HEIGHT_MM}mm`,
+        transform: `translate(${offsetXmm}mm, ${offsetYmm}mm) scale(${scale})`,
+      }}
+    >
+      <div className="fifo-card-header">
+        <div className="fifo-logo-wrap">
+          <img src="/GLOVIS.png" alt="Leewon" className="fifo-logo-img" crossOrigin="anonymous" />
+          <span className="fifo-logo-text">LEEWON</span>
+        </div>
+        <div className="fifo-title-wrap">
+          <span className="fifo-dash" />
+          <span className="fifo-title">FIFO CARD</span>
+          <span className="fifo-dash" />
+        </div>
+      </div>
+
+      <div className="fifo-card-main">
+        <div className="fifo-left-col">
+          <div className="fifo-box">
+            <div className="fifo-box-label">PALLET NO.</div>
+            <div className="fifo-box-value">{line?.palletNo || '—'}</div>
+          </div>
+          <div className="fifo-box">
+            <div className="fifo-box-label">FIFO PALLET NO.</div>
+            <div className="fifo-box-value small">{line?.fifoPalletNo || '—'}</div>
+          </div>
+          <div className="fifo-qr-box">
+            <img
+              className="fifo-qr-img"
+              alt="Scan for details"
+              crossOrigin="anonymous"
+              src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&margin=0&data=${encodeURIComponent(
+                JSON.stringify({
+                  grn: grnMeta.grnNumber,
+                  fifoPalletNo: line?.fifoPalletNo,
+                  palletNo: line?.palletNo,
+                  part: line?.partNumber,
+                  qty: line?.quantity ?? line?.palletQuantity ?? 0,
+                  location: line?.storeLocation || line?.location || '',
+                }),
+              )}`}
+            />
+            <div className="fifo-qr-caption">SCAN FOR DETAILS</div>
+          </div>
+        </div>
+
+        <div className="fifo-right-col">
+          <div className="fifo-meta-grid">
+            <div><FaRegFileAlt className="fifo-meta-icon" /> <span>S.I.NO:</span> {grnMeta.supplierInvoiceNumber}</div>
+            <div><FaRegCalendarAlt className="fifo-meta-icon" /> <span>DATE:</span> {formatDate(grnMeta.supplierInvoiceDate)}</div>
+            <div><FaBoxOpen className="fifo-meta-icon" /> <span>QTY :</span> {grnMeta.totalQuantity ?? 0} Nos.</div>
+            <div><FaRegFileAlt className="fifo-meta-icon" /> <span>GRN NO:</span> {grnMeta.grnNumber}</div>
+            <div><FaRegCalendarAlt className="fifo-meta-icon" /> <span>DATE:</span> {formatDate(line?.postedDate)}</div>
+            <div><FaBoxOpen className="fifo-meta-icon" /> <span>PQTY:</span> {line?.palletQuantity ?? 0} Nos.</div>
+          </div>
+
+          <div className="fifo-part-row">
+            <div>
+              <div className="fifo-part-label">PART NUMBER &amp; NAME</div>
+              <div className="fifo-part-value">{line?.partNumber}</div>
+              <div className="fifo-part-name">{line?.partName?.toUpperCase()}</div>
+            </div>
+            <div className="fifo-pallet-qty">
+              <div className="fifo-part-label">PALLET QTY (Nos.)</div>
+              <div className="fifo-qty-value">{line?.palletQuantity ?? line?.quantity ?? 0}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="fifo-card-footer">
+        <div className="fifo-sign">STORES INCHARGE</div>
+        <div className="fifo-sign">QA APPROVED</div>
+      </div>
+    </div>
+  )
+
+  const selectedUnpostedCount = selectedLines.filter((l) => !l.isPosted).length
+  const selectedPostedCount = selectedLines.filter((l) => l.isPosted).length
 
   return (
     <div className="grn-post-page">
@@ -425,7 +689,39 @@ const getCurrentUsername = () => {
                 <div><span>INVOICE DATE</span><strong>{formatDate(detailsGrn.supplierInvoiceDate)}</strong></div>
               </div>
 
-              <div className="grn-modal-section-title">Items</div>
+              <div
+                className="grn-modal-section-title"
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}
+              >
+                <span>Items</span>
+
+                {/* ★ NEW: Bulk Post / Bulk Print toolbar — driven by the
+                    checkboxes on the table below. Each button only acts on
+                    the subset of the current selection it applies to
+                    (unposted lines for Post, posted lines for Print), and
+                    is disabled when that subset is empty. */}
+                <div className="grn-bulk-actions" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  {selectedLines.length > 0 && (
+                    <span className="text-muted small">{selectedLines.length} selected</span>
+                  )}
+                  <button
+                    className="post-btn"
+                    disabled={selectedUnpostedCount === 0 || bulkPosting}
+                    onClick={handleBulkPost}
+                    title="Post all selected unposted items"
+                  >
+                    <FaLayerGroup size={12} /> {bulkPosting ? 'Posting…' : `Bulk Post (${selectedUnpostedCount})`}
+                  </button>
+                  <button
+                    className="reprint-btn"
+                    disabled={selectedPostedCount === 0}
+                    onClick={handleBulkPrint}
+                    title="Print/download labels for all selected posted items"
+                  >
+                    <FaPrint size={12} /> {`Bulk Print (${selectedPostedCount})`}
+                  </button>
+                </div>
+              </div>
 
               <DataTable
                 columns={[
@@ -502,6 +798,10 @@ const getCurrentUsername = () => {
                 ]}
                 data={detailsGrn.lines}
                 keyField="id"
+                selectableRows
+                selectableRowsHighlight
+                clearSelectedRows={toggleClearSelectedLines}
+                onSelectedRowsChange={(state) => setSelectedLines(state.selectedRows)}
                 pagination
                 paginationPerPage={5}
                 paginationRowsPerPageOptions={[5, 10, 25, 50]}
@@ -670,7 +970,7 @@ const getCurrentUsername = () => {
         </CModalFooter>
       </CModal>
 
-      {/* ---------- FIFO GRN Label modal ---------- */}
+      {/* ---------- FIFO GRN Label modal (single line) ---------- */}
       <CModal visible={showLabel && !!labelGrn} onClose={() => setShowLabel(false)} alignment="center" size="lg" scrollable>
         {labelGrn && (
           <>
@@ -715,85 +1015,7 @@ const getCurrentUsername = () => {
                       height: `${activeSize.heightMm}mm`,
                     }}
                   >
-                    <div
-                      className="fifo-card"
-                      style={{
-                        width: `${BASE_CARD_WIDTH_MM}mm`,
-                        height: `${BASE_CARD_HEIGHT_MM}mm`,
-                        transform: `translate(${cardOffsetXmm}mm, ${cardOffsetYmm}mm) scale(${cardScale})`,
-                      }}
-                    >
-                      <div className="fifo-card-header">
-                        <div className="fifo-logo-wrap">
-                          <img src="/GLOVIS.png" alt="Leewon" className="fifo-logo-img" crossOrigin="anonymous" />
-                          <span className="fifo-logo-text">LEEWON</span>
-                        </div>
-                        <div className="fifo-title-wrap">
-                          <span className="fifo-dash" />
-                          <span className="fifo-title">FIFO CARD</span>
-                          <span className="fifo-dash" />
-                        </div>
-                      </div>
-
-                      <div className="fifo-card-main">
-                        <div className="fifo-left-col">
-                          <div className="fifo-box">
-                            <div className="fifo-box-label">PALLET NO.</div>
-                            <div className="fifo-box-value">{firstLine?.palletNo || '—'}</div>
-                          </div>
-                          <div className="fifo-box">
-                            <div className="fifo-box-label">FIFO PALLET NO.</div>
-                            <div className="fifo-box-value small">{firstLine?.fifoPalletNo || '—'}</div>
-                          </div>
-                          <div className="fifo-qr-box">
-                            <img
-                              className="fifo-qr-img"
-                              alt="Scan for details"
-                              crossOrigin="anonymous"
-                              src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&margin=0&data=${encodeURIComponent(
-                                JSON.stringify({
-                                  grn: labelGrn.grnNumber,
-                                  fifoPalletNo: firstLine?.fifoPalletNo,
-                                  palletNo: firstLine?.palletNo,
-                                  part: firstLine?.partNumber,
-                                  qty: firstLine?.quantity ?? firstLine?.palletQuantity ?? 0,
-                                  location: firstLine?.storeLocation || firstLine?.location || '',
-                                }),
-                              )}`}
-                            />
-                            <div className="fifo-qr-caption">SCAN FOR DETAILS</div>
-                          </div>
-                        </div>
-
-                        <div className="fifo-right-col">
-                          <div className="fifo-meta-grid">
-                            <div><FaRegFileAlt className="fifo-meta-icon" /> <span>S.I.NO:</span> {labelGrn.supplierInvoiceNumber}</div>
-                            <div><FaRegCalendarAlt className="fifo-meta-icon" /> <span>DATE:</span> {formatDate(labelGrn.supplierInvoiceDate)}</div>
-                            <div><FaBoxOpen className="fifo-meta-icon" /> <span>QTY :</span> {labelGrn.totalQuantity ?? 0} Nos.</div>
-                            <div><FaRegFileAlt className="fifo-meta-icon" /> <span>GRN NO:</span> {labelGrn.grnNumber}</div>
-                            <div><FaRegCalendarAlt className="fifo-meta-icon" /> <span>DATE:</span> {formatDate(firstLine?.postedDate)}</div>
-                            <div><FaBoxOpen className="fifo-meta-icon" /> <span>PQTY:</span> {firstLine?.palletQuantity ?? 0} Nos.</div>
-                          </div>
-
-                          <div className="fifo-part-row">
-                            <div>
-                              <div className="fifo-part-label">PART NUMBER &amp; NAME</div>
-                              <div className="fifo-part-value">{firstLine?.partNumber}</div>
-                              <div className="fifo-part-name">{firstLine?.partName?.toUpperCase()}</div>
-                            </div>
-                            <div className="fifo-pallet-qty">
-                              <div className="fifo-part-label">PALLET QTY (Nos.)</div>
-                              <div className="fifo-qty-value">{firstLine?.palletQuantity ?? firstLine?.quantity ?? 0}</div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="fifo-card-footer">
-                        <div className="fifo-sign">STORES INCHARGE</div>
-                        <div className="fifo-sign">QA APPROVED</div>
-                      </div>
-                    </div>
+                    {renderFifoCard(labelGrn, firstLine, cardScale, cardOffsetXmm, cardOffsetYmm)}
                   </div>
                 </div>
               )}
@@ -805,6 +1027,78 @@ const getCurrentUsername = () => {
               </CButton>
               <CButton className="grn-modal-print-btn" onClick={handlePrintLabel}>
                 <FaPrint size={12} /> Print FIFO GRN Label
+              </CButton>
+            </CModalFooter>
+          </>
+        )}
+      </CModal>
+
+      {/* ═══════════ ★ NEW: BULK FIFO GRN Label modal (multiple lines) ═══════════ */}
+      <CModal
+        visible={showBulkLabel && !!bulkLabelGrn}
+        onClose={() => setShowBulkLabel(false)}
+        alignment="center"
+        size="lg"
+        scrollable
+      >
+        {bulkLabelGrn && (
+          <>
+            <CModalHeader>
+              <div>
+                <CModalTitle><FaLayerGroup size={16} /> BULK FIFO GRN LABELS</CModalTitle>
+                <small className="text-muted">
+                  {bulkLabelGrn.lines.length} label{bulkLabelGrn.lines.length === 1 ? '' : 's'} will be printed/downloaded
+                </small>
+              </div>
+            </CModalHeader>
+
+            <CModalBody>
+              <div className="grn-label-size-row">
+                <label className="grn-label-size-label">Label Size</label>
+                <CFormSelect
+                  value={bulkLabelSize}
+                  onChange={(e) => setBulkLabelSize(e.target.value)}
+                  style={{ maxWidth: 260 }}
+                >
+                  {LABEL_SIZE_OPTIONS.map((s) => (
+                    <option key={s.value} value={s.value}>{s.label}</option>
+                  ))}
+                </CFormSelect>
+              </div>
+
+              {!bulkLabelSize ? (
+                <div className="fifo-select-size-message">
+                  Please select a label size
+                </div>
+              ) : (
+                <div
+                  className="fifo-print-preview-wrap"
+                  id="fifo-bulk-print-area"
+                  style={{ display: 'flex', flexDirection: 'column', gap: 16, alignItems: 'center' }}
+                >
+                  {bulkLabelGrn.lines.map((line) => (
+                    <div
+                      key={line.id}
+                      className="fifo-label-frame fifo-bulk-label-frame"
+                      id={`fifo-bulk-frame-${line.id}`}
+                      style={{
+                        width: `${bulkActiveSize.widthMm}mm`,
+                        height: `${bulkActiveSize.heightMm}mm`,
+                      }}
+                    >
+                      {renderFifoCard(bulkLabelGrn, line, bulkCardScale, bulkCardOffsetXmm, bulkCardOffsetYmm)}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CModalBody>
+
+            <CModalFooter>
+              <CButton className="grn-modal-download-btn" onClick={handleDownloadBulkLabel} disabled={!bulkLabelSize}>
+                <FaDownload size={12} /> Download All ({bulkLabelGrn.lines.length})
+              </CButton>
+              <CButton className="grn-modal-print-btn" onClick={handlePrintBulkLabel} disabled={!bulkLabelSize}>
+                <FaPrint size={12} /> Print All FIFO GRN Labels
               </CButton>
             </CModalFooter>
           </>
