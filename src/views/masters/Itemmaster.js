@@ -512,7 +512,7 @@ const ItemMaster = () => {
         <CCard className="mb-3">
           <CCardBody className="summary-card-body">
             <div>
-              <div className="summary-label">Total Item</div>
+              <div className="summary-label">Total Items</div>
               <div className="summary-value">{String(items.length).padStart(2, '0')}</div>
             </div>
 

@@ -109,10 +109,20 @@ const ItemGroupMaster = () => {
   const handleChange = (e) => {
     const { name, value } = e.target
 
-    setForm({
-      ...form,
-      [name]: value,
-    })
+    if (name === 'groupName') {
+      // Allow alphabetic characters and spaces only
+      const alphabeticOnly = value.replace(/[^a-zA-Z\s]/g, '')
+
+      setForm({
+        ...form,
+        [name]: alphabeticOnly,
+      })
+    } else {
+      setForm({
+        ...form,
+        [name]: value,
+      })
+    }
 
     clearError(name)
   }
@@ -297,7 +307,7 @@ const ItemGroupMaster = () => {
         <CCard className="mb-3">
           <CCardBody className="summary-card-body">
             <div>
-              <div className="summary-label">Total Item Group</div>
+              <div className="summary-label">Total Item Groups</div>
               <div className="summary-value">
                 {String(groups.length).padStart(2, '0')}
               </div>

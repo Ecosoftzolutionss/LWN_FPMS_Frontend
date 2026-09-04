@@ -358,11 +358,12 @@ const CustomerMaster = () => {
     {
       name: 'CUSTOMER NAME',
       selector: (row) => row.customerName,
-      wrap: true,
+        minWidth: '190px',
+      width: '190px',
       cell: (row) => <TooltipCell value={row.customerName} />,
     },
     {
-      name: 'CUSTOMER DIVISION',
+      name: 'Customer Group',
       selector: (row) => row.customerDivision,
       minWidth: '190px',
       width: '190px',
@@ -371,12 +372,15 @@ const CustomerMaster = () => {
     {
       name: 'MOBILE NUMBER',
       selector: (row) => row.mobileNumber,
+        minWidth: '190px',
+      width: '190px',
       cell: (row) => <TooltipCell value={row.mobileNumber} />,
     },
     {
-      name: 'EMAIL ADDRESS',
+      name: 'Customer Email ID',
       selector: (row) => row.emailId,
-      wrap: true,
+        minWidth: '190px',
+      width: '190px',
       cell: (row) => <TooltipCell value={row.emailId} />,
     },
     {
@@ -419,7 +423,7 @@ const CustomerMaster = () => {
         <CCard className="mb-3">
           <CCardBody className="summary-card-body">
             <div>
-              <div className="summary-label">Total Customer</div>
+              <div className="summary-label">Total Customers</div>
               <div className="summary-value">{String(customers.length).padStart(2, '0')}</div>
             </div>
 
@@ -497,7 +501,7 @@ const CustomerMaster = () => {
                 <div className={errors.customerDivision ? 'react-select-error' : ''}>
                   <Select
                     classNamePrefix="react-select"
-                    placeholder="Select Customer Division"
+                    placeholder="Select Customer Group"
                     options={customerDivisionOptions}
                     value={customerDivisionOptions.find((x) => x.value === form.customerDivision) || null}
                     onChange={(selected) => {
@@ -517,7 +521,7 @@ const CustomerMaster = () => {
                 <CFormInput
                   type="email"
                   name="emailId"
-                  placeholder="Enter Email ID"
+                  placeholder="Enter Customer Email ID"
                   value={form.emailId}
                   className={errors.emailId ? 'error-input' : ''}
                   onChange={handleChange}

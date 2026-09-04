@@ -366,16 +366,17 @@ const UserMaster = () => {
 
   const handleHeaderChange = (field, value) => {
     const updated = privileges.map((p) => {
-      // Reports = View only
+      // Reports has View access only
       if (p.menuName === 'Reports') {
         return {
           ...p,
-          canView: field === 'canView' ? value : p.canView,
+          canView: value,
           canEdit: false,
           canDelete: false,
         }
       }
 
+      // All → select/deselect all available privileges
       if (field === 'all') {
         return {
           ...p,
@@ -553,7 +554,7 @@ const UserMaster = () => {
         <CCard className="mb-3">
           <CCardBody className="summary-card-body">
             <div>
-              <div className="summary-label">Total Item</div>
+              <div className="summary-label">Total Users</div>
               <div className="summary-value">
                 {String(users.length).padStart(2, '0')}
               </div>
@@ -561,7 +562,7 @@ const UserMaster = () => {
 
             <button
               className="round-icon-btn add-item-btn"
-              title="Add Item"
+              title="Add Users"
               onClick={() => {
                 resetForm()
                 setShowForm(true)
@@ -852,9 +853,14 @@ const UserMaster = () => {
                   All <br />
                   <input
                     type="checkbox"
-                    checked={privileges.every(
-                      (x) => x.canView && x.canEdit && x.canDelete,
-                    )}
+                    checked={
+                      privileges.length > 0 &&
+                      privileges.every((x) =>
+                        x.menuName === 'Reports'
+                          ? x.canView
+                          : x.canView && x.canEdit && x.canDelete
+                      )
+                    }
                     onChange={(e) => handleHeaderChange('all', e.target.checked)}
                   />
                 </th>

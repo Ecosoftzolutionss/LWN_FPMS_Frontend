@@ -46,6 +46,17 @@ import {
 //     this second source, a pallet becomes re-scannable the instant
 //     its pending record syncs and is removed from the local queue —
 //     which is exactly the bug that let GI-02 verify twice.
+//
+// Scan input behavior (fixed):
+//   The raw scanned text (scannedRaw) is now cleared IMMEDIATELY
+//   after every scan attempt — whether it resolves to success or
+//   error — instead of lingering in the box until the next Save/
+//   reset. This is done inside applyScannedLabel/reject themselves,
+//   not just in resetScan(), so the operator sees a clean input the
+//   instant a scan is processed and can fire the next scan right
+//   away. The result/error message is shown separately below the
+//   input (sv-value-box), so clearing the raw text does not lose
+//   any information the operator needs.
 // ==========================================
 
 const EMPTY_RESULT = {
@@ -101,7 +112,7 @@ const StoreVerification = () => {
     };
     loadPallets();
 
-    // NEW — broader status cache (in-stock + issued), used to give a
+    // Broader status cache (in-stock + issued), used to give a
     // precise rejection reason instead of a generic "not found" when
     // a scanned pallet has already been issued out.
     const loadPalletStatus = async () => {
@@ -173,11 +184,17 @@ const StoreVerification = () => {
     refocusScanInput();
   };
 
+  // FIX: clear the raw scanned text immediately when a scan is
+  // rejected, and refocus the input so the next scan can go straight
+  // in. Previously scannedRaw was left untouched here, so the
+  // rejected JSON stayed sitting in the box.
   const reject = (message) => {
     setScanState('error');
     setScannedError(message);
     setResult(EMPTY_RESULT);
+    setScannedRaw('');
     toast.error(message);
+    refocusScanInput();
   };
 
 
@@ -280,8 +297,7 @@ const StoreVerification = () => {
 
     if (verifiedPalletIds.has(match.id)) {
       reject(
-        `Pallet ${match.palletNo} (GRN ${match.grnNo || '—'}) was already verified` +
-        `${verifiedPalletIds.has(match.id) ? '' : ''} — it cannot be verified again. If this is a mistake, contact an admin.`
+        `Pallet ${match.palletNo} (GRN ${match.grnNo || '—'}) was already verified — it cannot be verified again. If this is a mistake, contact an admin.`
       );
       return;
     }
@@ -297,7 +313,12 @@ const StoreVerification = () => {
     });
     setScanState('success');
     setScannedError('');
+    // FIX: clear the raw scanned text immediately on a successful
+    // match too — the verified details are shown in their own card
+    // below, so the input box doesn't need to keep holding the JSON.
+    setScannedRaw('');
     toast.success(`Pallet ${match.palletNo} (GRN ${match.grnNo || '—'}) verified.`);
+    refocusScanInput();
   };
 
 

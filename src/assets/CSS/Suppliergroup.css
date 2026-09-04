@@ -61,13 +61,19 @@
   transform: translateY(-1px);
 }
 
+
+
+.supplier-group-page .add-item-btn {
+  position: relative;
+}
+
 .supplier-group-page .add-item-btn::after {
-  content: 'Add Item';
+  content: 'Add Supplier Group';
   position: absolute;
-  top: 56px;
+  top: 50px;
   left: 50%;
   transform: translateX(-50%);
-  width: 64px;
+  width: 80px;
   font-size: 12px;
   font-weight: 600;
   color: #1f2937;
@@ -75,7 +81,6 @@
   line-height: 1.2;
   white-space: normal;
 }
-
 /* =========================================================
    FORM CARD
 ========================================================= */

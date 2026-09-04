@@ -3,6 +3,10 @@
   padding: 15px;
 }
 
+/* =========================================================
+   TABLE HEADER
+========================================================= */
+
 .mis-table-header {
   display: flex;
   justify-content: space-between;
@@ -20,11 +24,22 @@
 
 .mis-search {
   width: 280px !important;
-  height: 38px !important;
-  font-size: 13px !important;
-  border: 1px solid #c4d3ea !important;
+  height: 40px !important;
   border-radius: 6px !important;
+  border: 1px solid #dbe2ee !important;
+  font-size: 14px !important;
+  background: #fff !important;
 }
+
+.mis-search:focus {
+  border-color: #2f6fed !important;
+  box-shadow: 0 0 0 3px rgba(47, 111, 237, 0.15) !important;
+  outline: none !important;
+}
+
+/* =========================================================
+   ACTION BUTTONS
+========================================================= */
 
 .mis-action-wrapper {
   display: flex;
@@ -37,7 +52,6 @@
 .mis-print-btn {
   width: 32px !important;
   height: 32px !important;
-
   padding: 0 !important;
 
   display: flex !important;
@@ -64,6 +78,10 @@
   color: #94a3b8;
 }
 
+/* =========================================================
+   MODAL TITLE
+========================================================= */
+
 .mis-modal-title {
   display: flex;
   align-items: center;
@@ -84,32 +102,48 @@
   color: #64748b;
 }
 
-/* =========================================
-   PRINT SLIP
-========================================= */
+/* =========================================================
+   MATERIAL ISSUE SLIP
+========================================================= */
+
+
+
+/* =========================================================
+   SLIP TITLE
+========================================================= */
+
+
+
+/* =========================================================
+   LEEWON BRAND
+========================================================= */
+
 
 .issue-slip {
   width: 700px;
   max-width: 100%;
   margin: auto;
+
   border: 1px solid #000;
   background: #fff;
   color: #000;
-}
-/* =========================================
-   MATERIAL ISSUE SLIP TITLE
-========================================= */
 
-/* =========================================
-   MATERIAL ISSUE SLIP TITLE
-========================================= */
+  box-sizing: border-box;
+
+  /* Base font */
+  font-size: 12px;
+}
+
+
+/* =========================================================
+   SLIP TITLE
+========================================================= */
 
 .slip-title {
-  height: 55px;
+  height: 60px;
 
   display: flex;
   align-items: center;
-
   justify-content: flex-start;
 
   padding: 0 18px;
@@ -122,13 +156,12 @@
 }
 
 
-/* =========================================
+/* =========================================================
    LEEWON BRAND
-========================================= */
+========================================================= */
 
 .leewon-brand {
   display: flex;
-
   align-items: center;
 
   flex-shrink: 0;
@@ -136,44 +169,34 @@
   margin-right: 38px;
 }
 
-
-/* LEEWON SYMBOL */
-
 .leewon-logo {
-  width: 34px;
-
-  height: 28px;
+  width: 38px;
+  height: 30px;
 
   object-fit: contain;
-
   display: block;
 
-  margin-right: 5px;
+  margin-right: 6px;
 }
 
-
-/* LEEWON TEXT */
-
 .leewon-text {
-  font-size: 22px;
-
+  font-size: 23px;
   font-weight: 700;
 
   color: #333;
 
   letter-spacing: -0.8px;
-
   line-height: 1;
 }
 
 
-/* =========================================
-   MATERIAL ISSUE SLIP
-========================================= */
+/* =========================================================
+   MATERIAL ISSUE SLIP HEADING
+========================================================= */
+
 
 .slip-heading {
-  font-size: 25px;
-
+  font-size: 27px;
   font-weight: 700;
 
   letter-spacing: 2px;
@@ -181,86 +204,205 @@
   color: #000;
 
   white-space: nowrap;
-
   line-height: 1;
 }
+
+
+/* =========================================================
+   TOP INFORMATION HEADER
+========================================================= */
 
 .header-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
+
   border-bottom: 1px solid #000;
 }
 
 .header-cell {
-  min-height: 60px;
-  padding: 8px;
+  min-height: 68px;
+
+  padding: 9px 8px;
 
   text-align: center;
 
-  font-size: 10px;
+  /* Increased */
+  font-size: 11px;
 
   border-right: 1px solid #000;
+
+  box-sizing: border-box;
 }
 
 .header-cell:last-child {
   border-right: none;
 }
 
-.value-line {
-  margin-top: 15px;
-  border-bottom: 1px solid #000;
-  min-height: 16px;
+/* Header label:
+   GRN NO.
+   ISSUE SLIP NO.
+   DATE & TIME
+   TOTAL QUANTITY
+*/
+.header-cell > strong {
+  display: block;
+
+  font-size: 11px;
+  font-weight: 700;
+
+  line-height: 1.2;
+
+  white-space: nowrap;
 }
+
+
+/* =========================================================
+   HEADER VALUES
+========================================================= */
+
+.value-line {
+  margin-top: 12px;
+
+  min-height: 18px;
+
+  padding: 0 3px 4px;
+
+  border-bottom: 1px solid #000;
+
+  /* Increased from 9px */
+  font-size: 12px !important;
+
+  font-weight: 600;
+
+  line-height: 1.25;
+
+  text-align: center;
+
+  white-space: nowrap;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  box-sizing: border-box;
+}
+
+
+/* Force value font size */
+
+.value-line,
+.value-line * {
+  font-size: 12px !important;
+}
+
+/* =========================================================
+   HEADER VALUE
+   GRN NUMBER
+   ISSUE SLIP NUMBER
+   DATE & TIME
+   TOTAL QUANTITY
+========================================================= */
+
+
+/* =========================================================
+   FROM / TO
+========================================================= */
 
 .from-to {
   display: grid;
   grid-template-columns: 1fr 1fr;
+
   border-bottom: 1px solid #000;
 }
 
 .from-to-box {
-  min-height: 65px;
-  padding: 10px;
+  min-height: 85px;
 
-  font-size: 11px;
+  padding: 11px;
+
+  /* Increased */
+  font-size: 12px;
+
+  line-height: 1.4;
 
   border-right: 1px solid #000;
+
+  box-sizing: border-box;
 }
 
 .from-to-box:last-child {
   border-right: none;
 }
 
+.address-content {
+  margin-top: 5px;
+}
+
+.address-content strong {
+  font-size: 12px;
+}
+
+
+/* =========================================================
+   ITEMS TABLE
+========================================================= */
+
 .items-table {
   width: 100%;
+
   border-collapse: collapse;
+
+  table-layout: fixed;
 }
 
 .items-table th,
 .items-table td {
   border: 1px solid #000;
-  padding: 6px;
-  font-size: 11px;
+
+  padding: 7px;
+
+  /* Increased */
+  font-size: 12px;
 }
 
 .items-table th {
   background: #e8e8e8;
+
   text-align: center;
+
+  font-weight: 700;
 }
 
 .items-table td {
-  height: 28px;
+  height: 32px;
+
   text-align: center;
+
+  vertical-align: middle;
 }
 
+
+
+/* =========================================================
+   REMARKS
+========================================================= */
+
 .remarks {
-  min-height: 30px;
-  padding: 6px;
+  min-height: 35px;
+
+  padding: 7px;
 
   border-bottom: 1px solid #000;
 
-  font-size: 11px;
+  /* Increased */
+  font-size: 12px;
+
+  line-height: 1.4;
+
+  box-sizing: border-box;
 }
+/* =========================================================
+   APPROVAL
+========================================================= */
 
 .approval-grid {
   display: grid;
@@ -268,42 +410,58 @@
 }
 
 .approval-box {
-  min-height: 85px;
-  padding: 10px;
+  min-height: 95px;
+
+  padding: 11px;
 
   text-align: center;
 
-  font-size: 11px;
+  /* Increased */
+  font-size: 12px;
+
   font-weight: 700;
 
   border-right: 1px solid #000;
+
+  box-sizing: border-box;
 }
 
 .approval-box:last-child {
   border-right: none;
 }
 
+
+/* =========================================================
+   THANK YOU
+========================================================= */
+
 .thank-you {
   border-top: 1px solid #000;
 
-  padding: 6px;
+  padding: 7px;
 
   text-align: center;
 
-  font-size: 11px;
+  /* Increased */
+  font-size: 12px;
+
   font-weight: 700;
 }
 
-/* =========================================
-   MODAL CLOSE / PRINT BUTTONS
-========================================= */
+/* =========================================================
+   MODAL ACTION BUTTONS
+========================================================= */
 
 .mis-modal-actions {
   display: flex;
+
   justify-content: center !important;
   align-items: center;
+
   gap: 12px;
+
   margin-top: 18px;
+
   width: 100%;
 }
 
@@ -312,6 +470,7 @@
   height: 40px !important;
 
   display: inline-flex !important;
+
   align-items: center !important;
   justify-content: center !important;
 
@@ -325,63 +484,47 @@
   padding: 8px 18px !important;
 }
 
-/* =========================================
+/* =========================================================
    CLOSE BUTTON
-   Same style as your Cancel button
-========================================= */
+========================================================= */
 
 .mis-modal-actions .btn-secondary {
   background: #fff !important;
+
   color: #0d4ea2 !important;
+
   border: 1px solid #0d4ea2 !important;
 }
 
 .mis-modal-actions .btn-secondary:hover {
   background: #f0f5ff !important;
+
   color: #083b7d !important;
+
   border-color: #083b7d !important;
 }
 
-/* =========================================
+/* =========================================================
    PRINT BUTTON
-   Same blue as Add button
-========================================= */
+========================================================= */
 
 .mis-modal-actions .btn-primary {
   background: #0d4ea2 !important;
+
   color: #fff !important;
+
   border: 1px solid #0d4ea2 !important;
 }
 
 .mis-modal-actions .btn-primary:hover {
   background: #083b7d !important;
+
   border-color: #083b7d !important;
 }
 
-@media (max-width: 768px) {
-
-  .mis-table-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .mis-search {
-    width: 100% !important;
-  }
-
-  .issue-slip {
-    width: 100%;
-  }
-
-  .slip-title {
-    font-size: 16px;
-  }
-
-  .company-name {
-    font-size: 15px;
-    margin-right: 10px;
-  }
-}
+/* =========================================================
+   DATATABLE
+========================================================= */
 
 .material-issue-slip-page .rdt_TableHeadRow {
   background: #f1f4fa !important;
@@ -390,15 +533,21 @@
 
 .material-issue-slip-page .rdt_TableCol {
   font-size: 14px !important;
+
   font-weight: 700 !important;
+
   color: #23395d !important;
+
   letter-spacing: 0.3px;
+
   text-transform: uppercase;
 }
 
 .material-issue-slip-page .rdt_TableCell {
   font-size: 14px !important;
+
   font-weight: 500 !important;
+
   color: #1f2937 !important;
 }
 
@@ -410,120 +559,152 @@
   background: #f8fbff !important;
 }
 
-.mis-search {
-  width: 280px !important;
-  height: 40px !important;
-  border-radius: 6px !important;
-  border: 1px solid #dbe2ee !important;
-  font-size: 14px !important;
-  background: #fff !important;
-}
-
-.mis-search:focus {
-  border-color: #2f6fed !important;
-  box-shadow: 0 0 0 3px rgba(47, 111, 237, 0.15) !important;
-  outline: none !important;
-}
-
 /* =========================================================
-   PRINT ONLY MATERIAL ISSUE SLIP
+   PRINT
 ========================================================= */
 
 @media print {
 
-    /* A4 paper */
-    @page {
-        size: A4 portrait;
-        margin: 10mm;
-    }
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
 
-    /* Hide everything */
-    body * {
-        visibility: hidden !important;
-    }
+  body * {
+    visibility: hidden !important;
+  }
 
-    /* Show only the issue slip */
-    .issue-slip,
-    .issue-slip * {
-        visibility: visible !important;
-    }
+  .issue-slip,
+  .issue-slip * {
+    visibility: visible !important;
+  }
 
-    /* Position slip at the top of printed page */
-    .issue-slip {
-        position: fixed !important;
+  .issue-slip {
+    position: fixed !important;
 
-        top: 10mm !important;
-        left: 50% !important;
+    top: 10mm !important;
+    left: 50% !important;
 
-        transform: translateX(-50%) !important;
+    transform: translateX(-50%) !important;
 
-        width: 700px !important;
-        max-width: none !important;
+    width: 700px !important;
+    max-width: none !important;
 
-        margin: 0 !important;
+    margin: 0 !important;
 
-        border: 1px solid #000 !important;
+    border: 1px solid #000 !important;
 
-        background: #fff !important;
+    background: #fff !important;
 
-        color: #000 !important;
+    color: #000 !important;
 
-        box-shadow: none !important;
+    box-shadow: none !important;
 
-        z-index: 999999 !important;
-    }
+    z-index: 999999 !important;
+  }
 
-    /* Hide modal buttons */
-    .mis-modal-actions,
-    .mis-modal-title,
-    .modal-header,
-    .btn-close {
-        display: none !important;
-    }
+  /* Hide modal controls */
+  .mis-modal-actions,
+  .mis-modal-title,
+  .modal-header,
+  .btn-close {
+    display: none !important;
+  }
 
-    /* Remove modal/background effects */
-    .modal,
-    .modal-dialog,
-    .modal-content,
-    .modal-body {
-        background: transparent !important;
-        box-shadow: none !important;
-        border: none !important;
-    }
+  /* Remove modal effects */
+  .modal,
+  .modal-dialog,
+  .modal-content,
+  .modal-body {
+    background: transparent !important;
 
-    /* Keep table borders */
-    .items-table {
-        width: 100% !important;
-        border-collapse: collapse !important;
-    }
+    box-shadow: none !important;
 
-    .items-table th,
-    .items-table td {
-        border: 1px solid #000 !important;
-    }
+    border: none !important;
+  }
 
-    /* Prevent table rows from splitting */
-    .items-table tr {
-        page-break-inside: avoid !important;
-        break-inside: avoid !important;
-    }
+  /* Keep header values small while printing */
+  .header-cell {
+    font-size: 11px !important;
+  }
 
-    /* Don't print empty extra space */
-    html,
-    body {
-        width: 100% !important;
-        height: auto !important;
-        overflow: visible !important;
-        background: #fff !important;
-    }
+  .header-cell > strong {
+    font-size: 11px !important;
+  }
+
+  .value-line {
+    font-size: 12px !important;
+  }
+
+  .value-line,
+  .value-line * {
+    font-size: 12px !important;
+  }
+.from-to-box {
+  font-size: 12px !important;
 }
 
+.address-content strong {
+  font-size: 12px !important;
+}
+  /* Keep table borders */
+  .items-table {
+    width: 100% !important;
+
+    border-collapse: collapse !important;
+  }
+
+  .items-table th,
+  .items-table td {
+    border: 1px solid #000 !important;
+  }
+
+  /* Prevent rows splitting */
+  .items-table tr {
+    page-break-inside: avoid !important;
+
+    break-inside: avoid !important;
+  }
+
+  .items-table th,
+.items-table td {
+  font-size: 12px !important;
+}
+
+.remarks {
+  font-size: 12px !important;
+}
+
+.approval-box {
+  font-size: 12px !important;
+}
+
+.thank-you {
+  font-size: 12px !important;
+}
+
+  html,
+  body {
+    width: 100% !important;
+
+    height: auto !important;
+
+    overflow: visible !important;
+
+    background: #fff !important;
+  }
+}
+
+/* =========================================================
+   MOBILE
+========================================================= */
 
 @media (max-width: 768px) {
 
   .mis-table-header {
     flex-direction: column;
     align-items: flex-start;
+    gap: 10px;
   }
 
   .mis-search {
@@ -535,17 +716,76 @@
   }
 
   .slip-title {
-    height: 45px;
-    gap: 12px;
+    height: 50px;
+    gap: 10px;
+    padding: 0 10px;
   }
 
   .leewon-logo {
-    width: 85px;
+    width: 40px;
     max-height: 30px;
   }
 
+  .leewon-text {
+    font-size: 18px;
+  }
+
+  .leewon-brand {
+    margin-right: 10px;
+  }
+
   .slip-heading {
-    font-size: 15px;
+    font-size: 17px;
     letter-spacing: 1px;
+  }
+
+  .header-cell {
+    min-height: 62px;
+    padding: 7px 4px;
+    font-size: 10px;
+  }
+
+  .header-cell > strong {
+    font-size: 10px;
+  }
+
+  .value-line {
+    margin-top: 9px;
+    min-height: 16px;
+    font-size: 11px !important;
+  }
+
+  .value-line,
+  .value-line * {
+    font-size: 11px !important;
+  }
+
+  .from-to-box {
+    padding: 8px;
+    font-size: 10px;
+  }
+
+  .address-content strong {
+    font-size: 10px;
+  }
+
+  .items-table th,
+  .items-table td {
+    padding: 5px;
+    font-size: 10px;
+  }
+
+  .approval-box {
+    min-height: 75px;
+    padding: 8px;
+    font-size: 10px;
+  }
+
+  .remarks {
+    font-size: 10px;
+  }
+
+  .thank-you {
+    font-size: 10px;
   }
 }

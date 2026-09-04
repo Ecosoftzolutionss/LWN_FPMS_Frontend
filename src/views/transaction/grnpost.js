@@ -64,12 +64,12 @@ const LABEL_SIZE_OPTIONS = [
   },
 ]
 
-// ★ NEW: the FIFO card is always designed/laid out at this one "master"
-// size. Every label size option is produced by uniformly scaling this
-// exact design down (or up) to fit inside the chosen physical label,
-// then centering it. This guarantees the card looks identical — same
-// logo, boxes, QR, meta grid, part row, footer — at every size, just
-// smaller, instead of needing a different hand-built layout per size.
+// The FIFO card is always designed/laid out at this one "master" size.
+// Every label size option is produced by uniformly scaling this exact
+// design down (or up) to fit inside the chosen physical label, then
+// centering it. This guarantees the card looks identical — same logo,
+// boxes, QR, meta grid, part row, footer — at every size, just smaller,
+// instead of needing a different hand-built layout per size.
 const BASE_CARD_WIDTH_MM = 150
 const BASE_CARD_HEIGHT_MM = 100
 
@@ -87,6 +87,149 @@ const computeCardTransform = (activeSize) => {
     offsetYmm: (activeSize.heightMm - BASE_CARD_HEIGHT_MM * scale) / 2,
   }
 }
+
+// =========================================================
+// PRINT HELPERS
+// =========================================================
+//
+// ★ FIX: printing used to open a popup window and dump HTML into it
+// with document.write(). That produced the blank "about:blank" print
+// preview you saw: window.print() could fire before the <link
+// rel="stylesheet"> tags copied into the popup had actually finished
+// downloading, so the card had no layout/box styling yet and nothing
+// visible got painted. Popups can also be throttled/paused by the
+// browser before they finish rendering.
+//
+// The fix below prints through a hidden <iframe> that lives on the
+// current page instead. It shares the page's resource cache (styles
+// load instantly) and we explicitly wait for every stylesheet AND every
+// image to finish loading before calling print() — not just for
+// "readyState === complete", which fires too early for external CSS.
+
+const waitForImages = async (doc) => {
+  const images = Array.from(doc.images || [])
+  await Promise.all(
+    images.map((img) => {
+      if (img.complete) return Promise.resolve()
+      return new Promise((resolve) => {
+        img.onload = resolve
+        img.onerror = resolve
+      })
+    })
+  )
+}
+
+const waitForStylesheets = async (doc) => {
+  const links = Array.from(doc.querySelectorAll('link[rel="stylesheet"]'))
+  await Promise.all(
+    links.map((link) => {
+      try {
+        // If the sheet is already parsed, cssRules is accessible without throwing.
+        if (link.sheet && link.sheet.cssRules) return Promise.resolve()
+      } catch {
+        // Still loading (or cross-origin) — fall through to waiting on events.
+      }
+      return new Promise((resolve) => {
+        link.addEventListener('load', resolve, { once: true })
+        link.addEventListener('error', resolve, { once: true })
+        // Safety net so we never hang forever on a slow/broken stylesheet.
+        setTimeout(resolve, 2000)
+      })
+    })
+  )
+}
+
+// Builds the <head> markup shared by both the single and bulk print
+// jobs: a copy of every stylesheet/style tag from the live app, plus
+// whatever page-specific CSS the caller passes in.
+const buildPrintHead = (title, extraStyle) => {
+  const styleLinks = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
+    .map((link) => `<link rel="stylesheet" href="${link.href}">`)
+    .join('')
+  const styleTags = Array.from(document.querySelectorAll('style'))
+    .map((style) => style.outerHTML)
+    .join('')
+
+  return `
+    <meta charset="UTF-8" />
+    <title>${title}</title>
+    ${styleLinks}
+    ${styleTags}
+    <style>${extraStyle}</style>
+    <style>
+      /* ★ FIX: the copied app-wide stylesheets above can contain
+         unrelated "@media print" rules from OTHER features (e.g. a
+         global rule that hides the whole page and reveals only some
+         other print target by id/class). Those rules get duplicated
+         into this iframe's document too and were silently wiping out
+         the FIFO card, producing the blank pages. This block is
+         intentionally the LAST <style> in <head>, so the cascade
+         always gives it the final say, and !important protects
+         against any specificity fight from the copied rules. */
+      html, body {
+        visibility: visible !important;
+        display: block !important;
+        opacity: 1 !important;
+      }
+      .print-container, .bulk-print-page,
+      .fifo-label-frame, .fifo-card, .fifo-card * {
+        visibility: visible !important;
+        opacity: 1 !important;
+      }
+    </style>
+  `
+}
+
+// Writes bodyHtml/headHtml into a hidden iframe, waits for styles and
+// images to be ready, then triggers the browser print dialog on it.
+const printHtmlDocument = (bodyHtml, headHtml) =>
+  new Promise((resolve) => {
+    const iframe = document.createElement('iframe')
+    iframe.style.position = 'fixed'
+    iframe.style.right = '0'
+    iframe.style.bottom = '0'
+    iframe.style.width = '0'
+    iframe.style.height = '0'
+    iframe.style.border = '0'
+    iframe.setAttribute('aria-hidden', 'true')
+    document.body.appendChild(iframe)
+
+    const cleanup = () => {
+      setTimeout(() => {
+        if (iframe.parentNode) iframe.parentNode.removeChild(iframe)
+      }, 1000)
+    }
+
+    const doc = iframe.contentWindow.document
+    doc.open()
+    doc.write(`<!DOCTYPE html><html><head>${headHtml}</head><body>${bodyHtml}</body></html>`)
+    doc.close()
+
+    const runPrint = async () => {
+      try {
+        await waitForStylesheets(doc)
+        await waitForImages(doc)
+        // One more frame so layout/paint has definitely settled.
+        await new Promise((r) => setTimeout(r, 300))
+        iframe.contentWindow.focus()
+        iframe.contentWindow.print()
+      } catch (error) {
+        console.error('Print error:', error)
+        toast.error('Failed to print the FIFO GRN label')
+      } finally {
+        resolve()
+        cleanup()
+      }
+    }
+
+    if (doc.readyState === 'complete') {
+      runPrint()
+    } else {
+      iframe.onload = runPrint
+      // Safety net in case the iframe's load event never fires.
+      setTimeout(runPrint, 2500)
+    }
+  })
 
 const GRNPost = () => {
   const navigate = useNavigate()
@@ -108,15 +251,15 @@ const GRNPost = () => {
   // Chosen label size, defaults to the first option.
   const [labelSize, setLabelSize] = useState('')
 
-  // ★ NEW: rows checked in the GRN Details items table, used to drive
-  // Bulk Post / Bulk Print. Reset (via toggleClearSelectedLines) after
-  // any bulk action so stale selections don't linger.
+  // Rows checked in the GRN Details items table, used to drive Bulk
+  // Post / Bulk Print. Reset (via toggleClearSelectedLines) after any
+  // bulk action so stale selections don't linger.
   const [selectedLines, setSelectedLines] = useState([])
   const [toggleClearSelectedLines, setToggleClearSelectedLines] = useState(false)
   const [bulkPosting, setBulkPosting] = useState(false)
 
-  // ★ NEW: bulk FIFO label modal — same card design as the single-label
-  // modal, one frame per selected line, sized/scaled together.
+  // Bulk FIFO label modal — same card design as the single-label modal,
+  // one frame per selected line, sized/scaled together.
   const [bulkLabelGrn, setBulkLabelGrn] = useState(null) // { grnNumber, supplierInvoiceNumber, supplierInvoiceDate, totalQuantity, lines: [...] }
   const [showBulkLabel, setShowBulkLabel] = useState(false)
   const [bulkLabelSize, setBulkLabelSize] = useState('')
@@ -126,14 +269,14 @@ const GRNPost = () => {
   const { privileges: userPrivileges = [] } = usePrivilege()
   const uPrivilege = userPrivileges.find((p) => p.menuName === 'GRN Post') || {}
 
-const getCurrentUsername = () => {
-  try {
-    const user = JSON.parse(sessionStorage.getItem('user') || '{}')
-    return user?.username || ''
-  } catch {
-    return ''
+  const getCurrentUsername = () => {
+    try {
+      const user = JSON.parse(sessionStorage.getItem('user') || '{}')
+      return user?.username || ''
+    } catch {
+      return ''
+    }
   }
-}
 
   useEffect(() => {
     loadRows()
@@ -178,8 +321,8 @@ const getCurrentUsername = () => {
   const handlePostLine = async (line) => {
     try {
       await API.put(`/GrnEntry/line/${line.id}/post`, {
-  postedBy: getCurrentUsername(),
-})
+        postedBy: getCurrentUsername(),
+      })
       toast.success(`${line.partNumber} Posted Successfully`)
 
       const res = await API.get(`/GrnEntry/${detailsGrn.id}`)
@@ -201,19 +344,38 @@ const getCurrentUsername = () => {
     setShowLabel(true)
   }
 
-  // ★ NEW: Bulk GRN Post — posts every currently-unposted line the user
-  // has checked, in one API call. Successes and failures are reported
-  // back per-line (e.g. a part with no Store Master pallet config won't
+  // Bulk GRN Post — posts every currently-unposted line the user has
+  // checked, in one API call. Successes and failures are reported back
+  // per-line (e.g. a part with no Store Master pallet config won't
   // block the rest of the batch), then the freshly posted lines are
   // offered straight into the Bulk Print view.
   const handleBulkPost = async () => {
+    // No checkbox selected
+    if (selectedLines.length === 0) {
+      toast.warning('Please select at least one record')
+      return
+    }
+
+    // Check if any selected record is already posted
+    const alreadyPosted = selectedLines.filter((l) => l.isPosted)
+
+    if (alreadyPosted.length > 0) {
+      toast.warning(
+        'Selected record(s) are already posted. Please select only unposted record(s).'
+      )
+      return
+    }
+
+    // Only unposted records can be posted
     const targets = selectedLines.filter((l) => !l.isPosted)
+
     if (targets.length === 0) {
-      toast.info('Select at least one unposted item to post')
+      toast.warning('Please select at least one unposted record')
       return
     }
 
     setBulkPosting(true)
+
     try {
       const res = await API.put('/GrnEntry/lines/post-bulk', {
         lineIds: targets.map((l) => l.id),
@@ -224,38 +386,80 @@ const getCurrentUsername = () => {
       const errorList = res.data?.errors || []
 
       if (postedList.length > 0) {
-        toast.success(`${postedList.length} item(s) posted successfully`)
+        toast.success(
+          `${postedList.length} item(s) posted successfully`
+        )
       }
-      errorList.forEach((e) => toast.error(e.message || 'Failed to post an item'))
+
+      errorList.forEach((e) =>
+        toast.error(e.message || 'Failed to post an item')
+      )
 
       const refreshed = await API.get(`/GrnEntry/${detailsGrn.id}`)
+
       setDetailsGrn(refreshed.data)
+
       await loadRows()
 
       setSelectedLines([])
       setToggleClearSelectedLines((prev) => !prev)
 
       if (postedList.length > 0) {
-        const postedIds = new Set(postedList.map((p) => p.id))
-        const postedLines = refreshed.data.lines.filter((l) => postedIds.has(l.id))
-        openBulkLabel(refreshed.data, postedLines)
+        const postedIds = new Set(
+          postedList.map((p) => p.id)
+        )
+
+        const postedLines = refreshed.data.lines.filter(
+          (l) => postedIds.has(l.id)
+        )
+
+        openBulkLabel(
+          refreshed.data,
+          postedLines
+        )
       }
+
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Bulk Post Failed'))
+      toast.error(
+        getErrorMessage(err, 'Bulk Post Failed')
+      )
     } finally {
       setBulkPosting(false)
     }
   }
 
-  // ★ NEW: Bulk GRN Print — opens the multi-label preview for every
+  // Bulk GRN Print — opens the multi-label preview for every
   // already-posted line the user has checked, without touching anything
   // on the server (pure reprint of existing pallet/FIFO numbers).
   const handleBulkPrint = () => {
-    const targets = selectedLines.filter((l) => l.isPosted)
-    if (targets.length === 0) {
-      toast.info('Select at least one posted item to print')
+    // No checkbox selected
+    if (selectedLines.length === 0) {
+      toast.warning('Please select at least one record')
       return
     }
+
+    // Check if any selected record is not posted
+    const unposted = selectedLines.filter(
+      (l) => !l.isPosted
+    )
+
+    if (unposted.length > 0) {
+      toast.warning(
+        'Selected record(s) are not posted yet. Please select only posted record(s) for printing.'
+      )
+      return
+    }
+
+    // Only posted records can be printed
+    const targets = selectedLines.filter(
+      (l) => l.isPosted
+    )
+
+    if (targets.length === 0) {
+      toast.warning('Please select at least one posted record')
+      return
+    }
+
     openBulkLabel(detailsGrn, targets)
   }
 
@@ -333,42 +537,6 @@ const getCurrentUsername = () => {
     }
   }
 
-  // Builds a temporary <style> tag with an @page rule matching the
-  // chosen label size, so window.print() outputs at that exact physical
-  // size instead of the browser's default page size. Removed right
-  // after the print dialog is triggered.
-  const applyPrintPageSize = () => {
-    const size = LABEL_SIZE_OPTIONS.find((s) => s.value === labelSize) || LABEL_SIZE_OPTIONS[0]
-    const styleTag = document.createElement('style')
-    styleTag.id = 'grn-label-print-size'
-    styleTag.innerHTML = `
-      @page { size: ${size.widthMm}mm ${size.heightMm}mm; margin: 0; }
-      @media print {
-        body * { visibility: hidden; }
-        #fifo-print-area, #fifo-print-area * { visibility: visible; }
-        #fifo-print-area {
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: ${size.widthMm}mm;
-          height: ${size.heightMm}mm;
-          margin: 0;
-        }
-      }
-    `
-    document.head.appendChild(styleTag)
-    return styleTag
-  }
-
-  const handlePrintLabel = () => {
-    const styleTag = applyPrintPageSize()
-    window.print()
-    // Give the print dialog a moment to read the styles before cleanup.
-    setTimeout(() => {
-      styleTag.remove()
-    }, 1000)
-  }
-
   const handleDownloadLabel = async () => {
     const node = document.getElementById('fifo-print-area')
     if (!node) {
@@ -403,49 +571,188 @@ const getCurrentUsername = () => {
     }
   }
 
-  // ★ NEW: bulk-print page-size styling. Identical @page sizing to the
-  // single-label version, but adds a page-break after every label frame
-  // so each posted line prints on its own physical label/page, with no
-  // break after the very last one.
-  const applyBulkPrintPageSize = () => {
-    const size = LABEL_SIZE_OPTIONS.find((s) => s.value === bulkLabelSize) || LABEL_SIZE_OPTIONS[0]
-    const styleTag = document.createElement('style')
-    styleTag.id = 'grn-bulk-label-print-size'
-    styleTag.innerHTML = `
-      @page { size: ${size.widthMm}mm ${size.heightMm}mm; margin: 0; }
+  // =========================================================
+  // SINGLE LABEL PRINT
+  // =========================================================
+  const handlePrintLabel = async () => {
+    if (!labelSize) {
+      toast.warning('Please select a label size')
+      return
+    }
+
+    const size = LABEL_SIZE_OPTIONS.find((s) => s.value === labelSize)
+
+    if (!size || !size.widthMm || !size.heightMm) {
+      toast.error('Invalid label size')
+      return
+    }
+
+    const source = document.getElementById('fifo-print-area')
+
+    if (!source) {
+      toast.error('Label not found — please reopen the label')
+      return
+    }
+
+    const clonedLabel = source.cloneNode(true)
+    clonedLabel.removeAttribute('id')
+
+    const headHtml = buildPrintHead('FIFO GRN Label', `
+      @page {
+        size: ${size.widthMm}mm ${size.heightMm}mm;
+        margin: 0;
+      }
+      html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: ${size.widthMm}mm;
+        height: ${size.heightMm}mm;
+        background: #ffffff !important;
+        overflow: hidden !important;
+      }
+      body {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .print-container {
+        width: ${size.widthMm}mm;
+        height: ${size.heightMm}mm;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        position: relative;
+        background: #ffffff;
+      }
+      .fifo-label-frame {
+        width: ${size.widthMm}mm !important;
+        height: ${size.heightMm}mm !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+        position: relative !important;
+        background: #ffffff !important;
+      }
+      .fifo-card {
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+      }
       @media print {
-        body * { visibility: hidden; }
-        #fifo-bulk-print-area, #fifo-bulk-print-area * { visibility: visible; }
-        #fifo-bulk-print-area {
-          position: fixed;
-          top: 0;
-          left: 0;
+        html, body {
+          width: ${size.widthMm}mm !important;
+          height: ${size.heightMm}mm !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          overflow: hidden !important;
         }
-        .fifo-bulk-label-frame {
-          width: ${size.widthMm}mm;
-          height: ${size.heightMm}mm;
-          margin: 0;
-          page-break-after: always;
-        }
-        .fifo-bulk-label-frame:last-child {
-          page-break-after: auto;
+        .print-container {
+          width: ${size.widthMm}mm !important;
+          height: ${size.heightMm}mm !important;
         }
       }
-    `
-    document.head.appendChild(styleTag)
-    return styleTag
+    `)
+
+    await printHtmlDocument(`<div class="print-container">${clonedLabel.outerHTML}</div>`, headHtml)
   }
 
-  const handlePrintBulkLabel = () => {
-    const styleTag = applyBulkPrintPageSize()
-    window.print()
-    setTimeout(() => {
-      styleTag.remove()
-    }, 1000)
+  // =========================================================
+  // BULK LABEL PRINT
+  // =========================================================
+  const handlePrintBulkLabel = async () => {
+    if (!bulkLabelSize) {
+      toast.warning('Please select a label size')
+      return
+    }
+
+    if (!bulkLabelGrn?.lines || bulkLabelGrn.lines.length === 0) {
+      toast.warning('No labels available to print')
+      return
+    }
+
+    const size = LABEL_SIZE_OPTIONS.find((s) => s.value === bulkLabelSize)
+
+    if (!size || !size.widthMm || !size.heightMm) {
+      toast.error('Invalid label size')
+      return
+    }
+
+    const labelsHtml = bulkLabelGrn.lines
+      .map((line) => {
+        const existing = document.getElementById(`fifo-bulk-frame-${line.id}`)
+        if (!existing) return ''
+
+        const cloned = existing.cloneNode(true)
+        cloned.removeAttribute('id')
+
+        return `<div class="bulk-print-page">${cloned.outerHTML}</div>`
+      })
+      .join('')
+
+    const headHtml = buildPrintHead(`FIFO GRN Labels - ${bulkLabelGrn.grnNumber}`, `
+      @page {
+        size: ${size.widthMm}mm ${size.heightMm}mm;
+        margin: 0;
+      }
+      html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+      }
+      body {
+        width: ${size.widthMm}mm;
+        margin: 0;
+        padding: 0;
+      }
+      .bulk-print-page {
+        width: ${size.widthMm}mm;
+        height: ${size.heightMm}mm;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden;
+        position: relative;
+        page-break-after: always;
+        break-after: page;
+        background: #ffffff;
+      }
+      .bulk-print-page:last-child {
+        page-break-after: auto;
+        break-after: auto;
+      }
+      .fifo-label-frame {
+        width: ${size.widthMm}mm !important;
+        height: ${size.heightMm}mm !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+        position: relative !important;
+        background: #ffffff !important;
+      }
+      .fifo-card {
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+      }
+      @media print {
+        html, body {
+          margin: 0 !important;
+          padding: 0 !important;
+          background: #ffffff !important;
+        }
+        .bulk-print-page {
+          page-break-after: always;
+          break-after: page;
+        }
+        .bulk-print-page:last-child {
+          page-break-after: auto;
+          break-after: auto;
+        }
+      }
+    `)
+
+    await printHtmlDocument(labelsHtml, headHtml)
   }
 
-  // ★ NEW: bulk download — captures each label frame individually (by
-  // its own id) and stitches them into one multi-page PDF, one page per
+  // Bulk download — captures each label frame individually (by its own
+  // id) and stitches them into one multi-page PDF, one page per
   // selected line, all at the chosen label size.
   const handleDownloadBulkLabel = async () => {
     if (!bulkLabelGrn?.lines?.length) {
@@ -499,17 +806,17 @@ const getCurrentUsername = () => {
     (s) => s.value === labelSize
   )
 
-  // ★ Uniform scale-to-fit: the card is always drawn at
-  // BASE_CARD_WIDTH_MM x BASE_CARD_HEIGHT_MM, then scaled down (or up)
-  // to fit inside the chosen physical label and centered. This is what
-  // keeps the design identical — logo, boxes, QR, meta grid, part row,
-  // footer — across every label size instead of needing bespoke,
-  // easily-broken layouts per size.
+  // Uniform scale-to-fit: the card is always drawn at BASE_CARD_WIDTH_MM
+  // x BASE_CARD_HEIGHT_MM, then scaled down (or up) to fit inside the
+  // chosen physical label and centered. This is what keeps the design
+  // identical — logo, boxes, QR, meta grid, part row, footer — across
+  // every label size instead of needing bespoke, easily-broken layouts
+  // per size.
   const { scale: cardScale, offsetXmm: cardOffsetXmm, offsetYmm: cardOffsetYmm } = computeCardTransform(activeSize)
 
-  // ★ NEW: same scale-to-fit math, driven by the bulk modal's own size
-  // selector so a user can pick a different label size for a bulk run
-  // than whatever was last used for a single reprint.
+  // Same scale-to-fit math, driven by the bulk modal's own size selector
+  // so a user can pick a different label size for a bulk run than
+  // whatever was last used for a single reprint.
   const bulkActiveSize = LABEL_SIZE_OPTIONS.find((s) => s.value === bulkLabelSize)
   const { scale: bulkCardScale, offsetXmm: bulkCardOffsetXmm, offsetYmm: bulkCardOffsetYmm } = computeCardTransform(bulkActiveSize)
 
@@ -522,6 +829,12 @@ const getCurrentUsername = () => {
       style={{
         width: `${BASE_CARD_WIDTH_MM}mm`,
         height: `${BASE_CARD_HEIGHT_MM}mm`,
+        // ★ FIX: transform-origin must be the top-left corner for the
+        // translate+scale offsets computed in computeCardTransform() to
+        // land correctly. Without this, the browser scales from the
+        // element's center by default, which can shift/clip the card
+        // for any label size other than the 150x100mm base size.
+        transformOrigin: 'top left',
         transform: `translate(${offsetXmm}mm, ${offsetYmm}mm) scale(${scale})`,
       }}
     >
@@ -695,7 +1008,7 @@ const getCurrentUsername = () => {
               >
                 <span>Items</span>
 
-                {/* ★ NEW: Bulk Post / Bulk Print toolbar — driven by the
+                {/* Bulk Post / Bulk Print toolbar — driven by the
                     checkboxes on the table below. Each button only acts on
                     the subset of the current selection it applies to
                     (unposted lines for Post, posted lines for Print), and
@@ -706,19 +1019,23 @@ const getCurrentUsername = () => {
                   )}
                   <button
                     className="post-btn"
-                    disabled={selectedUnpostedCount === 0 || bulkPosting}
+                    disabled={bulkPosting}
                     onClick={handleBulkPost}
-                    title="Post all selected unposted items"
+                    title="Bulk Post selected records"
                   >
-                    <FaLayerGroup size={12} /> {bulkPosting ? 'Posting…' : `Bulk Post (${selectedUnpostedCount})`}
+                    <FaLayerGroup size={12} />
+                    {bulkPosting
+                      ? 'Posting…'
+                      : `Bulk Post (${selectedLines.length})`}
                   </button>
                   <button
                     className="reprint-btn"
-                    disabled={selectedPostedCount === 0}
+                    disabled={false}
                     onClick={handleBulkPrint}
-                    title="Print/download labels for all selected posted items"
+                    title="Print/download labels for selected records"
                   >
-                    <FaPrint size={12} /> {`Bulk Print (${selectedPostedCount})`}
+                    <FaPrint size={12} />
+                    {`Bulk Print (${selectedLines.length})`}
                   </button>
                 </div>
               </div>
@@ -747,51 +1064,95 @@ const getCurrentUsername = () => {
                     minWidth: '230px',
                     cell: (row) => (
                       <div className="grn-post-actions">
+
+                        {/* =====================================================
+          VIEW
+          Available for both Posted and Unposted records
+      ===================================================== */}
                         {uPrivilege.canView && (
                           <button
                             className="icon-btn view-btn"
                             title="View GRN Details"
-                            onClick={() => handleViewLine(row)}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleViewLine(row)
+                            }}
                           >
                             <FaEye size={13} />
                           </button>
                         )}
-                        {uPrivilege.canEdit && (
+
+
+                        {/* =====================================================
+          UNPOSTED ONLY
+          Edit + Delete + Post
+      ===================================================== */}
+                        {!row.isPosted && (
+                          <>
+                            {/* EDIT */}
+                            {uPrivilege.canEdit && (
+                              <button
+                                className="icon-btn edit-btn"
+                                title="Edit GRN"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleEditGrn()
+                                }}
+                              >
+                                <FaEdit size={13} />
+                              </button>
+                            )}
+
+
+                            {/* DELETE */}
+                            {uPrivilege.canDelete && (
+                              <button
+                                className="icon-btn delete-btn"
+                                title="Delete"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleDeleteLineClick(row)
+                                }}
+                              >
+                                <FaTrash size={13} />
+                              </button>
+                            )}
+
+
+                            {/* POST */}
+                            <button
+                              className="post-btn"
+                              title="Post GRN"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handlePostLine(row)
+                              }}
+                            >
+                              <FaCheckCircle size={12} />
+                              Post
+                            </button>
+                          </>
+                        )}
+
+
+                        {/* =====================================================
+          POSTED ONLY
+          Reprint
+      ===================================================== */}
+                        {row.isPosted && (
                           <button
-                            className="icon-btn edit-btn"
-                            title={
-                              row.isPosted || detailsGrn.lines?.some((l) => l.isPosted)
-                                ? 'Posted GRN cannot be edited'
-                                : 'Edit GRN'
-                            }
-                            disabled={
-                              row.isPosted ||
-                              detailsGrn.lines?.some((l) => l.isPosted)
-                            }
-                            onClick={handleEditGrn}
+                            className="reprint-btn"
+                            title="Reprint FIFO Label"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleReprintLine(row)
+                            }}
                           >
-                            <FaEdit size={13} />
+                            <FaPrint size={12} />
+                            Reprint
                           </button>
                         )}
-                        {uPrivilege.canDelete && (
-                          <button
-                            className="icon-btn delete-btn"
-                            title="Delete"
-                            disabled={row.isPosted}
-                            onClick={() => handleDeleteLineClick(row)}
-                          >
-                            <FaTrash size={13} />
-                          </button>
-                        )}
-                        {row.isPosted ? (
-                          <button className="reprint-btn" onClick={() => handleReprintLine(row)}>
-                            <FaPrint size={12} /> Reprint
-                          </button>
-                        ) : (
-                          <button className="post-btn" onClick={() => handlePostLine(row)}>
-                            <FaCheckCircle size={12} /> Post
-                          </button>
-                        )}
+
                       </div>
                     ),
                   },
@@ -996,7 +1357,7 @@ const getCurrentUsername = () => {
                 </CFormSelect>
               </div>
 
-              {/* ★ Outer frame = exact physical label size (this is what gets
+              {/* Outer frame = exact physical label size (this is what gets
                   printed / captured for download). The card inside is always
                   drawn at the master design size and uniformly scaled +
                   centered to fit the frame, so the design never changes
@@ -1033,7 +1394,7 @@ const getCurrentUsername = () => {
         )}
       </CModal>
 
-      {/* ═══════════ ★ NEW: BULK FIFO GRN Label modal (multiple lines) ═══════════ */}
+      {/* ═══════════ BULK FIFO GRN Label modal (multiple lines) ═══════════ */}
       <CModal
         visible={showBulkLabel && !!bulkLabelGrn}
         onClose={() => setShowBulkLabel(false)}

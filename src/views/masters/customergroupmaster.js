@@ -256,11 +256,11 @@ const CustomerGroupMaster = () => {
         <CCard className="mb-3">
           <CCardBody className="summary-card-body">
             <div>
-              <div className="summary-label">Total Customer Master Group</div>
+              <div className="summary-label">Total Customer Groups</div>
               <div className="summary-value">{String(groups.length).padStart(2, '0')}</div>
             </div>
 
-            <button className="round-icon-btn add-item-btn" title="Add Customer Type" onClick={handleAddNew}>
+            <button className="round-icon-btn add-item-btn" title="Add Customer Group" onClick={handleAddNew}>
               <FaPlus size={16} />
             </button>
           </CCardBody>

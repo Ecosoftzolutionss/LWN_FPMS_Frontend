@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 
 import {
-  FaBars,
   FaSignOutAlt,
   FaChartPie,
   FaClipboardList,
@@ -702,7 +701,7 @@ try {
 
         {/* Hamburger */}
 
-        <button
+        {/* <button
           type="button"
           className="mobility-menu-button"
           aria-label="Menu"
@@ -710,7 +709,7 @@ try {
 
           <FaBars />
 
-        </button>
+        </button> */}
 
 
         {/* Logo */}

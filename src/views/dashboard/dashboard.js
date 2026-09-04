@@ -38,6 +38,126 @@ const pct = (part, total) => (total > 0 ? Math.round((part / total) * 100) : 0)
 // (reading 'toLocaleString')"; this just renders "0" instead.
 const num = (value) => Number(value || 0).toLocaleString()
 
+  const DonutChart = ({
+    available,
+    issued,
+    closed,
+    total
+  }) => {
+    const availablePct = pct(available, total)
+    const issuedPct = pct(issued, total)
+    const closedPct = pct(closed, total)
+
+    const radius = 42
+    const circumference = 2 * Math.PI * radius
+
+    const getDashArray = (percentage) => {
+      const value = (percentage / 100) * circumference
+      return `${value} ${circumference - value}`
+    }
+
+    const getDashOffset = (previousPercentage) => {
+      return -((previousPercentage / 100) * circumference)
+    }
+
+    return (
+      <div className="dashboard-donut">
+        <svg
+          width="150"
+          height="150"
+          viewBox="0 0 100 100"
+          className="dashboard-donut-svg"
+        >
+          {/* Background */}
+          <circle
+            cx="50"
+            cy="50"
+            r={radius}
+            fill="none"
+            stroke="#f1f5f9"
+            strokeWidth="12"
+          />
+
+          {/* Available - Blue */}
+          {availablePct > 0 && (
+            <circle
+              cx="50"
+              cy="50"
+              r={radius}
+              fill="none"
+              stroke="#1d5cff"
+              strokeWidth="12"
+              strokeDasharray={getDashArray(availablePct)}
+              strokeDashoffset="0"
+              pathLength="100"
+              transform="rotate(-90 50 50)"
+              className="dashboard-donut-segment"
+            >
+              <title>
+                Available: {availablePct}%
+              </title>
+            </circle>
+          )}
+
+          {/* Issued - Orange */}
+          {issuedPct > 0 && (
+            <circle
+              cx="50"
+              cy="50"
+              r={radius}
+              fill="none"
+              stroke="#f97316"
+              strokeWidth="12"
+              strokeDasharray={getDashArray(issuedPct)}
+              strokeDashoffset={getDashOffset(availablePct)}
+              pathLength="100"
+              transform="rotate(-90 50 50)"
+              className="dashboard-donut-segment"
+            >
+              <title>
+                Issued: {issuedPct}%
+              </title>
+            </circle>
+          )}
+
+          {/* Closed / Others - Grey */}
+          {closedPct > 0 && (
+            <circle
+              cx="50"
+              cy="50"
+              r={radius}
+              fill="none"
+              stroke="#cbd5e1"
+              strokeWidth="12"
+              strokeDasharray={getDashArray(closedPct)}
+              strokeDashoffset={getDashOffset(
+                availablePct + issuedPct
+              )}
+              pathLength="100"
+              transform="rotate(-90 50 50)"
+              className="dashboard-donut-segment"
+            >
+              <title>
+                Closed / Others: {closedPct}%
+              </title>
+            </circle>
+          )}
+        </svg>
+
+        {/* Center */}
+        <div className="dashboard-donut-center">
+          <div className="dashboard-donut-total">
+            {num(total)}
+          </div>
+
+          <div className="dashboard-donut-total-label">
+            TOTAL
+          </div>
+        </div>
+      </div>
+    )
+  }
+
 // ★ NEW: activity type -> icon + color, used both for the Recent
 // Activities table row label and its leading icon.
 const ACTIVITY_META = {
@@ -180,18 +300,17 @@ const Dashboard = () => {
     },
   ]
 
+
+  // =====================================================
+  // DONUT CHART WITH HOVER PERCENTAGE
+  // =====================================================
+
+
+
   // Donut chart built with a conic-gradient — no charting library
   // needed. Segment order: Available (blue) -> Issued (orange) ->
   // Closed/Others (grey).
-  const availDeg = pct(availablePallets, totalPallets)
-  const issuedDeg = pct(issuedPallets, totalPallets)
-  const donutStyle = {
-    background: `conic-gradient(
-      #1d5cff 0% ${availDeg}%,
-      #f97316 ${availDeg}% ${availDeg + issuedDeg}%,
-      #cbd5e1 ${availDeg + issuedDeg}% 100%
-    )`,
-  }
+
 
   const locations = Array.isArray(data.locations) ? data.locations : []
   const maxLocationQty = Math.max(1, ...locations.map((l) => l.availableCount || 0))
@@ -209,47 +328,47 @@ const Dashboard = () => {
   return (
     <div className="dashboard-page">
       <div className="dashboard-header">
-  <div className="dashboard-date-filter">
-    <DatePicker
-      selectsRange
-      startDate={fromDate}
-      endDate={toDate}
-      onChange={(update) => {
-        setDateRange(update)
+        <div className="dashboard-date-filter">
+          <DatePicker
+            selectsRange
+            startDate={fromDate}
+            endDate={toDate}
+            onChange={(update) => {
+              setDateRange(update)
 
-        const [start, end] = update
+              const [start, end] = update
 
-        if (start && end) {
-          loadSummary(start, end)
-        }
-      }}
-      dateFormat="dd MMM yyyy"
-      isClearable={false}
-      showPopperArrow={false}
-      placeholderText="Select date range"
-      customInput={
-        <button
-          type="button"
-          className="dashboard-date-range-button"
-        >
-          <span className="dashboard-calendar-icon">
-            📅
-          </span>
+              if (start && end) {
+                loadSummary(start, end)
+              }
+            }}
+            dateFormat="dd MMM yyyy"
+            isClearable={false}
+            showPopperArrow={false}
+            placeholderText="Select date range"
+            customInput={
+              <button
+                type="button"
+                className="dashboard-date-range-button"
+              >
+                <span className="dashboard-calendar-icon">
+                  📅
+                </span>
 
-          <span className="dashboard-date-range-text">
-            {fromDate && toDate
-              ? `${formatRangeDate(fromDate)} - ${formatRangeDate(toDate)}`
-              : 'Select date range'}
-          </span>
+                <span className="dashboard-date-range-text">
+                  {fromDate && toDate
+                    ? `${formatRangeDate(fromDate)} - ${formatRangeDate(toDate)}`
+                    : 'Select date range'}
+                </span>
 
-          <span className="dashboard-date-range-arrow">
-            ˅
-          </span>
-        </button>
-      }
-    />
-  </div>
-</div>
+                <span className="dashboard-date-range-arrow">
+                  ˅
+                </span>
+              </button>
+            }
+          />
+        </div>
+      </div>
 
       {/* ---------- KPI cards ---------- */}
       <div className="dashboard-kpi-grid">
@@ -272,34 +391,53 @@ const Dashboard = () => {
             <div className="section-title">PALLET STATUS OVERVIEW</div>
 
             <div className="dashboard-donut-row">
-              <div className="dashboard-donut" style={donutStyle}>
-                <div className="dashboard-donut-center">
-                  <div className="dashboard-donut-total">{num(totalPallets)}</div>
-                  <div className="dashboard-donut-total-label">TOTAL</div>
-                </div>
-              </div>
+              <div className="dashboard-donut-row">
 
-              <div className="dashboard-donut-legend">
-                <div className="dashboard-legend-item">
-                  <span className="dashboard-legend-dot dot-blue" />
-                  <div>
-                    <div className="dashboard-legend-value">{num(availablePallets)} ({pct(availablePallets, totalPallets)}%)</div>
-                    <div className="dashboard-legend-label">Available</div>
+                <DonutChart
+                  available={availablePallets}
+                  issued={issuedPallets}
+                  closed={closedPallets}
+                  total={totalPallets}
+                />
+
+                <div className="dashboard-donut-legend">
+
+                  <div className="dashboard-legend-item">
+                    <span className="dashboard-legend-dot dot-blue" />
+                    <div>
+                      <div className="dashboard-legend-value">
+                        {num(availablePallets)} ({pct(availablePallets, totalPallets)}%)
+                      </div>
+                      <div className="dashboard-legend-label">
+                        Available
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div className="dashboard-legend-item">
-                  <span className="dashboard-legend-dot dot-orange" />
-                  <div>
-                    <div className="dashboard-legend-value">{num(issuedPallets)} ({pct(issuedPallets, totalPallets)}%)</div>
-                    <div className="dashboard-legend-label">Issued</div>
+
+                  <div className="dashboard-legend-item">
+                    <span className="dashboard-legend-dot dot-orange" />
+                    <div>
+                      <div className="dashboard-legend-value">
+                        {num(issuedPallets)} ({pct(issuedPallets, totalPallets)}%)
+                      </div>
+                      <div className="dashboard-legend-label">
+                        Issued
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div className="dashboard-legend-item">
-                  <span className="dashboard-legend-dot dot-grey" />
-                  <div>
-                    <div className="dashboard-legend-value">{num(closedPallets)} ({pct(closedPallets, totalPallets)}%)</div>
-                    <div className="dashboard-legend-label">Closed / Others</div>
+
+                  <div className="dashboard-legend-item">
+                    <span className="dashboard-legend-dot dot-grey" />
+                    <div>
+                      <div className="dashboard-legend-value">
+                        {num(closedPallets)} ({pct(closedPallets, totalPallets)}%)
+                      </div>
+                      <div className="dashboard-legend-label">
+                        Closed / Others
+                      </div>
+                    </div>
                   </div>
+
                 </div>
               </div>
             </div>
@@ -397,7 +535,7 @@ const Dashboard = () => {
               headRow: { style: { backgroundColor: '#fff', borderBottom: '1px solid #eef1f8' } },
               headCells: {
                 style: {
-                  fontSize: '10px',
+                  fontSize: '14px',
                   fontWeight: 700,
                   color: '#94a3b8',
                   letterSpacing: '0.03em',
@@ -406,7 +544,7 @@ const Dashboard = () => {
               },
               cells: {
                 style: {
-                  fontSize: '13px',
+                  fontSize: '14px',
                   color: '#1f2937',
                 },
               },
