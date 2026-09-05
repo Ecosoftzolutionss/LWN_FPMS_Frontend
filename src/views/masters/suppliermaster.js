@@ -615,7 +615,7 @@ const SupplierMaster = () => {
         <CCard className="mb-3">
           <CCardBody className="summary-card-body">
             <div>
-              <div className="summary-label">Total Supplier</div>
+              <div className="summary-label">Total Suppliers</div>
               <div className="summary-value">{String(suppliers.length).padStart(2, '0')}</div>
             </div>
 

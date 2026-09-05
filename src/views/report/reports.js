@@ -294,14 +294,63 @@ const Reports = () => {
 
     return rows.filter((row) => {
 
+      // =========================================================
+      // SEARCH ALL AVAILABLE FIELDS / COLUMNS
+      // =========================================================
       if (searchValue) {
-        const matchesSearch =
-          String(row.grnNumber ?? '').toLowerCase().includes(searchValue) ||
-          String(row.partNumber ?? '').toLowerCase().includes(searchValue)
-        if (!matchesSearch) return false
+
+        const searchableValues = [
+          // GRN Details
+          row.grnNumber,
+          row.supplierName,
+          row.poNumber,
+          formatDate(row.poDate),
+          row.grnType,
+          row.supplierInvoiceNumber,
+          formatDate(row.supplierInvoiceDate),
+
+          // Item Details
+          row.partNumber,
+          row.partName,
+          row.quantity,
+          row.palletQuantity,
+
+          // Price Details
+          row.rate,
+          row.totalValue,
+
+          // Store / Pallet Details
+          row.labelPalletNo,
+          row.fifoPalletNo,
+          row.storePalletNo,
+          row.storeLocation,
+
+          // Movement / Issue Details
+          formatDateTime(row.movementDate),
+          row.issuedTo,
+          row.issuedBy,
+          formatDateTime(row.issueDate),
+
+          // Status
+          row.status,
+        ]
+
+        const matchesSearch = searchableValues.some((value) =>
+          String(value ?? '')
+            .toLowerCase()
+            .includes(searchValue)
+        )
+
+        if (!matchesSearch) {
+          return false
+        }
       }
 
+      // =========================================================
+      // STATUS FILTER
+      // =========================================================
       if (anyStatusFilterActive) {
+
         const isOutwardRow = row.status === 'Issued'
         const isInwardRow = !isOutwardRow
         const isClosedRow = closedGrnNumbers.has(row.grnNumber)
@@ -311,12 +360,22 @@ const Reports = () => {
           (outward && isOutwardRow) ||
           (closed && isClosedRow)
 
-        if (!matchesCategory) return false
+        if (!matchesCategory) {
+          return false
+        }
       }
 
       return true
     })
-  }, [rows, search, inward, outward, closed, closedGrnNumbers])
+
+  }, [
+    rows,
+    search,
+    inward,
+    outward,
+    closed,
+    closedGrnNumbers
+  ])
 
   const handleExportExcel = () => {
     if (filteredRows.length === 0) {
@@ -324,39 +383,59 @@ const Reports = () => {
       return
     }
 
-    // Exports whatever is currently visible in the table (respects
-    // search + Inward/Outward/Closed filters). Rate and Value are
-    // always included in the export regardless of the on-screen
-    // Rate/Value toggles — those toggles only control what's shown
-    // on screen, not what a deliberate export contains.
-    const exportData = filteredRows.map((r) => ({
-      'GRN No': r.grnNumber,
-      'Supplier Name': r.supplierName,
-      'PO Number': r.poNumber,
-      'PO Date': formatDate(r.poDate),
-      'GRN Type': r.grnType,
-      'Invoice Number': r.supplierInvoiceNumber,
-      'Invoice Date': formatDate(r.supplierInvoiceDate),
-      'Part Number': r.partNumber,
-      'Part Name': r.partName,
-      'Quantity': r.quantity,
-      'Pallet Quantity': r.palletQuantity,
-      'Rate': r.rate,
-      'Total Value': r.totalValue,
-      'Label Pallet No': r.labelPalletNo,
-      'FIFO Pallet No': r.fifoPalletNo,
-      'Store Pallet No': r.storePalletNo,
-      'Store Location': r.storeLocation,
-      'Movement Date': formatDateTime(r.movementDate),
-      'Issued To': r.issuedTo,
-      'Issued By': r.issuedBy,
-      'Issue Date': formatDateTime(r.issueDate),
-      'Status': r.status,
-    }))
+    const exportData = filteredRows.map((r) => {
+      const row = {
+        'GRN No': r.grnNumber,
+        'Supplier Name': r.supplierName,
+        'PO Number': r.poNumber,
+        'PO Date': formatDate(r.poDate),
+        'GRN Type': r.grnType,
+        'Invoice Number': r.supplierInvoiceNumber,
+        'Invoice Date': formatDate(r.supplierInvoiceDate),
+        'Part Number': r.partNumber,
+        'Part Name': r.partName,
+        'Quantity': r.quantity,
+        'Pallet Quantity': r.palletQuantity,
+      }
+
+      // Add Rate only when Rate checkbox is selected
+      if (showRate) {
+        row['Rate'] =
+          r.rate != null
+            ? Number(r.rate).toFixed(2)
+            : ''
+      }
+
+      // Add Total Value only when Value checkbox is selected
+      if (showValue) {
+        row['Total Value'] =
+          r.totalValue != null
+            ? Number(r.totalValue).toFixed(2)
+            : ''
+      }
+
+      // Remaining columns
+      row['Label Pallet No'] = r.labelPalletNo
+      row['FIFO Pallet No'] = r.fifoPalletNo
+      row['Store Pallet No'] = r.storePalletNo
+      row['Store Location'] = r.storeLocation
+      row['Movement Date'] = formatDateTime(r.movementDate)
+      row['Issued To'] = r.issuedTo
+      row['Issued By'] = r.issuedBy
+      row['Issue Date'] = formatDateTime(r.issueDate)
+      row['Status'] = r.status
+
+      return row
+    })
 
     const worksheet = XLSX.utils.json_to_sheet(exportData)
     const workbook = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Full Report')
+
+    XLSX.utils.book_append_sheet(
+      workbook,
+      worksheet,
+      'Full Report'
+    )
 
     const rangeLabel =
       fromDate && toDate
@@ -367,9 +446,11 @@ const Reports = () => {
             ? `to_${toDate}`
             : 'all'
 
-    XLSX.writeFile(workbook, `Full_Report_${rangeLabel}.xlsx`)
+    XLSX.writeFile(
+      workbook,
+      `Full_Report_${rangeLabel}.xlsx`
+    )
   }
-
   // One flat column set spanning GRN -> Store Movement -> Material
   // Issue. STATUS reflects the furthest stage each pallet has reached:
   // Not Posted -> Posted -> In Store -> Issued.
@@ -668,7 +749,7 @@ const Reports = () => {
               />
             </div>
 
-            
+
 
             <div className="reports-filter-field">
               <label className="custom-label">
@@ -711,12 +792,12 @@ const Reports = () => {
                 checked={showValue}
                 onChange={(e) => setShowValue(e.target.checked)}
               />
-              <CFormCheck
+              {/* <CFormCheck
                 inline
                 label="closed"
                 checked={closed}
                 onChange={(e) => setClosed(e.target.checked)}
-              />
+              /> */}
             </div>
 
             <div className="reports-filter-actions">
@@ -760,7 +841,7 @@ const Reports = () => {
             </CButton>
 
             <CFormInput
-              placeholder="Search by GRN No or Part No..."
+              placeholder="Search all fields..."
               className="search-box"
               value={search}
               onChange={(e) => setSearch(e.target.value)}

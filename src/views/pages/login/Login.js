@@ -55,30 +55,27 @@ const Login = () => {
   // Login
   // ==========================================
 
-  const handleLogin = async (e) => {
+  // ==========================================
+  // Login
+  // ==========================================
 
+  const handleLogin = async (e) => {
     e.preventDefault();
 
-    console.log(
-      '[LOGIN] Checkbox:',
-      form.mobilityWithoutCheck
-    );
+    // -------------------------------------------------
+    // Clear previous toast messages
+    // -------------------------------------------------
 
-    console.log(
-      '[LOGIN] Username:',
-      form.username
-    );
+    toast.dismiss();
 
-
-    // ========================================
-    // BASIC VALIDATION
-    // ========================================
+    // -------------------------------------------------
+    // Basic validation
+    // -------------------------------------------------
 
     if (
       !form.username?.trim() ||
       !form.password
     ) {
-
       toast.error(
         'Please enter username & password'
       );
@@ -86,26 +83,95 @@ const Login = () => {
       return;
     }
 
+    // =========================================================
+    // FUNCTION : SHOW STORAGE INFORMATION
+    // =========================================================
 
+    const showStorageInformation = async () => {
+      try {
+        const storageRes = await API.post('/Auth/storage/calibrate');
+
+        const data = storageRes?.data;
+
+        console.log('[STORAGE] Response:', data);
+
+        if (!data) {
+          console.warn('[STORAGE] No data received');
+          return;
+        }
+
+        toast.info(
+          <div
+            style={{
+              fontSize: '14px',
+              lineHeight: '1.6',
+              minWidth: '270px',
+            }}
+          >
+            {/* Database */}
+            <div
+              style={{
+                fontSize: '16px',
+                fontWeight: '700',
+                marginBottom: '2px',
+              }}
+            >
+              Database: {data.databaseName || '-'}
+            </div>
+
+            {/* Database Size */}
+            <div>
+              <strong>Size:</strong>{' '}
+              {data.databaseSizeMB ?? 0} MB
+            </div>
+
+            {/* Database Free */}
+            <div>
+              <strong>Free:</strong>{' '}
+              {data.databaseFreeMB ?? 0} MB
+            </div>
+
+            {/* Drives */}
+            {Array.isArray(data.drives) &&
+              data.drives.length > 0 &&
+              data.drives.map((drive, index) => (
+                <div key={index}>
+                  <strong>{drive.drive}:</strong>{' '}
+                  {drive.freeSpaceGB ?? 0} GB Free /{' '}
+                  {drive.totalSpaceGB ?? 0} GB
+                </div>
+              ))}
+          </div>,
+          {
+            autoClose: 5000,
+            closeOnClick: false,
+            pauseOnHover: true,
+          }
+        );
+      } catch (storageError) {
+        console.error(
+          '[STORAGE] Failed to load storage information:',
+          storageError
+        );
+
+        console.error(
+          '[STORAGE] Response:',
+          storageError?.response?.data
+        );
+      }
+    };
     // =========================================================
     // MOBILITY LOGIN
-    //
-    // CHECKBOX UNCHECKED
-    //
-    // NO API
-    // NO DATABASE
     // =========================================================
 
     if (!form.mobilityWithoutCheck) {
 
       const MOBILITY_USERNAME = 'Store';
-
       const MOBILITY_PASSWORD = 'Store@123';
 
-
-      // -----------------------------------------
+      // -------------------------------------------------
       // Validate Mobility credentials
-      // -----------------------------------------
+      // -------------------------------------------------
 
       if (
         form.username.trim() !==
@@ -113,7 +179,6 @@ const Login = () => {
         form.password !==
         MOBILITY_PASSWORD
       ) {
-
         toast.error(
           'Invalid username or password'
         );
@@ -121,66 +186,60 @@ const Login = () => {
         return;
       }
 
-
-      // -----------------------------------------
+      // -------------------------------------------------
       // Mobility User
-      //
-      // IMPORTANT:
-      //
-      // Existing App.js contains:
-      //
-      // mobilityWithoutCheck !== true
-      //
-      // Therefore Mobility MUST be false.
-      // -----------------------------------------
+      // -------------------------------------------------
 
       const mobilityUser = {
-
         id: 999999,
-
         username: 'Store',
-
         departmentId: 0,
-
         departmentName: 'Mobility',
-
         gateId: 0,
-
         mobilityWithoutCheck: false,
       };
 
-
-      // -----------------------------------------
+      // -------------------------------------------------
       // Save Mobility User
-      // -----------------------------------------
+      // -------------------------------------------------
 
       sessionStorage.setItem(
         'user',
         JSON.stringify(mobilityUser)
       );
 
-
-      // -----------------------------------------
+      // -------------------------------------------------
       // Notify App.js
-      // -----------------------------------------
+      // -------------------------------------------------
 
       window.dispatchEvent(
         new Event('authChange')
       );
 
-
-      // -----------------------------------------
-      // Success
-      // -----------------------------------------
-
-      toast.success(
-        'Login Successful'
+      window.dispatchEvent(
+        new Event('storage')
       );
 
+      // -------------------------------------------------
+      // Login Success
+      // -------------------------------------------------
 
-      // -----------------------------------------
-      // Go to Mobility Page
-      // -----------------------------------------
+      toast.success(
+        'Login Successful',
+        {
+          autoClose: 3000,
+        }
+      );
+
+      // -------------------------------------------------
+      // Show Storage Information
+      // -------------------------------------------------
+
+      await showStorageInformation();
+
+      // -------------------------------------------------
+      // Navigate to Mobility
+      // -------------------------------------------------
 
       navigate(
         '/m/send',
@@ -189,177 +248,142 @@ const Login = () => {
         }
       );
 
-
       return;
     }
 
-
     // =========================================================
     // NORMAL LOGIN
-    //
-    // CHECKBOX CHECKED
-    //
-    // API CALL
     // =========================================================
 
-    if (form.mobilityWithoutCheck) {
+    try {
 
-      try {
+      // -------------------------------------------------
+      // API Request
+      // -------------------------------------------------
 
-        // -----------------------------------------
-        // API Request
-        // -----------------------------------------
+      const request = {
+        username:
+          form.username.trim(),
 
-        const request = {
+        password:
+          form.password,
+      };
 
-          username:
-            form.username.trim(),
+      // -------------------------------------------------
+      // Login API
+      // -------------------------------------------------
 
-          password:
-            form.password,
-        };
-
-
-        console.log(
-          '[LOGIN] Calling API:',
+      const res =
+        await API.post(
+          '/Auth/login',
           request
         );
 
+      // -------------------------------------------------
+      // Validate API Response
+      // -------------------------------------------------
 
-        // -----------------------------------------
-        // API Call
-        // -----------------------------------------
-
-        const res =
-          await API.post(
-            '/Auth/login',
-            request
-          );
-
-
-        console.log(
-          '[LOGIN] API Response:',
-          res.data
-        );
-
-
-        // -----------------------------------------
-        // Validate API Response
-        // -----------------------------------------
-
-        if (!res.data?.user) {
-
-          toast.error(
-            res.data?.message ||
-            'Login Failed'
-          );
-
-          return;
-        }
-
-
-        // -----------------------------------------
-        // Normal User
-        //
-        // IMPORTANT:
-        //
-        // Existing App.js contains:
-        //
-        // mobilityWithoutCheck !== true
-        //
-        // For normal user:
-        //
-        // true !== true = false
-        //
-        // Therefore it goes Dashboard.
-        // -----------------------------------------
-
-        const userData = {
-
-          id:
-            res.data.user.id,
-
-          username:
-            res.data.user.userName,
-
-          employeeId:
-            res.data.user.employeeId,
-
-          userId:
-            res.data.user.userId,
-
-          departmentId:
-            res.data.user.departmentId,
-
-          departmentName:
-            res.data.user.departmentName,
-
-          gateId:
-            res.data.user.gateId,
-
-          mobilityWithoutCheck: true,
-        };
-
-
-        // -----------------------------------------
-        // Save Normal User
-        // -----------------------------------------
-
-        sessionStorage.setItem(
-          'user',
-          JSON.stringify(userData)
-        );
-
-
-        // -----------------------------------------
-        // Notify App.js
-        // -----------------------------------------
-
-        window.dispatchEvent(
-          new Event('authChange')
-        );
-
-        window.dispatchEvent(
-          new Event('storage')
-        );
-
-
-        // -----------------------------------------
-        // Success
-        // -----------------------------------------
-
-        toast.success(
-          'Login Successful'
-        );
-
-
-        // -----------------------------------------
-        // Go to Dashboard
-        // -----------------------------------------
-
-        navigate(
-          '/dashboard',
-          {
-            replace: true,
-          }
-        );
-
-      } catch (err) {
-
-        console.error(
-          '[LOGIN] API Error:',
-          err
-        );
-
+      if (!res.data?.user) {
 
         toast.error(
-          err.response?.data?.message ||
-          err.message ||
+          res.data?.message ||
           'Login Failed'
         );
+
+        return;
       }
 
-      return;
+      // -------------------------------------------------
+      // Normal User Data
+      // -------------------------------------------------
+
+      const userData = {
+
+        id:
+          res.data.user.id,
+
+        username:
+          res.data.user.userName,
+
+        employeeId:
+          res.data.user.employeeId,
+
+        userId:
+          res.data.user.userId,
+
+        departmentId:
+          res.data.user.departmentId,
+
+        departmentName:
+          res.data.user.departmentName,
+
+        gateId:
+          res.data.user.gateId,
+
+        mobilityWithoutCheck: true,
+      };
+
+      // -------------------------------------------------
+      // Save User
+      // -------------------------------------------------
+
+      sessionStorage.setItem(
+        'user',
+        JSON.stringify(userData)
+      );
+
+      // -------------------------------------------------
+      // Notify App.js
+      // -------------------------------------------------
+
+      window.dispatchEvent(
+        new Event('authChange')
+      );
+
+      window.dispatchEvent(
+        new Event('storage')
+      );
+
+      // -------------------------------------------------
+      // LOGIN SUCCESS
+      // -------------------------------------------------
+
+      toast.success(
+        'Login Successful',
+        {
+          autoClose: 3000,
+        }
+      );
+
+      // -------------------------------------------------
+      // SHOW STORAGE INFORMATION
+      // -------------------------------------------------
+
+      await showStorageInformation();
+
+      // -------------------------------------------------
+      // GO TO DASHBOARD
+      // -------------------------------------------------
+
+      navigate(
+        '/dashboard',
+        {
+          replace: true,
+        }
+      );
+
+    } catch (err) {
+
+      console.error(
+        '[LOGIN] API Error:',
+        err
+      );
+
+      toast.error(
+        err.response?.data?.message ||
+        err.message ||
+        'Login Failed'
+      );
     }
   };
 

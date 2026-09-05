@@ -327,6 +327,40 @@
   font-size: 12px;
 }
 
+.dashboard-donut {
+  position: relative;
+  width: 150px;
+  height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dashboard-donut-svg {
+  width: 150px;
+  height: 150px;
+  overflow: visible;
+}
+
+.dashboard-donut-segment {
+  cursor: pointer;
+  transition: stroke-width 0.2s ease, opacity 0.2s ease;
+}
+
+.dashboard-donut-segment:hover {
+  stroke-width: 15;
+  opacity: 0.85;
+}
+
+.dashboard-donut-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
+}
+
 /* =========================================================
    DASHBOARD DATE RANGE FILTER
 ========================================================= */

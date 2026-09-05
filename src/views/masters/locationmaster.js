@@ -492,42 +492,41 @@ setRackFormRows(normalRowCount || 1)
     return map
   }, [occupancy])
 
-  const handleSlotClick = async (row, slotNumber, side) => {
-    const key = `${row.id}-${slotNumber}-${side}`
-    const existing = occupancyMap.get(key)
+//   const handleSlotClick = async (row, slotNumber, side) => {
+//   const key = `${row.id}-${slotNumber}-${side}`
+//   const existing = occupancyMap.get(key)
 
-    if (existing) {
-      try {
-        await API.delete(`/LocationRack/slots/occupy/${existing.id}`)
-        toast.success('Slot Vacated')
-        await loadOccupancy(activeStore.id)
-      } catch (err) {
-        toast.error(getErrorMessage(err, 'Vacate Failed'))
-      }
-      return
-    }
+//   // If slot is already occupied → Vacate it
+//   if (existing) {
+//     try {
+//       await API.delete(`/LocationRack/slots/occupy/${existing.id}`)
 
-    const qtyInput = window.prompt('Quantity to place in this slot?', '1')
-    if (!qtyInput) return
-    const qty = Number(qtyInput)
-    if (!qty || qty <= 0) {
-      toast.error('Enter a valid quantity')
-      return
-    }
+//       toast.success('Slot Vacated')
 
-    try {
-      await API.post('/LocationRack/slots/occupy', {
-        rackRowId: row.id,
-        slotNumber,
-        side: side === 'front' ? 'Front' : 'Rear',
-        quantity: qty,
-      })
-      toast.success('Slot Occupied')
-      await loadOccupancy(activeStore.id)
-    } catch (err) {
-      toast.error(getErrorMessage(err, 'Occupy Failed'))
-    }
-  }
+//       await loadOccupancy(activeStore.id)
+//     } catch (err) {
+//       toast.error(getErrorMessage(err, 'Vacate Failed'))
+//     }
+
+//     return
+//   }
+
+//   // If slot is available → Occupy directly with quantity 1
+//   try {
+//     await API.post('/LocationRack/slots/occupy', {
+//       rackRowId: row.id,
+//       slotNumber,
+//       side: side === 'front' ? 'Front' : 'Rear',
+//       quantity: 1,
+//     })
+
+//     toast.success('Slot Occupied')
+
+//     await loadOccupancy(activeStore.id)
+//   } catch (err) {
+//     toast.error(getErrorMessage(err, 'Occupy Failed'))
+//   }
+// }
 
   // ---------- Right panel: rack selector options + resolved view ----------
 
@@ -1060,7 +1059,7 @@ setModalRows(normalRowCount || 1)
                                           className={`rack-slot-box clickable ${cls}`}
                                           data-tooltip={tooltipText}
                                           data-tooltip-type={occ ? 'occupied' : 'available'}
-                                          onClick={() => handleSlotClick(row, slotNumber, viewSide)}
+                                          // onClick={() => handleSlotClick(row, slotNumber, viewSide)}
                                         >
                                           {buildSlotCode(col.columnNo, row.rowNo, slotNumber, viewSide)}
                                         </span>

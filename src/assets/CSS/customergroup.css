@@ -61,13 +61,20 @@
   transform: translateY(-1px);
 }
 
+.customer-group-page .add-item-btn {
+  position: relative;
+}
+
 .customer-group-page .add-item-btn::after {
-  content: 'Add Item';
+  content: 'Add Customer Group';
   position: absolute;
+
   top: 56px;
   left: 50%;
   transform: translateX(-50%);
-  width: 64px;
+
+  width: 110px;
+
   font-size: 12px;
   font-weight: 600;
   color: #1f2937;

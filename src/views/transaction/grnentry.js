@@ -784,7 +784,7 @@ const canEditGRN = grnPrivilege.canEdit === true
               )}
             </CButton>
             <CButton className="cancel-btn" onClick={handleCancel}>
-              Cancel
+              Clear
             </CButton>
           </div>
         </CCardBody>

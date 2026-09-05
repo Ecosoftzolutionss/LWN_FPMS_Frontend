@@ -70,7 +70,7 @@
 }
 
 .user-master-page .add-item-btn::after {
-  content: 'Add Item';
+  content: 'Add Users';
   position: absolute;
   top: 56px;
   left: 50%;

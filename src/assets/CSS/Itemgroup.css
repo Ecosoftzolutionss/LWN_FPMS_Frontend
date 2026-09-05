@@ -70,7 +70,7 @@
 }
 
 .item-group-page .add-item-btn::after {
-  content: 'Add Item';
+  content: 'Add Group Item';
   position: absolute;
   top: 56px;
   left: 50%;

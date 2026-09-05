@@ -264,7 +264,7 @@ const SupplierGroupMaster = () => {
         <CCard className="mb-3">
           <CCardBody className="summary-card-body">
             <div>
-              <div className="summary-label">Total Supplier Group Master</div>
+              <div className="summary-label">Supplier Group Types</div>
               <div className="summary-value">{String(groups.length).padStart(2, '0')}</div>
             </div>
 
