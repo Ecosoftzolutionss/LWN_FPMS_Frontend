@@ -17,7 +17,9 @@ const GRNEntry = React.lazy(() => import('./views/transaction/grnentry'))
 const GRNPost = React.lazy(() => import('./views/transaction/grnpost'))
 const MaterialIssueSlip = React.lazy(() => import('./views/transaction/materialissueslip'))
 const StoreMovement = React.lazy(() => import('./views/transaction/storemovement'))
-const Reports = React.lazy(() => import('./views/report/reports'))
+//const Reports = React.lazy(() => import('./views/report/reports'))
+const GrnReport = React.lazy(()=> import('./views/report/Grnreport'))
+const MaterialIssueReport = React.lazy(()=> import('./views/report/MaterialIssueReport'))
 
 const routes = [
   { path: '/', exact: true, name: 'Home' },
@@ -27,8 +29,8 @@ const routes = [
 
   // Masters
   { path: '/masters/users', name: 'User Master', element: Users },
-  { path: '/masters/Itemgroupmaster', name: 'Item Group Master', element: ItemGroupMaster },
-  { path: '/masters/Itemmaster', name: 'Item Master', element: ItemMaster },
+  { path: '/masters/Itemgroupmaster', name: 'Part Group Master', element: ItemGroupMaster },
+  { path: '/masters/Itemmaster', name: 'Part Master', element: ItemMaster },
   { path: '/masters/suppliermaster', name: 'Supplier Master', element: SupplierMaster},
   { path: '/masters/suppliergroupmaster', name: 'Supplier Group Master', element: SupplierGroupMaster},
   { path: '/masters/customergroupmaster', name: 'Customer Group Master', element: CustomerGroupMaster },
@@ -45,7 +47,10 @@ const routes = [
   { path: '/transaction/storemovement', name: 'Store Movement', element: StoreMovement },
 
   // Reports
-  { path: '/report/reports', name: 'Reports', element: Reports },
+  //{ path: '/report/reports', name: 'Reports', element: Reports },
+  { path: '/report/Grnreport', name: 'GRN Report', element: GrnReport },
+  { path: '/report/MaterialIssueReport', name: 'Material Issue Report', element: MaterialIssueReport },
+  
 ]
 
 export default routes

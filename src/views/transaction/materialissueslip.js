@@ -484,11 +484,9 @@ const MaterialIssueSlip = () => {
                     FROM / TO
                 ============================== */}
 
-                                <div className="from-to">
+                                {/* <div className="from-to">
 
-                                    {/* ==============================
-        FROM - BILLING ADDRESS
-    ============================== */}
+ 
 
                                     <div className="from-to-box">
 
@@ -531,9 +529,7 @@ const MaterialIssueSlip = () => {
                                     </div>
 
 
-                                    {/* ==============================
-        TO - SHIPPING ADDRESS
-    ============================== */}
+
 
                                     <div className="from-to-box">
                                         <strong>
@@ -566,7 +562,7 @@ const MaterialIssueSlip = () => {
                                             </div>
                                         </div>
                                     </div>
-                                </div>
+                                </div> */}
 
 
                                 {/* ==============================

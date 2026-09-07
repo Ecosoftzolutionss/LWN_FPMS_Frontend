@@ -14,17 +14,9 @@ import API from '../../../api.js';
 // ==========================================
 
 const Login = () => {
-
   const navigate = useNavigate();
-
-  const [showPassword, setShowPassword] =
-    useState(false);
-
-  const [form, setForm] = useState({
-    username: '',
-    password: '',
-    mobilityWithoutCheck: false,
-  });
+  const [showPassword, setShowPassword] = useState(false);
+  const [form, setForm] = useState({username: '', password: '', mobilityWithoutCheck: false});
 
 
   // ==========================================
@@ -164,7 +156,7 @@ const Login = () => {
     // MOBILITY LOGIN
     // =========================================================
 
-    if (!form.mobilityWithoutCheck) {
+    if (form.mobilityWithoutCheck) {
 
       const MOBILITY_USERNAME = 'Store';
       const MOBILITY_PASSWORD = 'Store@123';
@@ -196,7 +188,7 @@ const Login = () => {
         departmentId: 0,
         departmentName: 'Mobility',
         gateId: 0,
-        mobilityWithoutCheck: false,
+        mobilityWithoutCheck: true,
       };
 
       // -------------------------------------------------
@@ -415,50 +407,7 @@ const Login = () => {
 
         <div className="lg-card">
 
-          <div className="lg-icon-wrap">
-
-            <svg
-              width="40"
-              height="40"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="#1d5cff"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-
-              <circle
-                cx="12"
-                cy="4"
-                r="1.7"
-              />
-
-              <path d="M11 7l-1.5 5.5L7 15v6" />
-
-              <path d="M11 7l2.5 3.5L18 12" />
-
-              <path d="M9.5 12.5L7 13.5v3.5" />
-
-              <path d="M13.5 10.5L15 14v5" />
-
-              <rect
-                x="5.2"
-                y="16.5"
-                width="2.2"
-                height="2.6"
-                rx="0.4"
-              />
-
-              <circle
-                cx="6.3"
-                cy="20"
-                r="0.9"
-              />
-
-            </svg>
-
-          </div>
+        
 
 
           <h2 className="lg-title">
@@ -654,9 +603,8 @@ const Login = () => {
                   onChange={handleChange}
                   className="lg-checkbox"
                 />
-
-                For Mobility Without Check
-
+                {/* Enable Unverified Mobility Access */}
+                Mobility
               </label>
 
             </div>

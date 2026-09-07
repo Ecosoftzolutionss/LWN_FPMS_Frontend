@@ -72,10 +72,10 @@ const GRNEntry = () => {
   // from there.
   const [editGrnNo, setEditGrnNo] = useState(false)
   const { privileges: userPrivileges = [] } = usePrivilege()
- const grnPrivilege =
-  userPrivileges.find((p) => p.menuName === 'GRN Entry') || {}
+  const grnPrivilege =
+    userPrivileges.find((p) => p.menuName === 'GRN Entry') || {}
 
-const canEditGRN = grnPrivilege.canEdit === true
+  const canEditGRN = grnPrivilege.canEdit === true
 
   const getCurrentUsername = () => {
     try {
@@ -202,7 +202,76 @@ const canEditGRN = grnPrivilege.canEdit === true
     label: i.itemNumber,
     itemName: i.itemName,
     uom: i.uom,
+    unitPrice: i.unitPrice,
+    effectiveDate: i.effectiveDate,
   }))
+
+  const handlePartSelect = async (selected) => {
+  if (!selected) {
+    setLine(EMPTY_LINE)
+
+    setErrors((prev) => ({
+      ...prev,
+      itemId: '',
+      rate: '',
+    }))
+
+    return
+  }
+
+  try {
+    const res = await API.get(`/ItemMaster/${selected.value}`)
+    const item = res.data
+
+    const rate = item.unitPrice ?? ''
+    const effectiveDate = item.effectiveDate
+      ? item.effectiveDate.substring(0, 10)
+      : ''
+
+    setLine((prev) => ({
+      ...prev,
+      itemId: selected.value,
+      rate: rate,
+    }))
+
+    setErrors((prev) => ({
+      ...prev,
+      itemId: '',
+      rate: '',
+    }))
+
+    // If invoice date is already selected, validate immediately
+    if (header.supplierInvoiceDate && effectiveDate) {
+      if (header.supplierInvoiceDate < effectiveDate) {
+        setLine((prev) => ({
+          ...prev,
+          itemId: selected.value,
+          rate: '',
+        }))
+
+        setErrors((prev) => ({
+          ...prev,
+          rate:
+            `Rate is not effective for the selected Supplier Invoice Date. ` +
+            `Effective Date is ${effectiveDate}`,
+        }))
+      }
+    }
+  } catch (err) {
+    setLine((prev) => ({
+      ...prev,
+      itemId: selected.value,
+      rate: '',
+    }))
+
+    setErrors((prev) => ({
+      ...prev,
+      rate: 'Failed to load Item Master Rate',
+    }))
+
+    toast.error('Failed to load Item Price')
+  }
+}
 
   const supplierOptions = suppliers.map((s) => ({ value: s.id, label: s.supplierName }))
 
@@ -210,11 +279,58 @@ const canEditGRN = grnPrivilege.canEdit === true
 
   const clearError = (name) => setErrors((prev) => ({ ...prev, [name]: '' }))
 
-  const handleHeaderChange = (e) => {
-    const { name, value } = e.target
-    setHeader({ ...header, [name]: value })
-    clearError(name)
+  const handleHeaderChange = async (e) => {
+  const { name, value } = e.target
+
+  setHeader((prev) => ({
+    ...prev,
+    [name]: value,
+  }))
+
+  clearError(name)
+
+  if (name === 'supplierInvoiceDate' && line.itemId) {
+    try {
+      const res = await API.get(`/ItemMaster/${line.itemId}`)
+      const item = res.data
+
+      const effectiveDate = item.effectiveDate
+        ? item.effectiveDate.substring(0, 10)
+        : ''
+
+      if (!effectiveDate) {
+        setLine((prev) => ({ ...prev, rate: '' }))
+        setErrors((prev) => ({
+          ...prev,
+          rate: 'Effective Date is not configured for this Part Number',
+        }))
+        return
+      }
+
+      if (value < effectiveDate) {
+        setLine((prev) => ({ ...prev, rate: '' }))
+
+        setErrors((prev) => ({
+          ...prev,
+          rate:
+            `Rate is not effective for the selected Supplier Invoice Date. ` +
+            `Effective Date is ${effectiveDate}`,
+        }))
+        return
+      }
+
+      setLine((prev) => ({
+        ...prev,
+        rate: item.unitPrice ?? '',
+      }))
+
+      clearError('rate')
+    } catch {
+      setLine((prev) => ({ ...prev, rate: '' }))
+      toast.error('Failed to validate Item Price')
+    }
   }
+}
 
   // Native <input type="date"> only opens its picker when the small
   // calendar icon is clicked, not the rest of the field. This makes a
@@ -266,9 +382,9 @@ const canEditGRN = grnPrivilege.canEdit === true
 
   // Field is editable whenever the counter hasn't been seeded yet
   // (first-ever GRN) OR the user has explicitly ticked "Edit GRN No".
- const grnNoEditable =
-  canEditGRN && (grnNoIsManual || editGrnNo)
-  
+  const grnNoEditable =
+    canEditGRN && (grnNoIsManual || editGrnNo)
+
   const validateAdd = () => {
     const temp = {}
 
@@ -669,24 +785,26 @@ const canEditGRN = grnPrivilege.canEdit === true
               {errors.grnType && <small className="text-danger">{errors.grnType}</small>}
             </CCol>
 
-            <CCol md={4}>
-              <label className="custom-label"><strong>Part Number</strong> <span className="required">*</span></label>
-              <div className={errors.itemId ? 'react-select-error' : ''}>
-                <Select
-                  classNamePrefix="react-select"
-                  placeholder="Select Part Number"
-                  options={itemOptions}
-                  value={selectedItem || null}
-                  onChange={(selected) => {
-                    setLine({ ...line, itemId: selected?.value || '' })
-                    clearError('itemId')
-                  }}
-                  isClearable
-                />
-              </div>
-              {errors.itemId && <small className="text-danger">{errors.itemId}</small>}
-            </CCol>
+          <CCol md={4}>
+  <label className="custom-label">
+    <strong>Part Number</strong> <span className="required">*</span>
+  </label>
 
+  <div className={errors.itemId ? 'react-select-error' : ''}>
+    <Select
+      classNamePrefix="react-select"
+      placeholder="Select Part Number"
+      options={itemOptions}
+      value={selectedItem || null}
+      onChange={handlePartSelect}
+      isClearable
+    />
+  </div>
+
+  {errors.itemId && (
+    <small className="text-danger">{errors.itemId}</small>
+  )}
+</CCol>
             <CCol md={4}>
               <label className="custom-label"><strong>Part Name</strong></label>
               <CFormInput value={selectedItem?.itemName || ''} placeholder="Auto-filled from Part Number" disabled />
@@ -740,18 +858,23 @@ const canEditGRN = grnPrivilege.canEdit === true
             </CCol>
 
             <CCol md={4}>
-              <label className="custom-label"><strong>Rate (₹)</strong> <span className="required">*</span></label>
+              <label className="custom-label">
+                <strong>Rate (₹)</strong> <span className="required">*</span>
+              </label>
+
               <CFormInput
                 type="number"
                 name="rate"
-                placeholder="Enter Rate"
+                placeholder="Auto-filled from Item Master"
                 value={line.rate}
                 className={errors.rate ? 'error-input' : ''}
-                onChange={handleLineChange}
+                disabled
               />
-              {errors.rate && <small className="text-danger">{errors.rate}</small>}
-            </CCol>
 
+              {errors.rate && (
+                <small className="text-danger">{errors.rate}</small>
+              )}
+            </CCol>
             <CCol md={4}>
               <label className="custom-label"><strong>Pallet Quantity</strong></label>
               <CFormInput

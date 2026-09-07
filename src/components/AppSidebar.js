@@ -48,49 +48,49 @@ const AppSidebar = () => {
       return true
     })
 
-const handleLogout = async () => {
+  const handleLogout = async () => {
 
-  try {
+    try {
 
-    await API.post("/Auth/logout");
+      await API.post("/Auth/logout");
 
-  } catch (error) {
+    } catch (error) {
 
-    console.error(
-      "Logout API error:",
-      error
+      console.error(
+        "Logout API error:",
+        error
+      );
+
+    }
+
+    // ========================================
+    // Clear login session
+    // ========================================
+
+    sessionStorage.clear();
+
+
+    // ========================================
+    // Notify App.js
+    // ========================================
+
+    window.dispatchEvent(
+      new Event("authChange")
     );
 
-  }
 
-  // ========================================
-  // Clear login session
-  // ========================================
+    // ========================================
+    // Go directly to Login
+    // ========================================
 
-  sessionStorage.clear();
+    navigate(
+      "/login",
+      {
+        replace: true,
+      }
+    );
 
-
-  // ========================================
-  // Notify App.js
-  // ========================================
-
-  window.dispatchEvent(
-    new Event("authChange")
-  );
-
-
-  // ========================================
-  // Go directly to Login
-  // ========================================
-
-  navigate(
-    "/login",
-    {
-      replace: true,
-    }
-  );
-
-};
+  };
 
   return (
     <CSidebar
@@ -105,8 +105,8 @@ const handleLogout = async () => {
     >
       <CSidebarHeader className="custom-sidebar-header">
         <CSidebarBrand className="sidebar-title-container">
-          <div className="sidebar-title">FPMS</div>
-          <div className="sidebar-subtitle">FIFO Pallet Management System</div>
+          <div className="sidebar-title">IPMS</div>
+          <div className="sidebar-subtitle">Inventory Procurement Management System</div>
         </CSidebarBrand>
       </CSidebarHeader>
 
