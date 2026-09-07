@@ -768,10 +768,10 @@ const UserMaster = () => {
       <CCard className="mt-3">
         <CCardBody>
           <div className="table-header">
-            <div className="table-title">Item List</div>
+            <div className="table-title">User List</div>
 
             <CFormInput
-              placeholder="Search by Item Number, Name, Group, HSN Code..."
+              placeholder="Search by User ID, Name, Email..."
               className="search-box"
               style={{ width: '320px' }}
               onChange={(e) => setSearch(e.target.value)}

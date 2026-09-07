@@ -12,6 +12,8 @@ import {
   cilDollar,
   cilStorage,
   cilNotes,
+  cilCloudDownload,
+  cilListRich,
 } from '@coreui/icons'
 
 export const MENU_CONFIG = [
@@ -24,11 +26,11 @@ export const MENU_CONFIG = [
     icon: cilUser,
   },
   {
-    name: 'Item Group Master',
+    name: 'Part Group Master',
     icon: cilList,
   },
   {
-    name: 'Item Master',
+    name: 'Part Master',
     icon: cilBarcode,
   },
   {
@@ -48,12 +50,12 @@ export const MENU_CONFIG = [
     icon: cilBuilding,
   },
 
+  // {
+  //   name: 'Price Master',
+  //    icon: cilDollar,
+  // },
   {
-    name: 'Price Master',
-     icon: cilDollar,
-  },
-  {
-    name: 'Store Master',
+    name: 'Pallet Master',
      icon: cilStorage,
   },
    {
@@ -80,8 +82,16 @@ export const MENU_CONFIG = [
     name: 'Material Issue Slip',
     icon: cilNotes,
   },
-  {
-    name: 'Reports',
-    icon: cilChartLine,
-  },
+  // {
+  //   name: 'Reports',
+  //   icon: cilChartLine,
+  // },
+ {
+  name: 'GRN Report',
+  icon: cilCloudDownload,
+},
+{
+  name: 'Issue Report',
+  icon: cilListRich,
+},
 ]

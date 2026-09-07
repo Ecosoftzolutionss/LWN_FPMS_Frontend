@@ -72,7 +72,7 @@ const ItemGroupMaster = () => {
   const [deleteGroup, setDeleteGroup] = useState(null)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const { privileges: userPrivileges = [] } = usePrivilege()
-  const uPrivilege = userPrivileges.find((p) => p.menuName === 'Item Group Master') || {}
+  const uPrivilege = userPrivileges.find((p) => p.menuName === 'Part Group Master') || {}
 
   useEffect(() => {
     loadGroups()
@@ -307,7 +307,7 @@ const ItemGroupMaster = () => {
         <CCard className="mb-3">
           <CCardBody className="summary-card-body">
             <div>
-              <div className="summary-label">Total Item Groups</div>
+              <div className="summary-label">Total Part Groups</div>
               <div className="summary-value">
                 {String(groups.length).padStart(2, '0')}
               </div>
@@ -339,7 +339,7 @@ const ItemGroupMaster = () => {
               <FaArrowLeft size={14} />
             </button>
 
-            <div className="section-title">Item Group Information</div>
+            <div className="section-title">Part Group Information</div>
 
             <CRow className="g-3">
 
@@ -395,7 +395,7 @@ const ItemGroupMaster = () => {
       <CCard className="mt-3">
         <CCardBody>
           <div className="table-header">
-            <div className="table-title">Item Group List</div>
+            <div className="table-title">Part Group List</div>
 
             <CFormInput
               placeholder="Search by Group Name..."
@@ -430,7 +430,7 @@ const ItemGroupMaster = () => {
         </CModalHeader>
 
         <CModalBody className="text-center">
-          <p>Are you sure you want to delete this Item Group?</p>
+          <p>Are you sure you want to delete this Part Group?</p>
 
           <div
             style={{

@@ -1,0 +1,836 @@
+/* ============================================================
+   GRN REPORT PAGE
+   ============================================================ */
+
+.grn-report-page {
+  background: #f4f6fb;
+
+  padding: 15px;
+
+  min-height: 100%;
+}
+
+
+/* ============================================================
+   COMMON CARD
+   ============================================================ */
+
+.grn-report-filter-card,
+.grn-report-result-card {
+  border: 1px solid #d8e0ed !important;
+
+  border-radius: 10px !important;
+
+  background: #ffffff !important;
+
+  box-shadow: none !important;
+}
+
+
+/* ============================================================
+   FIRST CARD
+   ============================================================ */
+
+.grn-report-filter-card {
+  margin-bottom: 14px !important;
+}
+
+
+/* ============================================================
+   SECTION TITLE
+   ============================================================ */
+
+.grn-report-page .section-title {
+  font-size: 15px;
+
+  font-weight: 700;
+
+  color: #0d47a1;
+
+  border-left: 4px solid #0d47a1;
+
+  padding-left: 10px;
+
+  margin-bottom: 22px;
+
+  line-height: 28px;
+}
+
+
+/* ============================================================
+   LABEL
+   ============================================================ */
+
+.grn-report-page .custom-label {
+  font-size: 12px;
+
+  color: #1f2937;
+
+  font-weight: 700;
+
+  margin-bottom: 7px;
+
+  display: block;
+
+  text-transform: uppercase;
+
+  letter-spacing: 0.02em;
+}
+
+
+/* ============================================================
+   DATE ROW
+   ============================================================ */
+
+.grn-report-filter-row {
+  display: flex;
+
+  align-items: flex-end;
+
+  justify-content: flex-start;
+
+  gap: 22px;
+
+  width: 100%;
+
+  flex-wrap: wrap;
+}
+
+
+/* ============================================================
+   DATE FIELD
+   ============================================================ */
+
+.grn-report-filter-field {
+  width: 285px;
+
+  max-width: 100%;
+}
+
+
+/* ============================================================
+   DATE WRAPPER
+   ============================================================ */
+
+.grn-report-date-wrapper {
+  width: 100%;
+
+  cursor: pointer;
+}
+
+
+/* ============================================================
+   DATE INPUT
+   ============================================================ */
+
+.grn-report-page
+.grn-report-date-input.form-control {
+  width: 100%;
+
+  height: 40px !important;
+
+  padding: 0 12px !important;
+
+  border-radius: 6px !important;
+
+  border: 1px solid #c4d3ea !important;
+
+  background-color: #ffffff !important;
+
+  color: #1f2937 !important;
+
+  font-size: 13px !important;
+
+  box-shadow: none !important;
+
+  cursor: pointer;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+
+/* DATE HOVER */
+
+.grn-report-page
+.grn-report-date-input.form-control:hover {
+  border-color: #1d5cff !important;
+}
+
+
+/* DATE FOCUS */
+
+.grn-report-page
+.grn-report-date-input.form-control:focus {
+  border-color: #1d5cff !important;
+
+  box-shadow:
+    0 0 0 3px
+    rgba(29, 92, 255, 0.15) !important;
+
+  outline: none !important;
+}
+
+
+/* DATE CALENDAR ICON */
+
+.grn-report-date-input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+
+  width: 18px;
+
+  height: 18px;
+
+  opacity: 0.85;
+}
+
+
+/* ============================================================
+   FIRST CARD - CENTER BUTTONS
+   ============================================================ */
+
+.grn-report-date-actions {
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 10px;
+
+  width: 100%;
+
+  margin-top: 22px;
+
+  margin-bottom: 2px;
+}
+
+
+/* ============================================================
+   SEARCH BUTTON
+   ============================================================ */
+
+.grn-report-search-btn {
+  height: 40px !important;
+
+  min-width: 128px;
+
+  padding: 0 18px !important;
+
+  border-radius: 6px !important;
+
+  border: 1px solid #0d47a1 !important;
+
+  background: #0d47a1 !important;
+
+  color: #ffffff !important;
+
+  font-size: 13px !important;
+
+  font-weight: 600 !important;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 7px;
+
+  box-shadow: none !important;
+
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+
+/* SEARCH HOVER */
+
+.grn-report-search-btn:hover {
+  background: #083b8c !important;
+
+  border-color: #083b8c !important;
+}
+
+
+/* SEARCH ACTIVE */
+
+.grn-report-search-btn:active {
+  background: #062f70 !important;
+
+  border-color: #062f70 !important;
+}
+
+
+/* SEARCH DISABLED */
+
+.grn-report-search-btn:disabled {
+  opacity: 0.65;
+
+  cursor: not-allowed;
+}
+
+
+/* ============================================================
+   CLEAR BUTTON
+   ============================================================ */
+
+.grn-report-clear-btn {
+  height: 40px !important;
+
+  min-width: 110px;
+
+  padding: 0 18px !important;
+
+  border-radius: 6px !important;
+
+  border: 1px solid #c4d3ea !important;
+
+  background: #ffffff !important;
+
+  color: #475569 !important;
+
+  font-size: 13px !important;
+
+  font-weight: 600 !important;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 7px;
+
+  box-shadow: none !important;
+
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
+}
+
+
+/* CLEAR HOVER */
+
+.grn-report-clear-btn:hover {
+  background: #f1f4fa !important;
+
+  border-color: #9eb2d1 !important;
+
+  color: #23395d !important;
+}
+
+
+/* ============================================================
+   SECOND CARD
+   ============================================================ */
+
+.grn-report-result-card {
+  margin-top: 0 !important;
+}
+
+
+/* ============================================================
+   SUMMARY
+   ============================================================ */
+
+.grn-report-summary-row {
+  display: flex;
+
+  align-items: center;
+
+  justify-content: flex-start;
+
+  gap: 60px;
+
+  width: 100%;
+
+  background: #f7f9fd;
+
+  border: 1px solid #e2e8f0;
+
+  border-radius: 8px;
+
+  padding: 14px 20px;
+
+  margin-bottom: 12px;
+
+  flex-wrap: wrap;
+}
+
+
+/* ============================================================
+   SUMMARY ITEM
+   ============================================================ */
+
+.grn-report-summary-row div {
+  display: flex;
+
+  flex-direction: column;
+
+  min-width: 100px;
+}
+
+
+/* ============================================================
+   SUMMARY LABEL
+   ============================================================ */
+
+.grn-report-summary-row span {
+  font-size: 10px;
+
+  font-weight: 700;
+
+  color: #94a3b8;
+
+  text-transform: uppercase;
+
+  margin-bottom: 3px;
+}
+
+
+/* ============================================================
+   SUMMARY VALUE
+   ============================================================ */
+
+.grn-report-summary-row strong {
+  font-size: 16px;
+
+  color: #1f2937;
+
+  font-weight: 700;
+}
+
+
+/* ============================================================
+   SECOND CARD TOOLBAR
+
+   LEFT  = EXCEL
+   RIGHT = SEARCH
+   ============================================================ */
+
+.grn-report-result-toolbar {
+  display: flex;
+
+  align-items: center;
+
+  justify-content: space-between;
+
+  width: 100%;
+
+  gap: 20px;
+
+  margin-bottom: 8px;
+}
+
+
+/* ============================================================
+   EXPORT LEFT
+   ============================================================ */
+
+.grn-report-export-wrapper {
+  display: flex;
+
+  align-items: center;
+
+  justify-content: flex-start;
+
+  flex: 0 0 auto;
+}
+
+
+/* ============================================================
+   EXPORT BUTTON
+   ============================================================ */
+
+.grn-report-export-btn {
+  height: 40px !important;
+
+  padding: 0 18px !important;
+
+  border-radius: 6px !important;
+
+  border: none !important;
+
+  background: #1e7e34 !important;
+
+  color: #ffffff !important;
+
+  font-size: 13px !important;
+
+  font-weight: 600 !important;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 7px;
+
+  box-shadow: none !important;
+
+  transition:
+    background-color 0.2s ease;
+}
+
+
+/* EXPORT HOVER */
+
+.grn-report-export-btn:hover {
+  background: #17652a !important;
+}
+
+
+/* ============================================================
+   GRID SEARCH RIGHT
+   ============================================================ */
+
+.grn-report-grid-search {
+  width: 400px;
+
+  max-width: 100%;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: flex-end;
+
+  margin-left: auto;
+}
+
+
+/* ============================================================
+   SEARCH INPUT
+   ============================================================ */
+
+/* ============================================================
+   SEARCH INPUT - USER MASTER STYLE
+   ============================================================ */
+
+.grn-report-page
+.grn-report-search-input.form-control {
+  width: 400px !important;
+  height: 50px !important;
+
+  border-radius: 10px !important;
+
+  border: 1px solid #c4d3ea !important;
+
+  background: #fff !important;
+
+  padding: 0 16px !important;
+
+  font-size: 14px !important;
+
+  color: #1f2937 !important;
+
+  box-shadow: none !important;
+
+  outline: none !important;
+
+  transition: all 0.2s ease-in-out;
+}
+
+
+/* ============================================================
+   SEARCH INPUT - HOVER
+   ============================================================ */
+
+.grn-report-page
+.grn-report-search-input.form-control:hover {
+  border-color: #4d8df7 !important;
+}
+
+
+/* ============================================================
+   SEARCH INPUT - FOCUS
+   Matches the blue glow from User Master
+   ============================================================ */
+
+.grn-report-page
+.grn-report-search-input.form-control:focus {
+  border: 2px solid #3d7ff0 !important;
+
+  box-shadow:
+    0 0 0 3px rgba(61, 127, 240, 0.18) !important;
+
+  outline: none !important;
+}
+
+
+/* ============================================================
+   PLACEHOLDER
+   ============================================================ */
+
+.grn-report-page
+.grn-report-search-input.form-control::placeholder {
+  color: #94a9cf !important;
+
+  opacity: 1 !important;
+
+  font-size: 14px;
+}
+
+
+/* ============================================================
+   TABLE WRAPPER
+   ============================================================ */
+
+.grn-report-table-wrapper {
+  width: 100%;
+
+  margin: 0;
+
+  padding: 0;
+}
+
+
+/* ============================================================
+   DATA TABLE
+   ============================================================ */
+
+.grn-report-table-wrapper
+.rdt_Table {
+  width: 100%;
+}
+
+
+/* TABLE HEADER */
+
+.grn-report-table-wrapper
+.rdt_TableHeadRow {
+  min-height: 46px !important;
+
+  background: #f1f4fa !important;
+
+  border-bottom:
+    1px solid #d8deea !important;
+}
+
+
+/* TABLE ROW */
+
+.grn-report-table-wrapper
+.rdt_TableRow {
+  min-height: 44px !important;
+}
+
+
+/* ============================================================
+   STATUS BADGE
+   ============================================================ */
+
+.grn-report-status-badge {
+  display: inline-block;
+
+  padding: 4px 11px;
+
+  border-radius: 20px;
+
+  font-size: 11px;
+
+  font-weight: 700;
+
+  white-space: nowrap;
+}
+
+
+/* POSTED */
+
+.grn-report-status-badge.posted {
+  background: #e6f6ea;
+
+  color: #1e7e34;
+}
+
+
+/* NOT POSTED */
+
+.grn-report-status-badge.unposted {
+  background: #f1f4fa;
+
+  color: #64748b;
+}
+
+
+/* ============================================================
+   EMPTY TABLE
+   ============================================================ */
+
+.grn-report-empty {
+  padding: 30px;
+
+  text-align: center;
+
+  color: #94a3b8;
+
+  font-size: 13px;
+}
+
+
+/* ============================================================
+   TABLET
+   ============================================================ */
+
+@media (max-width: 1000px) {
+
+  .grn-report-grid-search {
+    width: 330px;
+  }
+
+}
+
+
+/* ============================================================
+   SMALL TABLET
+   ============================================================ */
+
+@media (max-width: 800px) {
+
+  .grn-report-filter-row {
+    justify-content: flex-start;
+  }
+
+
+  .grn-report-result-toolbar {
+    flex-wrap: wrap;
+  }
+
+
+  .grn-report-grid-search {
+    width: 100%;
+
+    margin-left: 0;
+
+    justify-content: flex-end;
+  }
+
+}
+
+
+/* ============================================================
+   MOBILE
+   ============================================================ */
+
+@media (max-width: 600px) {
+
+  .grn-report-page {
+    padding: 10px;
+  }
+
+
+  /* DATE */
+
+  .grn-report-filter-row {
+    flex-direction: column;
+
+    align-items: center;
+
+    gap: 14px;
+  }
+
+
+  .grn-report-filter-field {
+    width: 100%;
+  }
+
+
+  /* BUTTONS */
+
+  .grn-report-date-actions {
+    flex-direction: row;
+
+    justify-content: center;
+
+    gap: 8px;
+  }
+
+
+  .grn-report-search-btn,
+  .grn-report-clear-btn {
+    min-width: 110px;
+  }
+
+
+  /* SUMMARY */
+
+  .grn-report-summary-row {
+    gap: 20px;
+
+    justify-content: space-between;
+  }
+
+
+  /* SECOND TOOLBAR */
+
+  .grn-report-result-toolbar {
+    flex-direction: column;
+
+    align-items: stretch;
+
+    gap: 10px;
+  }
+
+
+  .grn-report-export-wrapper {
+    width: 100%;
+  }
+
+
+  .grn-report-export-btn {
+    width: 100%;
+  }
+
+
+  .grn-report-grid-search {
+    width: 100%;
+
+    margin-left: 0;
+  }
+
+
+  .grn-report-page
+  .grn-report-search-input.form-control {
+    width: 100%;
+  }
+
+}
+
+/* ============================================================
+   GRID TOOLTIP CELL
+   ============================================================ */
+
+.grn-report-page .grn-report-tooltip-cell {
+  display: block;
+
+  width: 100%;
+
+  max-width: 100%;
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+
+  cursor: default;
+
+  color: #1f2937;
+
+  font-size: 13px;
+}
+
+
+/* ============================================================
+   TOOLTIP HOVER
+   ============================================================ */
+
+.grn-report-page
+.grn-report-tooltip-cell:hover {
+  cursor: help;
+}

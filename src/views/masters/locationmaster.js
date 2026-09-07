@@ -181,7 +181,7 @@ const LocationMaster = () => {
 
   const storeMasterOptions = storeMasters.map((s) => ({
     value: s.id,
-    label: `${s.storeLocation}-${s.palletNumber}`,
+    label: `${s.storeLocation}`,
     colourCode: s.colourCode,
     palletNumber: s.palletNumber,
     partNumber: s.partNumberCode || '',
@@ -713,12 +713,12 @@ setModalRows(normalRowCount || 1)
 
             <div className="loc-field">
               <label className="custom-label">
-                <strong>Store Name</strong> <span className="required">*</span>
+                <strong>Pallet Location</strong> <span className="required">*</span>
               </label>
               <div className={errors.storeMasterId ? 'react-select-error' : ''}>
                 <Select
                   classNamePrefix="react-select"
-                  placeholder="Select Store Name"
+                  placeholder="Select Pallet Location"
                   options={storeMasterOptions}
                   filterOption={filterStoreMasterOption}
                   value={storeMasterOptions.find((x) => String(x.value) === String(form.storeMasterId)) || null}
@@ -734,7 +734,7 @@ setModalRows(normalRowCount || 1)
 
             <div className="loc-field">
               <label className="custom-label">
-                <strong>Pallet Number</strong>
+                <strong>Pallet Type</strong>
               </label>
 
               <CFormInput
@@ -758,7 +758,7 @@ setModalRows(normalRowCount || 1)
 
             <div className="loc-field">
               <label className="custom-label">
-                <strong>Colour Picker</strong>
+                <strong>Pallet Colour</strong>
               </label>
 
               <div className="colour-picker-wrap colour-readonly loc-colour-with-add">

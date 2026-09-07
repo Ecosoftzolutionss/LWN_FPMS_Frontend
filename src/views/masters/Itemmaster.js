@@ -25,10 +25,11 @@ import usePrivilege from '../hooks/usePrivilege.js'
 const EMPTY_FORM = {
   itemNumber: '',
   itemName: '',
-  itemTypeId: '',
   itemGroupId: '',
   hsnCode: '',
   unitPrice: '',
+  customerOrSupplier: '',
+  effectiveDate: '',
   uom: '',
   weightPerUnit: '',
   stuffQuantity: '',
@@ -93,10 +94,8 @@ const ItemMaster = () => {
 
   const [items, setItems] = useState([])
   const [itemGroups, setItemGroups] = useState([])
-  const [itemTypes, setItemTypes] = useState([])
-  const [itemTypeInput, setItemTypeInput] = useState('')
 
-  // UOM dropdown — same CreatableSelect pattern as Item Type. Options
+  // UOM dropdown — options come from the Item Master UOM API.
   // come from GET /ItemMaster/uom-list; the value is stored as a plain
   // string on form.uom (ItemMaster.Uom is a string column, not a FK).
   const [uomOptions, setUomOptions] = useState([])
@@ -109,9 +108,10 @@ const ItemMaster = () => {
   const [errors, setErrors] = useState({
     itemNumber: '',
     itemName: '',
-    itemTypeId: '',
     itemGroupId: '',
     unitPrice: '',
+    customerOrSupplier: '',
+    effectiveDate: '',
     uom: '',
     safetyLevel: '',
     reorderLevel: '',
@@ -124,12 +124,11 @@ const ItemMaster = () => {
   const [deleteItem, setDeleteItem] = useState(null)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const { privileges: userPrivileges = [] } = usePrivilege()
-  const uPrivilege = userPrivileges.find((p) => p.menuName === 'Item Master') || {}
+  const uPrivilege = userPrivileges.find((p) => p.menuName === 'Part Master') || {}
 
   useEffect(() => {
     loadItems()
     loadItemGroups()
-    loadItemTypes()
     loadUomOptions()
   }, [])
 
@@ -166,14 +165,6 @@ const ItemMaster = () => {
     }
   }
 
-  const loadItemTypes = async () => {
-    try {
-      const res = await API.get('/ItemMaster/item-types')
-      setItemTypes(res.data || [])
-    } catch {
-      toast.error('Failed to load item types')
-    }
-  }
 
   const loadUomOptions = async () => {
     try {
@@ -190,13 +181,22 @@ const ItemMaster = () => {
     clearError(name)
   }
 
+  const getTodayDate = () => {
+    const today = new Date()
+    const year = today.getFullYear()
+    const month = String(today.getMonth() + 1).padStart(2, '0')
+    const day = String(today.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
   const validate = () => {
     const temp = {
       itemNumber: '',
       itemName: '',
-      itemTypeId: '',
       itemGroupId: '',
       unitPrice: '',
+      customerOrSupplier: '',
+      effectiveDate: '',
       uom: '',
       safetyLevel: '',
       reorderLevel: '',
@@ -230,10 +230,14 @@ const ItemMaster = () => {
     ) {
       temp.itemName = 'Item Name already exists'
     }
-
-    if (!form.itemTypeId && !itemTypeInput) temp.itemTypeId = 'Item Type is required'
     if (!form.itemGroupId) temp.itemGroupId = 'Item Group is required'
     if (form.unitPrice === '' || form.unitPrice === null) temp.unitPrice = 'Unit Price is required'
+    if (!form.customerOrSupplier) temp.customerOrSupplier = 'Customer / Supplier is required'
+    if (!form.effectiveDate) {
+      temp.effectiveDate = 'Effective Date is required'
+    } else if (form.effectiveDate < getTodayDate()) {
+      temp.effectiveDate = 'Effective Date cannot be a past date'
+    }
     if (!form.uom.trim()) temp.uom = 'UOM is required'
     if (form.safetyLevel === '' || form.safetyLevel === null) temp.safetyLevel = 'Safety Level is required'
     if (form.reorderLevel === '' || form.reorderLevel === null) temp.reorderLevel = 'Reorder Level is required'
@@ -253,11 +257,11 @@ const ItemMaster = () => {
       const payload = {
         itemNumber: form.itemNumber.trim(),
         itemName: form.itemName.trim(),
-        itemTypeId: Number(form.itemTypeId) || 0,
-        itemTypeName: itemTypeInput,
         itemGroupId: Number(form.itemGroupId),
         hsnCode: form.hsnCode.trim(),
         unitPrice: Number(form.unitPrice) || 0,
+        customerOrSupplier: form.customerOrSupplier,
+        effectiveDate: form.effectiveDate,
         uom: form.uom.trim(),
         weightPerUnit: toNumberOrNull(form.weightPerUnit),
         stuffQuantity: toNumberOrNull(form.stuffQuantity),
@@ -281,7 +285,6 @@ const ItemMaster = () => {
       }
 
       await loadItems()
-      await loadItemTypes()
       await loadUomOptions()
       resetForm()
     } catch (err) {
@@ -300,10 +303,11 @@ const ItemMaster = () => {
       setForm({
         itemNumber: d.itemNumber || '',
         itemName: d.itemName || '',
-        itemTypeId: d.itemTypeId || '',
         itemGroupId: d.itemGroupId || '',
         hsnCode: d.hsnCode || '',
         unitPrice: d.unitPrice ?? '',
+        customerOrSupplier: d.customerOrSupplier || '',
+        effectiveDate: d.effectiveDate ? d.effectiveDate.substring(0, 10) : '',
         uom: d.uom || '',
         weightPerUnit: d.weightPerUnit ?? '',
         stuffQuantity: d.stuffQuantity ?? '',
@@ -318,14 +322,13 @@ const ItemMaster = () => {
         dangerLevel: d.dangerLevel || '',
       })
 
-      setItemTypeInput(d.itemTypeName || '')
-
       setErrors({
         itemNumber: '',
         itemName: '',
-        itemTypeId: '',
-        itemGroupId: '',
+          itemGroupId: '',
         unitPrice: '',
+        customerOrSupplier: '',
+        effectiveDate: '',
         uom: '',
         safetyLevel: '',
         reorderLevel: '',
@@ -338,14 +341,15 @@ const ItemMaster = () => {
 
   const resetForm = () => {
     setForm(EMPTY_FORM)
-    setItemTypeInput('')
+
 
     setErrors({
       itemNumber: '',
       itemName: '',
-      itemTypeId: '',
       itemGroupId: '',
       unitPrice: '',
+      customerOrSupplier: '',
+      effectiveDate: '',
       uom: '',
       safetyLevel: '',
       reorderLevel: '',
@@ -394,6 +398,9 @@ const ItemMaster = () => {
 
   const itemGroupOptions = itemGroups.map((g) => ({ value: g.id, label: g.groupName }))
 
+  // Dimensions are relevant only for PCS items. Hide and clear them for other UOMs.
+  const showDimension = String(form.uom || '').trim().toUpperCase() === 'PCS'
+
   // Wraps a cell's value in a CoreUI tooltip so the full text shows
   // on hover — same pattern as SupplierMaster.jsx.
   const TooltipCell = ({ value }) => {
@@ -413,28 +420,21 @@ const ItemMaster = () => {
       center: true,
     },
     {
-      name: 'ITEM NUMBER',
+      name: 'PART NUMBER',
       selector: (row) => row.itemNumber,
       minWidth: '150px',
       width: '150px',
       cell: (row) => <TooltipCell value={row.itemNumber} />,
     },
     {
-      name: 'ITEM NAME',
+      name: 'PART NAME',
       selector: (row) => row.itemName,
       minWidth: '120px',
       wrap: true,
       cell: (row) => <TooltipCell value={row.itemName} />,
     },
     {
-      name: 'ITEM TYPE',
-      selector: (row) => row.itemTypeName,
-      minWidth: '130px',
-      wrap: true,
-      cell: (row) => <TooltipCell value={row.itemTypeName} />,
-    },
-    {
-      name: 'ITEM GROUP',
+      name: 'PART GROUP',
       selector: (row) => row.itemGroupName,
       minWidth: '120px',
       wrap: true,
@@ -457,6 +457,30 @@ const ItemMaster = () => {
       ),
     },
   
+    {
+      name: 'CUSTOMER / SUPPLIER',
+      selector: (row) => row.customerOrSupplier,
+      minWidth: '170px',
+      width: '170px',
+      center: true,
+      cell: (row) => <TooltipCell value={row.customerOrSupplier} />,
+    },
+    {
+      name: 'EFFECTIVE DATE',
+      selector: (row) => row.effectiveDate,
+      minWidth: '140px',
+      width: '140px',
+      center: true,
+      cell: (row) => (
+        <TooltipCell
+          value={
+            row.effectiveDate
+              ? new Date(row.effectiveDate).toLocaleDateString('en-GB')
+              : '—'
+          }
+        />
+      ),
+    },
     {
       name: 'STUFF QUANTITY',
       selector: (row) => row.stuffQuantity,
@@ -512,7 +536,7 @@ const ItemMaster = () => {
         <CCard className="mb-3">
           <CCardBody className="summary-card-body">
             <div>
-              <div className="summary-label">Total Items</div>
+              <div className="summary-label">Total Parts</div>
               <div className="summary-value">{String(items.length).padStart(2, '0')}</div>
             </div>
 
@@ -535,12 +559,12 @@ const ItemMaster = () => {
             <CRow className="g-3">
               <CCol md={4}>
                 <label className="custom-label">
-                  <strong>Item Number</strong> <span className="required">*</span>
+                  <strong>Part Number</strong> <span className="required">*</span>
                 </label>
                 <CFormInput
                   ref={itemNumberRef}
                   name="itemNumber"
-                  placeholder="Enter Item Number"
+                  placeholder="Enter Part Number"
                   value={form.itemNumber}
                   className={errors.itemNumber ? 'error-input' : ''}
                   onChange={handleChange}
@@ -550,11 +574,11 @@ const ItemMaster = () => {
 
               <CCol md={4}>
                 <label className="custom-label">
-                  <strong>Item Name</strong> <span className="required">*</span>
+                  <strong>Part Name</strong> <span className="required">*</span>
                 </label>
                 <CFormInput
                   name="itemName"
-                  placeholder="Enter Item Name"
+                  placeholder="Enter Part Name"
                   value={form.itemName}
                   className={errors.itemName ? 'error-input' : ''}
                   onChange={handleChange}
@@ -564,45 +588,12 @@ const ItemMaster = () => {
 
               <CCol md={4}>
                 <label className="custom-label">
-                  <strong>Item Type</strong> <span className="required">*</span>
-                </label>
-
-                <div className={errors.itemTypeId ? 'react-select-error' : ''}>
-                  <CreatableSelect
-                    classNamePrefix="react-select"
-                    placeholder="Select or type Item Type"
-                    options={itemTypes}
-                    value={
-                      form.itemTypeId === 0
-                        ? { value: 0, label: itemTypeInput }
-                        : itemTypes.find((x) => String(x.value) === String(form.itemTypeId)) || null
-                    }
-                    onChange={(selected) => {
-                      setForm({ ...form, itemTypeId: selected?.value || '' })
-                      setItemTypeInput((selected?.label || '').toUpperCase())
-                      clearError('itemTypeId')
-                    }}
-                    onCreateOption={(inputValue) => {
-                      const upperValue = inputValue.toUpperCase()
-                      setItemTypeInput(upperValue)
-                      setForm({ ...form, itemTypeId: 0 })
-                      clearError('itemTypeId')
-                    }}
-                    formatCreateLabel={(inputValue) => `Create "${inputValue.toUpperCase()}"`}
-                  />
-                </div>
-
-                {errors.itemTypeId && <small className="text-danger">{errors.itemTypeId}</small>}
-              </CCol>
-
-              <CCol md={4}>
-                <label className="custom-label">
-                  <strong>Item Group</strong> <span className="required">*</span>
+                  <strong>Part Group</strong> <span className="required">*</span>
                 </label>
                 <div className={errors.itemGroupId ? 'react-select-error' : ''}>
                   <Select
                     classNamePrefix="react-select"
-                    placeholder="Select Item Group"
+                    placeholder="Select Part Group"
                     options={itemGroupOptions}
                     value={itemGroupOptions.find((x) => String(x.value) === String(form.itemGroupId)) || null}
                     onChange={(selected) => {
@@ -655,6 +646,58 @@ const ItemMaster = () => {
 
               <CCol md={4}>
                 <label className="custom-label">
+                  <strong>Customer / Supplier</strong> <span className="required">*</span>
+                </label>
+                <div className={errors.customerOrSupplier ? 'react-select-error' : ''}>
+                  <Select
+                    classNamePrefix="react-select"
+                    placeholder="Select Customer / Supplier"
+                    options={[
+                      { value: 'Customer', label: 'Customer' },
+                      { value: 'Supplier', label: 'Supplier' },
+                    ]}
+                    value={
+                      form.customerOrSupplier
+                        ? {
+                            value: form.customerOrSupplier,
+                            label: form.customerOrSupplier,
+                          }
+                        : null
+                    }
+                    onChange={(selected) => {
+                      setForm((prev) => ({
+                        ...prev,
+                        customerOrSupplier: selected?.value || '',
+                      }))
+                      clearError('customerOrSupplier')
+                    }}
+                    isClearable
+                  />
+                </div>
+                {errors.customerOrSupplier && (
+                  <small className="text-danger">{errors.customerOrSupplier}</small>
+                )}
+              </CCol>
+
+              <CCol md={4}>
+                <label className="custom-label">
+                  <strong>Effective Date</strong> <span className="required">*</span>
+                </label>
+                <CFormInput
+                  type="date"
+                  name="effectiveDate"
+                  min={getTodayDate()}
+                  value={form.effectiveDate}
+                  className={errors.effectiveDate ? 'error-input' : ''}
+                  onChange={handleChange}
+                />
+                {errors.effectiveDate && (
+                  <small className="text-danger">{errors.effectiveDate}</small>
+                )}
+              </CCol>
+
+              <CCol md={4}>
+                <label className="custom-label">
                   <strong>UOM</strong> <span className="required">*</span>
                 </label>
 
@@ -680,9 +723,18 @@ const ItemMaster = () => {
                     }}
 
                     onChange={(selected) => {
+                      const selectedUom = (selected?.value || '').toString().trim().toUpperCase()
+
                       setForm((prev) => ({
                         ...prev,
-                        uom: selected?.value || '',
+                        uom: selectedUom,
+                        ...(selectedUom === 'PCS'
+                          ? {}
+                          : {
+                              length: '',
+                              width: '',
+                              height: '',
+                            }),
                       }))
 
                       setUomInputValue('')
@@ -772,33 +824,37 @@ const ItemMaster = () => {
                 />
               </CCol>
 
-              <CCol md={4}>
-                <label className="custom-label"><strong>Dimension (L x W x H)</strong></label>
-                <div className="dimension-row">
-                  <CFormInput
-                    type="number"
-                    name="length"
-                    placeholder="Length"
-                    value={form.length}
-                    onChange={handleChange}
-                  />
-                  <CFormInput
-                    type="number"
-                    name="width"
-                    placeholder="Width"
-                    value={form.width}
-                    onChange={handleChange}
-                  />
-                  <CFormInput
-                    type="number"
-                    name="height"
-                    placeholder="Height"
-                    value={form.height}
-                    onChange={handleChange}
-                  />
-                  <span className="input-suffix">mm</span>
-                </div>
-              </CCol>
+              {showDimension && (
+                <CCol md={4}>
+                  <label className="custom-label">
+                    <strong>Dimension (L x W x H)</strong>
+                  </label>
+                  <div className="dimension-row">
+                    <CFormInput
+                      type="number"
+                      name="length"
+                      placeholder="Length"
+                      value={form.length}
+                      onChange={handleChange}
+                    />
+                    <CFormInput
+                      type="number"
+                      name="width"
+                      placeholder="Width"
+                      value={form.width}
+                      onChange={handleChange}
+                    />
+                    <CFormInput
+                      type="number"
+                      name="height"
+                      placeholder="Height"
+                      value={form.height}
+                      onChange={handleChange}
+                    />
+                    <span className="input-suffix">MM</span>
+                  </div>
+                </CCol>
+              )}
 
               <CCol md={4}>
                 <label className="custom-label"><strong>Description</strong></label>
@@ -886,10 +942,10 @@ const ItemMaster = () => {
       <CCard className="mt-3">
         <CCardBody>
           <div className="table-header">
-            <div className="table-title">Item List</div>
+            <div className="table-title">Part List</div>
 
             <CFormInput
-              placeholder="Search by Item Number, Name, Group, HSN Code..."
+              placeholder="Search by Part Number, Name, Group, HSN Code..."
               className="search-box"
               style={{ width: '320px' }}
               onChange={(e) => setSearch(e.target.value)}
@@ -914,11 +970,11 @@ const ItemMaster = () => {
         </CModalHeader>
 
         <CModalBody className="text-center">
-          <p>Are you sure you want to delete this Item?</p>
+          <p>Are you sure you want to delete this Part?</p>
 
           <div style={{ background: '#f8f9fa', padding: '12px', borderRadius: '8px', marginTop: '10px' }}>
             <div>
-              <strong>Item Number :</strong>{' '}
+              <strong>Part Number :</strong>{' '}
               <span className="text-primary fw-bold">{deleteItem?.itemNumber}</span>
             </div>
           </div>

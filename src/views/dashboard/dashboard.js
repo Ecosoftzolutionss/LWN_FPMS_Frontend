@@ -1,23 +1,26 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import DataTable from 'react-data-table-component'
-import { CCard, CCardBody } from '@coreui/react'
+import { CCard, CCardBody, CTooltip } from '@coreui/react'
 import {
-  FaCube,
-  FaArrowUp,
-  FaExpandArrowsAlt,
-  FaFileAlt,
-  FaWarehouse,
-  FaClipboardList,
-  FaCheckDouble,
   FaArrowDown,
+  FaArrowUp,
+  FaBox,
   FaExchangeAlt,
+  FaChartBar,
   FaDolly,
-} from 'react-icons/fa';
-import { toast } from 'react-toastify';
-import API from '../../api.js';
-import '../../assets/CSS/dashboard.css';
-import DatePicker from 'react-datepicker'
-import 'react-datepicker/dist/react-datepicker.css'
+} from 'react-icons/fa'
+import { toast } from 'react-toastify'
+import API from '../../api.js'
+import '../../assets/CSS/dashboard.css'
+
+const num = (value) => Number(value || 0).toLocaleString()
+
+const money = (value) =>
+  Number(value || 0).toLocaleString(undefined, {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0,
+  })
 
 const formatDateTime = (value) => {
   if (!value) return ''
@@ -28,229 +31,220 @@ const formatDateTime = (value) => {
   return `${datePart} ${timePart}`
 }
 
-const pct = (part, total) => (total > 0 ? Math.round((part / total) * 100) : 0)
-
-// ★ Safe formatter — every .toLocaleString() call in this file goes
-// through here instead of calling it directly on a raw API value.
-// A single missing/undefined field from the backend (e.g. a still-
-// building dev server serving a stale/partial response) used to
-// crash the whole page with "Cannot read properties of undefined
-// (reading 'toLocaleString')"; this just renders "0" instead.
-const num = (value) => Number(value || 0).toLocaleString()
-
-  const DonutChart = ({
-    available,
-    issued,
-    closed,
-    total
-  }) => {
-    const availablePct = pct(available, total)
-    const issuedPct = pct(issued, total)
-    const closedPct = pct(closed, total)
-
-    const radius = 42
-    const circumference = 2 * Math.PI * radius
-
-    const getDashArray = (percentage) => {
-      const value = (percentage / 100) * circumference
-      return `${value} ${circumference - value}`
-    }
-
-    const getDashOffset = (previousPercentage) => {
-      return -((previousPercentage / 100) * circumference)
-    }
-
-    return (
-      <div className="dashboard-donut">
-        <svg
-          width="150"
-          height="150"
-          viewBox="0 0 100 100"
-          className="dashboard-donut-svg"
-        >
-          {/* Background */}
-          <circle
-            cx="50"
-            cy="50"
-            r={radius}
-            fill="none"
-            stroke="#f1f5f9"
-            strokeWidth="12"
-          />
-
-          {/* Available - Blue */}
-          {availablePct > 0 && (
-            <circle
-              cx="50"
-              cy="50"
-              r={radius}
-              fill="none"
-              stroke="#1d5cff"
-              strokeWidth="12"
-              strokeDasharray={getDashArray(availablePct)}
-              strokeDashoffset="0"
-              pathLength="100"
-              transform="rotate(-90 50 50)"
-              className="dashboard-donut-segment"
-            >
-              <title>
-                Available: {availablePct}%
-              </title>
-            </circle>
-          )}
-
-          {/* Issued - Orange */}
-          {issuedPct > 0 && (
-            <circle
-              cx="50"
-              cy="50"
-              r={radius}
-              fill="none"
-              stroke="#f97316"
-              strokeWidth="12"
-              strokeDasharray={getDashArray(issuedPct)}
-              strokeDashoffset={getDashOffset(availablePct)}
-              pathLength="100"
-              transform="rotate(-90 50 50)"
-              className="dashboard-donut-segment"
-            >
-              <title>
-                Issued: {issuedPct}%
-              </title>
-            </circle>
-          )}
-
-          {/* Closed / Others - Grey */}
-          {closedPct > 0 && (
-            <circle
-              cx="50"
-              cy="50"
-              r={radius}
-              fill="none"
-              stroke="#cbd5e1"
-              strokeWidth="12"
-              strokeDasharray={getDashArray(closedPct)}
-              strokeDashoffset={getDashOffset(
-                availablePct + issuedPct
-              )}
-              pathLength="100"
-              transform="rotate(-90 50 50)"
-              className="dashboard-donut-segment"
-            >
-              <title>
-                Closed / Others: {closedPct}%
-              </title>
-            </circle>
-          )}
-        </svg>
-
-        {/* Center */}
-        <div className="dashboard-donut-center">
-          <div className="dashboard-donut-total">
-            {num(total)}
-          </div>
-
-          <div className="dashboard-donut-total-label">
-            TOTAL
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-// ★ NEW: activity type -> icon + color, used both for the Recent
-// Activities table row label and its leading icon.
 const ACTIVITY_META = {
   'GRN Entry': { icon: FaArrowDown, color: '#1e7e34' },
   'Material Issue': { icon: FaExchangeAlt, color: '#e8792b' },
   'Store Movement': { icon: FaDolly, color: '#8b5cf6' },
 }
 
-const formatRangeDate = (date) => {
-  if (!date) return ''
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+]
 
-  return date.toLocaleDateString('en-GB', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  })
+// ---------------------------------------------------------------
+// Inward vs Outward bar chart — plain SVG, no charting library.
+// ---------------------------------------------------------------
+const BarChart = ({ months, valueKeyInward, valueKeyOutward, formatter }) => {
+  const width = 760
+  const height = 300
+  const padding = { top: 20, right: 20, bottom: 40, left: 55 }
+  const chartW = width - padding.left - padding.right
+  const chartH = height - padding.top - padding.bottom
+
+  const maxVal = Math.max(
+    1,
+    ...months.map((m) => Math.max(m[valueKeyInward] || 0, m[valueKeyOutward] || 0))
+  )
+
+  const niceMax = (() => {
+    const magnitude = Math.pow(10, Math.floor(Math.log10(maxVal || 1)))
+    return Math.ceil((maxVal / magnitude) * 1.15) * magnitude || 1
+  })()
+
+  const gridLines = 5
+  const groupWidth = chartW / months.length
+  const barWidth = Math.min(28, groupWidth / 3)
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} className="dashboard-chart-svg">
+      {/* grid + y labels */}
+      {Array.from({ length: gridLines + 1 }).map((_, i) => {
+        const y = padding.top + (chartH / gridLines) * i
+        const val = niceMax - (niceMax / gridLines) * i
+        return (
+          <g key={i}>
+            <line
+              x1={padding.left}
+              x2={width - padding.right}
+              y1={y}
+              y2={y}
+              stroke="#eef1f8"
+              strokeWidth="1"
+            />
+            <text x={padding.left - 10} y={y + 4} fontSize="10" fill="#94a3b8" textAnchor="end">
+              {formatter ? formatter(val) : num(val)}
+            </text>
+          </g>
+        )
+      })}
+
+      {/* bars */}
+      {months.map((m, idx) => {
+        const groupX = padding.left + groupWidth * idx
+        const inwardH = (Math.max(m[valueKeyInward] || 0, 0) / niceMax) * chartH
+        const outwardH = (Math.max(m[valueKeyOutward] || 0, 0) / niceMax) * chartH
+        const gap = 4
+
+        const inwardX = groupX + groupWidth / 2 - barWidth - gap / 2
+        const outwardX = groupX + groupWidth / 2 + gap / 2
+
+        return (
+          <g key={m.label}>
+            <rect
+              x={inwardX}
+              y={padding.top + chartH - inwardH}
+              width={barWidth}
+              height={inwardH}
+              rx="3"
+              fill="#1d5cff"
+            >
+              <title>{`${m.label} — Inward: ${formatter ? formatter(m[valueKeyInward]) : num(m[valueKeyInward])}`}</title>
+            </rect>
+            <rect
+              x={outwardX}
+              y={padding.top + chartH - outwardH}
+              width={barWidth}
+              height={outwardH}
+              rx="3"
+              fill="#14b8a6"
+            >
+              <title>{`${m.label} — Outward: ${formatter ? formatter(m[valueKeyOutward]) : num(m[valueKeyOutward])}`}</title>
+            </rect>
+            <text
+              x={groupX + groupWidth / 2}
+              y={height - padding.bottom + 16}
+              fontSize="10"
+              fill="#64748b"
+              textAnchor="middle"
+            >
+              {m.label}
+            </text>
+          </g>
+        )
+      })}
+    </svg>
+  )
 }
 
-const formatApiDate = (date) => {
-  if (!date) return ''
+// ---------------------------------------------------------------
+// Stock Status donut — Safety (green) / Reorder (orange) / Danger (red)
+// ---------------------------------------------------------------
+const StockStatusDonut = ({ safetyPct, reorderPct, dangerPct, total }) => {
+  const radius = 42
+  const circumference = 2 * Math.PI * radius
 
-  const yyyy = date.getFullYear()
-  const mm = String(date.getMonth() + 1).padStart(2, '0')
-  const dd = String(date.getDate()).padStart(2, '0')
+  const getDashArray = (percentage) => {
+    const value = (percentage / 100) * circumference
+    return `${value} ${circumference - value}`
+  }
 
-  return `${yyyy}-${mm}-${dd}`
+  const getDashOffset = (previousPercentage) => -((previousPercentage / 100) * circumference)
+
+  return (
+    <div className="dashboard-donut">
+      <svg width="180" height="180" viewBox="0 0 100 100" className="dashboard-donut-svg">
+        <circle cx="50" cy="50" r={radius} fill="none" stroke="#f1f5f9" strokeWidth="12" />
+
+        {safetyPct > 0 && (
+          <circle
+            cx="50" cy="50" r={radius} fill="none" stroke="#22c55e" strokeWidth="12"
+            strokeDasharray={getDashArray(safetyPct)} strokeDashoffset="0"
+            pathLength="100" transform="rotate(-90 50 50)" className="dashboard-donut-segment"
+          >
+            <title>Safety: {safetyPct}%</title>
+          </circle>
+        )}
+
+        {reorderPct > 0 && (
+          <circle
+            cx="50" cy="50" r={radius} fill="none" stroke="#f97316" strokeWidth="12"
+            strokeDasharray={getDashArray(reorderPct)} strokeDashoffset={getDashOffset(safetyPct)}
+            pathLength="100" transform="rotate(-90 50 50)" className="dashboard-donut-segment"
+          >
+            <title>Reorder: {reorderPct}%</title>
+          </circle>
+        )}
+
+        {dangerPct > 0 && (
+          <circle
+            cx="50" cy="50" r={radius} fill="none" stroke="#ef4444" strokeWidth="12"
+            strokeDasharray={getDashArray(dangerPct)} strokeDashoffset={getDashOffset(safetyPct + reorderPct)}
+            pathLength="100" transform="rotate(-90 50 50)" className="dashboard-donut-segment"
+          >
+            <title>Danger: {dangerPct}%</title>
+          </circle>
+        )}
+      </svg>
+
+      <div className="dashboard-donut-center">
+        <div className="dashboard-donut-total">{num(total)}</div>
+        <div className="dashboard-donut-total-label">TOTAL ITEMS</div>
+      </div>
+    </div>
+  )
+}
+
+
+// Tooltip for complete grid-cell values
+const TooltipCell = ({ value }) => {
+  const displayValue = value ?? '—'
+
+  return (
+    <CTooltip content={String(displayValue)} placement="top">
+      <span
+        style={{
+          display: 'block',
+          width: '100%',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          cursor: 'default',
+        }}
+      >
+        {displayValue}
+      </span>
+    </CTooltip>
+  )
 }
 
 const Dashboard = () => {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [mode, setMode] = useState('qty') // 'qty' | 'value'
 
-  const getCurrentWeek = () => {
-    const today = new Date()
+  const now = new Date()
+  const [year, setYear] = useState(now.getFullYear())
+  const [month, setMonth] = useState(now.getMonth() + 1)
 
-    const day = today.getDay()
-
-    const from = new Date(today)
-    from.setDate(today.getDate() - day)
-
-    const to = new Date(from)
-    to.setDate(from.getDate() + 6)
-
-    return {
-      from: formatDateForInput(from),
-      to: formatDateForInput(to),
-    }
-  }
-
-  const formatDateForInput = (date) => {
-    const yyyy = date.getFullYear()
-    const mm = String(date.getMonth() + 1).padStart(2, '0')
-    const dd = String(date.getDate()).padStart(2, '0')
-
-    return `${yyyy}-${mm}-${dd}`
-  }
-
-  const initialRange = getCurrentWeek()
-
-  const [dateRange, setDateRange] = useState([
-    new Date(`${initialRange.from}T00:00:00`),
-    new Date(`${initialRange.to}T00:00:00`),
-  ])
-
-  const [fromDate, toDate] = dateRange
-  useEffect(() => {
-    loadSummary()
+  const yearOptions = useMemo(() => {
+    const currentYear = now.getFullYear()
+    const years = []
+    for (let y = currentYear; y >= currentYear - 5; y--) years.push(y)
+    return years
   }, [])
 
-  const loadSummary = async (
-    selectedFrom = fromDate,
-    selectedTo = toDate
-  ) => {
-    if (!selectedFrom || !selectedTo) return
+  useEffect(() => {
+    loadSummary(year, month)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [year, month])
 
-    const apiFromDate = formatApiDate(selectedFrom)
-    const apiToDate = formatApiDate(selectedTo)
-
-    if (apiFromDate > apiToDate) {
-      toast.error('From Date cannot be greater than To Date')
-      return
-    }
-
+  const loadSummary = async (selectedYear, selectedMonth) => {
     setLoading(true)
-
     try {
       const res = await API.get('/Dashboard/summary', {
-        params: {
-          fromDate: apiFromDate,
-          toDate: apiToDate,
-        },
+        params: { year: selectedYear, month: selectedMonth },
       })
-
       setData(res.data)
     } catch (err) {
       toast.error('Failed to load dashboard')
@@ -258,234 +252,168 @@ const Dashboard = () => {
       setLoading(false)
     }
   }
+
   if (loading && !data) {
     return <div className="dashboard-page"><div className="dashboard-loading">Loading dashboard...</div></div>
   }
 
   if (!data) return null
 
-  const totalPallets = data.totalPallets || 0
-  const availablePallets = data.availablePallets || 0
-  const issuedPallets = data.issuedPallets || 0
-  const closedPallets = data.palletStatus?.closed || 0
+  const kpi = data.kpi || {}
+  const chartMonths = Array.isArray(data.chart) ? data.chart : []
+  const stock = data.stockStatus || { totalItems: 0, safety: {}, reorder: {}, danger: {} }
+  const recentActivities = Array.isArray(data.recentActivities) ? data.recentActivities : []
+
+  const isValueMode = mode === 'value'
+  const fmt = isValueMode ? money : num
 
   const kpiCards = [
     {
-      label: 'TOTAL PALLETS',
-      value: num(totalPallets),
-      sub: 'Across all locations',
-      icon: <FaCube />,
+      label: 'Total Inwards',
+      value: isValueMode ? money(kpi.inwardValue) : num(kpi.inwardQty),
+      icon: <FaArrowDown />,
       tone: 'blue',
     },
     {
-      label: 'AVAILABLE PALLETS',
-      value: num(availablePallets),
-      sub: `${pct(availablePallets, totalPallets)}% of total`,
+      label: 'Total Outward',
+      value: isValueMode ? money(kpi.outwardValue) : num(kpi.outwardQty),
       icon: <FaArrowUp />,
       tone: 'green',
     },
     {
-      label: 'ISSUED PALLETS',
-      value: num(issuedPallets),
-      sub: `${pct(issuedPallets, totalPallets)}% of total`,
-      icon: <FaExpandArrowsAlt />,
+      label: 'Total Available',
+      value: isValueMode ? money(kpi.availableValue) : num(kpi.availableQty),
+      icon: <FaBox />,
       tone: 'orange',
     },
-    {
-      label: 'TOTAL ISSUES',
-      value: num(data.totalIssuesThisWeek),
-      sub: 'This week',
-      icon: <FaFileAlt />,
-      tone: 'purple',
-    },
   ]
-
-
-  // =====================================================
-  // DONUT CHART WITH HOVER PERCENTAGE
-  // =====================================================
-
-
-
-  // Donut chart built with a conic-gradient — no charting library
-  // needed. Segment order: Available (blue) -> Issued (orange) ->
-  // Closed/Others (grey).
-
-
-  const locations = Array.isArray(data.locations) ? data.locations : []
-  const maxLocationQty = Math.max(1, ...locations.map((l) => l.availableCount || 0))
-
-  const transactionRows = [
-    { label: 'GRN Entries', value: data.transactionSummary?.grnEntries ?? 0, icon: FaFileAlt, tone: 'blue' },
-    { label: 'Pallets Received', value: data.transactionSummary?.palletsReceived ?? 0, icon: FaArrowDown, tone: 'green' },
-    { label: 'Material Issues', value: data.transactionSummary?.materialIssues ?? 0, icon: FaExchangeAlt, tone: 'orange' },
-    { label: 'Pallets Issued', value: data.transactionSummary?.palletsIssued ?? 0, icon: FaDolly, tone: 'orange' },
-    { label: 'Store Verifications', value: data.transactionSummary?.storeVerifications ?? 0, icon: FaCheckDouble, tone: 'blue' },
-  ]
-
-  const recentActivities = Array.isArray(data.recentActivities) ? data.recentActivities : []
 
   return (
     <div className="dashboard-page">
       <div className="dashboard-header">
-        <div className="dashboard-date-filter">
-          <DatePicker
-            selectsRange
-            startDate={fromDate}
-            endDate={toDate}
-            onChange={(update) => {
-              setDateRange(update)
-
-              const [start, end] = update
-
-              if (start && end) {
-                loadSummary(start, end)
-              }
-            }}
-            dateFormat="dd MMM yyyy"
-            isClearable={false}
-            showPopperArrow={false}
-            placeholderText="Select date range"
-            customInput={
-              <button
-                type="button"
-                className="dashboard-date-range-button"
-              >
-                <span className="dashboard-calendar-icon">
-                  📅
-                </span>
-
-                <span className="dashboard-date-range-text">
-                  {fromDate && toDate
-                    ? `${formatRangeDate(fromDate)} - ${formatRangeDate(toDate)}`
-                    : 'Select date range'}
-                </span>
-
-                <span className="dashboard-date-range-arrow">
-                  ˅
-                </span>
-              </button>
-            }
-          />
+        <div className="dashboard-mode-toggle">
+          <label className="dashboard-radio">
+            <input
+              type="radio"
+              name="dashboard-mode"
+              checked={mode === 'qty'}
+              onChange={() => setMode('qty')}
+            />
+            Quantity
+          </label>
+          <label className="dashboard-radio">
+            <input
+              type="radio"
+              name="dashboard-mode"
+              checked={mode === 'value'}
+              onChange={() => setMode('value')}
+            />
+            Value
+          </label>
         </div>
+
+        <select
+          className="dashboard-select"
+          value={year}
+          onChange={(e) => setYear(Number(e.target.value))}
+        >
+          {yearOptions.map((y) => (
+            <option key={y} value={y}>{y}</option>
+          ))}
+        </select>
+
+        <select
+          className="dashboard-select"
+          value={month}
+          onChange={(e) => setMonth(Number(e.target.value))}
+        >
+          {MONTH_NAMES.map((m, idx) => (
+            <option key={m} value={idx + 1}>{m}</option>
+          ))}
+        </select>
       </div>
 
       {/* ---------- KPI cards ---------- */}
-      <div className="dashboard-kpi-grid">
+      <div className="dashboard-kpi-grid dashboard-kpi-grid-3">
         {kpiCards.map((k) => (
           <CCard key={k.label} className={`dashboard-kpi-card tone-${k.tone}`}>
             <CCardBody>
               <div className="dashboard-kpi-icon">{k.icon}</div>
               <div className="dashboard-kpi-label">{k.label}</div>
               <div className="dashboard-kpi-value">{k.value}</div>
-              <div className="dashboard-kpi-sub">{k.sub}</div>
             </CCardBody>
           </CCard>
         ))}
       </div>
 
-      {/* ---------- Status donut / Location bars / Transaction summary ---------- */}
-      <div className="dashboard-mid-grid-3">
-        <CCard className="dashboard-status-card">
+      {/* ---------- Chart + Stock Status ---------- */}
+      <div className="dashboard-mid-grid-2">
+        <CCard className="dashboard-chart-card">
           <CCardBody>
-            <div className="section-title">PALLET STATUS OVERVIEW</div>
-
-            <div className="dashboard-donut-row">
-              <div className="dashboard-donut-row">
-
-                <DonutChart
-                  available={availablePallets}
-                  issued={issuedPallets}
-                  closed={closedPallets}
-                  total={totalPallets}
-                />
-
-                <div className="dashboard-donut-legend">
-
-                  <div className="dashboard-legend-item">
-                    <span className="dashboard-legend-dot dot-blue" />
-                    <div>
-                      <div className="dashboard-legend-value">
-                        {num(availablePallets)} ({pct(availablePallets, totalPallets)}%)
-                      </div>
-                      <div className="dashboard-legend-label">
-                        Available
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="dashboard-legend-item">
-                    <span className="dashboard-legend-dot dot-orange" />
-                    <div>
-                      <div className="dashboard-legend-value">
-                        {num(issuedPallets)} ({pct(issuedPallets, totalPallets)}%)
-                      </div>
-                      <div className="dashboard-legend-label">
-                        Issued
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="dashboard-legend-item">
-                    <span className="dashboard-legend-dot dot-grey" />
-                    <div>
-                      <div className="dashboard-legend-value">
-                        {num(closedPallets)} ({pct(closedPallets, totalPallets)}%)
-                      </div>
-                      <div className="dashboard-legend-label">
-                        Closed / Others
-                      </div>
-                    </div>
-                  </div>
-
-                </div>
+            <div className="dashboard-card-header-row">
+              <div className="section-title">
+                <FaChartBar style={{ marginRight: 6 }} />
+                Inward vs Outward
+              </div>
+              <div className="dashboard-chart-legend">
+                <span><span className="dashboard-legend-dot dot-blue" /> Inward</span>
+                <span><span className="dashboard-legend-dot dot-teal" /> Outward</span>
               </div>
             </div>
-          </CCardBody>
-        </CCard>
 
-        <CCard className="dashboard-location-card">
-          <CCardBody>
-            <div className="section-title">PALLETS BY LOCATION (AVAILABILITY)</div>
-
-            {locations.length === 0 ? (
-              <div className="dashboard-empty">No stuffed pallets yet</div>
+            {chartMonths.length === 0 ? (
+              <div className="dashboard-empty">No data for this range</div>
             ) : (
-              <div className="dashboard-location-list">
-                {locations.map((loc, idx) => (
-                  <div key={loc.storeLocation || idx} className="dashboard-location-row">
-                    <div className="dashboard-location-label">{loc.storeLocation || 'Unassigned'}</div>
-                    <div className="dashboard-location-bar-track">
-                      <div
-                        className="dashboard-location-bar-fill"
-                        style={{ width: `${((loc.availableCount || 0) / maxLocationQty) * 100}%` }}
-                      />
-                    </div>
-                    <div className="dashboard-location-value">{num(loc.availableCount)}</div>
-                  </div>
-                ))}
-              </div>
+              <BarChart
+                months={chartMonths}
+                valueKeyInward={isValueMode ? 'inwardValue' : 'inwardQty'}
+                valueKeyOutward={isValueMode ? 'outwardValue' : 'outwardQty'}
+                formatter={isValueMode ? money : num}
+              />
             )}
           </CCardBody>
         </CCard>
 
-        <CCard className="dashboard-transaction-card">
+        <CCard className="dashboard-status-card">
           <CCardBody>
-            <div className="section-title">TRANSACTION SUMMARY (THIS WEEK)</div>
+            <div className="section-title">Stock Status</div>
 
-            <div className="dashboard-transaction-list">
-              {transactionRows.map((t) => {
-                const Icon = t.icon
-                return (
-                  <div key={t.label} className="dashboard-transaction-row">
-                    <div className="dashboard-transaction-left">
-                      <span className={`dashboard-transaction-icon tone-${t.tone}`}><Icon /></span>
-                      <span className="dashboard-transaction-label">{t.label}</span>
+            <div className="dashboard-donut-row">
+              <StockStatusDonut
+                safetyPct={stock.safety?.pct || 0}
+                reorderPct={stock.reorder?.pct || 0}
+                dangerPct={stock.danger?.pct || 0}
+                total={stock.totalItems}
+              />
+
+              <div className="dashboard-donut-legend">
+                <div className="dashboard-legend-item">
+                  <span className="dashboard-legend-dot dot-safety" />
+                  <div>
+                    <div className="dashboard-legend-value">
+                      Safety Level {num(stock.safety?.count)} <span className="dashboard-legend-pct">{stock.safety?.pct || 0}%</span>
                     </div>
-                    <div className="dashboard-transaction-value">{num(t.value)}</div>
                   </div>
-                )
-              })}
+                </div>
+
+                <div className="dashboard-legend-item">
+                  <span className="dashboard-legend-dot dot-reorder" />
+                  <div>
+                    <div className="dashboard-legend-value">
+                      Reorder Level {num(stock.reorder?.count)} <span className="dashboard-legend-pct">{stock.reorder?.pct || 0}%</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="dashboard-legend-item">
+                  <span className="dashboard-legend-dot dot-danger" />
+                  <div>
+                    <div className="dashboard-legend-value">
+                      Danger Level {num(stock.danger?.count)} <span className="dashboard-legend-pct">{stock.danger?.pct || 0}%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </CCardBody>
         </CCard>
@@ -494,11 +422,16 @@ const Dashboard = () => {
       {/* ---------- Recent Activities ---------- */}
       <CCard className="mt-3">
         <CCardBody>
-          <div className="section-title">RECENT ACTIVITIES</div>
+          <div className="section-title">Recent Activities</div>
 
           <DataTable
             columns={[
-              { name: 'DATE & TIME', selector: (row) => row.date, cell: (row) => formatDateTime(row.date), minWidth: '160px' },
+              {
+                name: 'DATE & TIME',
+                selector: (row) => row.date,
+                cell: (row) => <TooltipCell value={formatDateTime(row.date)} />,
+                minWidth: '160px',
+              },
               {
                 name: 'ACTIVITY',
                 minWidth: '150px',
@@ -506,20 +439,47 @@ const Dashboard = () => {
                   const meta = ACTIVITY_META[row.type] || ACTIVITY_META['GRN Entry']
                   const Icon = meta.icon
                   return (
-                    <span className="dashboard-activity-label" style={{ color: meta.color }}>
-                      <Icon size={11} /> {row.type}
-                    </span>
+                    <CTooltip content={row.type || '—'} placement="top">
+                      <span
+                        className="dashboard-activity-label"
+                        style={{ color: meta.color, cursor: 'default' }}
+                      >
+                        <Icon size={11} /> {row.type || '—'}
+                      </span>
+                    </CTooltip>
                   )
                 },
               },
-              { name: 'REF NO', selector: (row) => row.refNo ?? '—' },
-              { name: 'PALLET NO', selector: (row) => row.palletNo ?? '—' },
-              { name: 'LOCATION', selector: (row) => row.location ?? '—' },
-              { name: 'QUANTITY', selector: (row) => num(row.quantity), center: true },
-              // Real, dynamic creator (GrnHeader.CreatedBy /
-              // StoreMovement.CreatedBy / MaterialIssue.IssuedBy) — no
-              // hardcoded "Vendor"/"Admin" placeholder.
-              { name: 'CREATED BY', selector: (row) => row.createdBy || '—' },
+              {
+                name: 'REF NO',
+                selector: (row) => row.refNo ?? '—',
+                cell: (row) => <TooltipCell value={row.refNo ?? '—'} />,
+              },
+              {
+                name: 'SUPPLIER',
+                selector: (row) => row.supplier ?? '—',
+                cell: (row) => <TooltipCell value={row.supplier ?? '—'} />,
+              },
+              {
+                name: 'PART NAME',
+                selector: (row) => row.partName ?? '—',
+                cell: (row) => <TooltipCell value={row.partName ?? '—'} />,
+              },
+              {
+                name: 'QUANTITY',
+                selector: (row) => num(row.quantity),
+                cell: (row) => (
+                  <CTooltip content={num(row.quantity)} placement="top">
+                    <span style={{ cursor: 'default' }}>{num(row.quantity)}</span>
+                  </CTooltip>
+                ),
+                center: true,
+              },
+              {
+                name: 'USER NAME',
+                selector: (row) => row.userName ?? '—',
+                cell: (row) => <TooltipCell value={row.userName ?? '—'} />,
+              },
             ]}
             data={recentActivities}
             pagination

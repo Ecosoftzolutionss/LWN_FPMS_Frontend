@@ -200,20 +200,28 @@ const SupplierGroupMaster = () => {
     setShowForm(false)
   }
 
-  const confirmDelete = async () => {
-    try {
-      await API.delete(`/SupplierGroup/${deleteId}`)
-      toast.success('Deleted Successfully')
-      resetForm()
-      await loadGroups()
-    } catch (err) {
-      toast.error(getErrorMessage(err, 'Delete Failed'))
-    } finally {
-      setShowDeleteModal(false)
-      setDeleteId(null)
-      setDeleteGroup(null)
-    }
+ const confirmDelete = async () => {
+  try {
+    const res = await API.delete(`/SupplierGroup/${deleteId}`)
+
+    toast.success(
+      res.data?.message || 'Supplier Group deleted successfully'
+    )
+
+    await loadGroups()
+  } catch (err) {
+    toast.error(
+      getErrorMessage(
+        err,
+        'Failed to delete Supplier Group'
+      )
+    )
+  } finally {
+    setShowDeleteModal(false)
+    setDeleteId(null)
+    setDeleteGroup(null)
   }
+}
 
   const filteredGroups = groups.filter(
     (g) =>
