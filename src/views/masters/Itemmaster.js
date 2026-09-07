@@ -334,6 +334,20 @@ const ItemMaster = () => {
         reorderLevel: '',
         dangerLevel: '',
       })
+
+        // Show the edit form
+    setShowForm(true)
+
+    // Scroll page to the top
+    setTimeout(() => {
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth',
+      })
+
+      // Focus Part Number
+      itemNumberRef.current?.focus()
+    }, 200)
     } catch {
       toast.error('Failed to load item')
     }

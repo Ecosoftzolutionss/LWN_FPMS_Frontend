@@ -171,6 +171,18 @@ const SupplierGroupMaster = () => {
       })
 
       setErrors({ supplierGroupType: '' })
+       // Open the form
+      setShowForm(true)
+
+    // Scroll to top and focus Supplier Group Type
+    setTimeout(() => {
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth',
+      })
+
+      typeRef.current?.focus()
+    }, 250)
     } catch {
       toast.error('Failed to load supplier group')
     }

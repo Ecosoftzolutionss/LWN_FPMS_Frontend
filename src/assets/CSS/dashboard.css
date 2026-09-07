@@ -4,7 +4,8 @@
 
 .dashboard-page {
   background: #f4f6fb;
-  padding: 15px;
+  padding: 10px;
+  min-height: calc(100vh - 100px);
 }
 
 .dashboard-subtitle {
@@ -41,8 +42,8 @@
 .dashboard-kpi-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 14px;
-  margin-bottom: 16px;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
 .dashboard-kpi-card {
@@ -51,7 +52,7 @@
 }
 
 .dashboard-kpi-card .card-body {
-  padding: 18px;
+  padding: 12px 14px;
 }
 
 .dashboard-kpi-card.tone-blue { background: #eaf1ff; }
@@ -67,7 +68,7 @@
   align-items: center;
   justify-content: center;
   font-size: 14px;
-  margin-bottom: 10px;
+  margin-bottom: 7px;
   background: rgba(255, 255, 255, 0.65);
 }
 
@@ -85,7 +86,7 @@
 }
 
 .dashboard-kpi-value {
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 800;
   color: #1f2937;
   line-height: 1.15;
@@ -107,8 +108,8 @@
 .dashboard-mid-grid-3 {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: 14px;
-  margin-bottom: 14px;
+  gap: 10px;
+  margin-bottom: 10px;
   align-items: stretch;
 }
 
@@ -544,17 +545,17 @@
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   width: 100%;
-  margin-bottom: 18px;
+  margin-bottom: 10px;
   flex-wrap: wrap;
 }
 
 .dashboard-mode-toggle {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-right: 8px;
+  gap: 12px;
+  margin-right: 4px;
 }
 
 .dashboard-radio {
@@ -609,8 +610,8 @@
 .dashboard-mid-grid-2 {
   display: grid;
   grid-template-columns: 1.6fr 1fr;
-  gap: 14px;
-  margin-bottom: 14px;
+  gap: 10px;
+  margin-bottom: 10px;
   align-items: stretch;
 }
 
@@ -630,7 +631,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .dashboard-card-header-row .section-title {
@@ -656,7 +657,8 @@
 .dashboard-chart-svg {
   width: 100%;
   height: auto;
-  min-height: 260px;
+  min-height: 210px;
+  max-height: 250px;
 }
 
 .dot-teal { background: #14b8a6; }
@@ -672,5 +674,522 @@
 
 /* Stock status donut sits a little larger here */
 .dashboard-status-card .dashboard-donut-row {
-  gap: 24px;
+  gap: 16px;
+}
+
+/* =========================================================
+   FINAL DASHBOARD UI REFINEMENTS
+   - Compact spacing
+   - Quantity-only KPI cards
+   - Value/Quantity affects chart only
+   - Better use of available screen space
+========================================================= */
+
+.dashboard-page {
+  padding: 8px 10px 12px;
+}
+
+.dashboard-header {
+  margin-bottom: 8px;
+}
+
+.dashboard-kpi-grid {
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.dashboard-kpi-card {
+  min-height: 96px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+}
+
+.dashboard-kpi-card .card-body {
+  padding: 11px 14px;
+}
+
+.dashboard-kpi-icon {
+  width: 30px;
+  height: 30px;
+  margin-bottom: 5px;
+}
+
+.dashboard-kpi-value {
+  font-size: 21px;
+  line-height: 1.1;
+}
+
+.dashboard-mid-grid-2 {
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.dashboard-chart-card,
+.dashboard-status-card,
+.dashboard-recent-card {
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+}
+
+.dashboard-chart-card .card-body,
+.dashboard-status-card .card-body {
+  padding: 11px 14px;
+}
+
+.dashboard-card-header-row {
+  margin-bottom: 6px;
+}
+
+.dashboard-chart-svg {
+  min-height: 205px;
+  max-height: 225px;
+}
+
+.dashboard-status-card .dashboard-donut-row {
+  gap: 12px;
+}
+
+.dashboard-status-card .dashboard-donut {
+  width: 130px;
+  height: 130px;
+}
+
+.dashboard-status-card .dashboard-donut-svg {
+  width: 130px;
+  height: 130px;
+}
+
+.dashboard-donut-legend {
+  gap: 8px;
+}
+
+.dashboard-legend-value {
+  font-size: 11px;
+}
+
+.dashboard-recent-card {
+  margin-top: 0 !important;
+}
+
+.dashboard-recent-card .card-body {
+  padding: 10px 14px;
+}
+
+.dashboard-recent-card .section-title {
+  margin-bottom: 6px;
+}
+
+.dashboard-recent-card .rdt_TableCell,
+.dashboard-recent-card .rdt_TableCol {
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.dashboard-recent-card .rdt_TableRow {
+  min-height: 40px !important;
+}
+
+.dashboard-recent-card .rdt_TableHeadRow {
+  min-height: 38px !important;
+}
+
+.dashboard-recent-card .rdt_Pagination {
+  min-height: 42px !important;
+}
+
+.dashboard-radio {
+  font-size: 12px;
+}
+
+.dashboard-radio input[type='radio'] {
+  width: 14px;
+  height: 14px;
+}
+
+.dashboard-select {
+  height: 34px;
+  font-size: 12px;
+  padding: 0 8px;
+}
+
+@media (max-width: 1100px) {
+  .dashboard-chart-svg {
+    min-height: 220px;
+    max-height: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-page {
+    padding: 8px;
+  }
+
+  .dashboard-header {
+    gap: 7px;
+    margin-bottom: 8px;
+  }
+
+  .dashboard-mode-toggle {
+    width: 100%;
+    margin-right: 0;
+  }
+
+  .dashboard-kpi-card {
+    min-height: 88px;
+  }
+}
+
+
+/* =========================================================
+   FINAL DASHBOARD UI
+   Compact ERP dashboard + chart value labels
+========================================================= */
+
+.dashboard-page {
+  padding: 8px 10px 10px;
+  min-height: auto;
+}
+
+/* Header / filters */
+.dashboard-header {
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.dashboard-mode-toggle {
+  gap: 10px;
+  margin-right: 2px;
+}
+
+.dashboard-radio {
+  font-size: 12px;
+  gap: 5px;
+}
+
+.dashboard-radio input[type='radio'] {
+  width: 14px;
+  height: 14px;
+}
+
+.dashboard-select {
+  height: 34px;
+  font-size: 12px;
+  padding: 0 9px;
+}
+
+/* KPI cards — compact 4-column layout */
+.dashboard-kpi-grid-3 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.dashboard-kpi-grid {
+  gap: 9px;
+  margin-bottom: 9px;
+}
+
+.dashboard-kpi-card {
+  min-height: 88px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+}
+
+.dashboard-kpi-card .card-body {
+  padding: 10px 13px;
+}
+
+.dashboard-kpi-icon {
+  width: 29px;
+  height: 29px;
+  border-radius: 8px;
+  font-size: 12px;
+  margin-bottom: 5px;
+}
+
+.dashboard-kpi-label {
+  font-size: 9px;
+  margin-bottom: 3px;
+}
+
+.dashboard-kpi-value {
+  font-size: 21px;
+  line-height: 1.05;
+}
+
+/* Alert KPI */
+.dashboard-kpi-card.tone-red {
+  background: #fff0f0;
+}
+
+.tone-red .dashboard-kpi-icon {
+  color: #dc2626;
+}
+
+.tone-red .dashboard-kpi-sub {
+  color: #dc2626;
+}
+
+/* Chart + stock status */
+.dashboard-mid-grid-2 {
+  grid-template-columns: minmax(0, 1.65fr) minmax(310px, 0.85fr);
+  gap: 9px;
+  margin-bottom: 9px;
+}
+
+.dashboard-chart-card,
+.dashboard-status-card,
+.dashboard-recent-card {
+  border: 1px solid #e7ebf2 !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.045);
+}
+
+.dashboard-chart-card .card-body,
+.dashboard-status-card .card-body {
+  padding: 10px 13px;
+}
+
+.dashboard-card-header-row {
+  margin-bottom: 4px;
+  min-height: 25px;
+}
+
+.dashboard-chart-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.dashboard-chart-title-wrap .section-title {
+  margin-bottom: 0 !important;
+  white-space: nowrap;
+}
+
+.dashboard-period-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: #f1f5ff;
+  color: #3159a6;
+  font-size: 9px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.dashboard-chart-legend {
+  gap: 12px;
+  font-size: 10px;
+}
+
+.dashboard-chart-legend span {
+  gap: 5px;
+}
+
+.dashboard-chart-scroll {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+
+.dashboard-chart-svg {
+  display: block;
+  width: 100%;
+  min-width: 700px;
+  height: 245px;
+  min-height: 0;
+  max-height: none;
+}
+
+.dashboard-bar {
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.dashboard-bar:hover {
+  opacity: 0.78;
+}
+
+/* Stock status — use available vertical space efficiently */
+.dashboard-status-card .dashboard-donut-row {
+  gap: 12px;
+  min-height: 205px;
+}
+
+.dashboard-status-card .dashboard-donut {
+  width: 132px;
+  height: 132px;
+}
+
+.dashboard-status-card .dashboard-donut-svg {
+  width: 132px;
+  height: 132px;
+}
+
+.dashboard-donut-legend {
+  gap: 8px;
+  min-width: 0;
+}
+
+.dashboard-legend-value {
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.dashboard-legend-value strong {
+  margin-left: 3px;
+}
+
+.dashboard-legend-pct {
+  margin-left: 5px;
+}
+
+.dashboard-stock-alert-note {
+  margin-top: 3px;
+  padding-top: 7px;
+  border-top: 1px solid #eef1f6;
+  font-size: 10px;
+  line-height: 1.3;
+  color: #64748b;
+  font-weight: 600;
+}
+
+/* Recent activities */
+.dashboard-recent-card {
+  margin-top: 0 !important;
+}
+
+.dashboard-recent-card .card-body {
+  padding: 9px 13px 6px;
+}
+
+.dashboard-recent-card .section-title {
+  margin-bottom: 4px !important;
+}
+
+.dashboard-recent-card .rdt_TableHeadRow {
+  min-height: 34px !important;
+}
+
+.dashboard-recent-card .rdt_TableRow {
+  min-height: 38px !important;
+}
+
+.dashboard-recent-card .rdt_TableCell,
+.dashboard-recent-card .rdt_TableCol {
+  padding-left: 7px;
+  padding-right: 7px;
+}
+
+.dashboard-recent-card .rdt_Pagination {
+  min-height: 36px !important;
+}
+
+.dashboard-recent-card .rdt_TableHeadRow .rdt_TableCol {
+  font-size: 10px !important;
+}
+
+.dashboard-recent-card .rdt_TableRow .rdt_TableCell {
+  font-size: 11px !important;
+}
+
+/* Make long table values readable without increasing page height */
+.dashboard-recent-card .rdt_TableCell > div {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Remove Bootstrap-like top margin from the dashboard's final section */
+.dashboard-page > .mt-3 {
+  margin-top: 0 !important;
+}
+
+/* Better empty/loading areas */
+.dashboard-empty {
+  padding: 18px;
+}
+
+.dashboard-loading {
+  padding: 35px;
+}
+
+/* Tablet */
+@media (max-width: 1200px) {
+  .dashboard-kpi-grid-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dashboard-mid-grid-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-chart-svg {
+    min-width: 760px;
+  }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .dashboard-page {
+    padding: 7px;
+  }
+
+  .dashboard-header {
+    justify-content: flex-start;
+  }
+
+  .dashboard-mode-toggle {
+    width: auto;
+  }
+
+  .dashboard-kpi-grid-3 {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .dashboard-chart-svg {
+    min-width: 700px;
+    height: 235px;
+  }
+
+  .dashboard-chart-legend {
+    display: none;
+  }
+
+  .dashboard-status-card .dashboard-donut-row {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-kpi-grid-3 {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* =========================================================
+   FINAL CHART LABEL REFINEMENT
+   Full values are shown on bars:
+   Quantity -> 2,720
+   Value    -> ₹2,720
+========================================================= */
+
+.dashboard-chart-value-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  pointer-events: none;
+  paint-order: stroke;
+  stroke: #ffffff;
+  stroke-width: 2px;
+  stroke-linejoin: round;
+}
+
+@media (max-width: 1200px) {
+  .dashboard-chart-value-label {
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-chart-value-label {
+    font-size: 10px;
+  }
 }

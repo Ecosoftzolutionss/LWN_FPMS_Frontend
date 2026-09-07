@@ -191,6 +191,19 @@ const ItemGroupMaster = () => {
       setErrors({
         groupName: '',
       })
+       // Open the form
+    setShowForm(true)
+
+    // Scroll to top and focus Part Number
+    setTimeout(() => {
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth',
+      })
+
+      itemNumberRef.current?.focus()
+    }, 250)
+    
     } catch {
       toast.error('Failed to load item group')
     }

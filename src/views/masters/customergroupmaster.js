@@ -167,6 +167,17 @@ const CustomerGroupMaster = () => {
       })
 
       setErrors({ customerGroupType: '' })
+       setShowForm(true)
+
+    // Scroll to top and focus Customer Group Type
+    setTimeout(() => {
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth',
+      })
+
+      typeRef.current?.focus()
+    }, 250)
     } catch {
       toast.error('Failed to load customer group')
     }

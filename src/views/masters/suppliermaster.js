@@ -689,6 +689,19 @@ const SupplierMaster = () => {
 
       setErrors({})
 
+         // Open edit form
+    setShowForm(true)
+
+    // Scroll to top and focus Supplier ID
+    setTimeout(() => {
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth',
+      })
+
+      supplierIdRef.current?.focus()
+    }, 250)
+
     } catch (err) {
 
       toast.error(

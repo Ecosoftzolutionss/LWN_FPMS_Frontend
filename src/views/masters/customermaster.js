@@ -51,7 +51,7 @@ const getErrorMessage = (err, fallback) => {
 }
 
 const CustomerMaster = () => {
-  const nameRef = useRef()
+  const customerCodeRef = useRef()
 
   const customStyles = {
     rows: { style: { minHeight: '34px' } },
@@ -102,13 +102,13 @@ const CustomerMaster = () => {
     loadCustomerGroups()
   }, [])
 
-  useEffect(() => {
-    if (showForm) {
-      setTimeout(() => {
-        nameRef.current?.focus()
-      }, 200)
-    }
-  }, [showForm])
+ useEffect(() => {
+  if (showForm) {
+    setTimeout(() => {
+      customerCodeRef.current?.focus()
+    }, 200)
+  }
+}, [showForm])
 
   const clearError = (name) => {
     setErrors((prev) => ({ ...prev, [name]: '' }))
@@ -280,6 +280,17 @@ const CustomerMaster = () => {
         emailId: '',
         gstNo: '',
       })
+        setShowForm(true)
+
+    // Scroll to top and focus Customer ID
+    setTimeout(() => {
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth',
+      })
+
+      customerCodeRef.current?.focus()
+    }, 250)
     } catch {
       toast.error('Failed to load customer')
     }
@@ -299,9 +310,9 @@ const CustomerMaster = () => {
 
     setEditId(null)
 
-    setTimeout(() => {
-      nameRef.current?.focus()
-    }, 100)
+ setTimeout(() => {
+  customerCodeRef.current?.focus()
+}, 100)
   }
 
   const handleAddNew = () => {
@@ -449,6 +460,7 @@ const CustomerMaster = () => {
                   <strong>Customer ID</strong> <span className="required">*</span>
                 </label>
                 <CFormInput
+                ref={customerCodeRef}
                   name="customerCode"
                   placeholder="Enter Customer ID"
                   value={form.customerCode}
@@ -463,7 +475,7 @@ const CustomerMaster = () => {
                   <strong>Customer Name</strong> <span className="required">*</span>
                 </label>
                 <CFormInput
-                  ref={nameRef}
+        
                   name="customerName"
                   placeholder="Enter Customer Name (e.g. Test_233)"
                   value={form.customerName}

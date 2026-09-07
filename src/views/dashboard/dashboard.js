@@ -8,6 +8,7 @@ import {
   FaExchangeAlt,
   FaChartBar,
   FaDolly,
+  FaExclamationTriangle,
 } from 'react-icons/fa'
 import { toast } from 'react-toastify'
 import API from '../../api.js'
@@ -45,95 +46,187 @@ const MONTH_NAMES = [
 // ---------------------------------------------------------------
 // Inward vs Outward bar chart — plain SVG, no charting library.
 // ---------------------------------------------------------------
-const BarChart = ({ months, valueKeyInward, valueKeyOutward, formatter }) => {
-  const width = 760
-  const height = 300
-  const padding = { top: 20, right: 20, bottom: 40, left: 55 }
+const BarChart = ({ months, valueKeyInward, valueKeyOutward, formatter, isValueMode }) => {
+  const width = 900
+  const height = 290
+  const padding = { top: 42, right: 18, bottom: 46, left: 62 }
   const chartW = width - padding.left - padding.right
   const chartH = height - padding.top - padding.bottom
 
   const maxVal = Math.max(
     1,
-    ...months.map((m) => Math.max(m[valueKeyInward] || 0, m[valueKeyOutward] || 0))
+    ...months.map((m) =>
+      Math.max(
+        Number(m[valueKeyInward] || 0),
+        Number(m[valueKeyOutward] || 0)
+      )
+    )
   )
 
+  // Give the highest bar a little headroom for its data label.
   const niceMax = (() => {
     const magnitude = Math.pow(10, Math.floor(Math.log10(maxVal || 1)))
-    return Math.ceil((maxVal / magnitude) * 1.15) * magnitude || 1
+    const step = magnitude >= 100 ? magnitude : magnitude / 2
+    return Math.max(step, Math.ceil((maxVal * 1.18) / step) * step)
   })()
 
   const gridLines = 5
-  const groupWidth = chartW / months.length
-  const barWidth = Math.min(28, groupWidth / 3)
+  const groupWidth = chartW / Math.max(months.length, 1)
+  const barWidth = Math.min(25, Math.max(14, groupWidth / 3.2))
+  const gap = 5
+
+  const shortValue = (value) => {
+    const n = Number(value || 0)
+
+    // Show the complete chart value.
+    // Quantity: 2720 -> 2,720
+    // Value:    2720 -> ₹2,720
+    // No K / L / Cr abbreviations.
+    return isValueMode
+      ? money(n)
+      : Math.round(n).toLocaleString('en-IN')
+  }
+
+  const fullValue = (value) =>
+    formatter ? formatter(value) : num(value)
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="dashboard-chart-svg">
-      {/* grid + y labels */}
-      {Array.from({ length: gridLines + 1 }).map((_, i) => {
-        const y = padding.top + (chartH / gridLines) * i
-        const val = niceMax - (niceMax / gridLines) * i
-        return (
-          <g key={i}>
-            <line
-              x1={padding.left}
-              x2={width - padding.right}
-              y1={y}
-              y2={y}
-              stroke="#eef1f8"
-              strokeWidth="1"
-            />
-            <text x={padding.left - 10} y={y + 4} fontSize="10" fill="#94a3b8" textAnchor="end">
-              {formatter ? formatter(val) : num(val)}
-            </text>
-          </g>
-        )
-      })}
+    <div className="dashboard-chart-scroll">
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        className="dashboard-chart-svg"
+        role="img"
+        aria-label={isValueMode ? 'Inward and outward value chart in Indian Rupees' : 'Inward and outward quantity chart'}
+      >
+        {/* Grid + Y-axis */}
+        {Array.from({ length: gridLines + 1 }).map((_, i) => {
+          const y = padding.top + (chartH / gridLines) * i
+          const val = niceMax - (niceMax / gridLines) * i
 
-      {/* bars */}
-      {months.map((m, idx) => {
-        const groupX = padding.left + groupWidth * idx
-        const inwardH = (Math.max(m[valueKeyInward] || 0, 0) / niceMax) * chartH
-        const outwardH = (Math.max(m[valueKeyOutward] || 0, 0) / niceMax) * chartH
-        const gap = 4
+          return (
+            <g key={`grid-${i}`}>
+              <line
+                x1={padding.left}
+                x2={width - padding.right}
+                y1={y}
+                y2={y}
+                stroke="#e8edf5"
+                strokeWidth="1"
+              />
+              <text
+                x={padding.left - 10}
+                y={y + 4}
+                fontSize="10"
+                fill="#94a3b8"
+                textAnchor="end"
+              >
+                {formatter ? formatter(val) : num(val)}
+              </text>
+            </g>
+          )
+        })}
 
-        const inwardX = groupX + groupWidth / 2 - barWidth - gap / 2
-        const outwardX = groupX + groupWidth / 2 + gap / 2
+        {/* Bars + data labels */}
+        {months.map((m, idx) => {
+          const inwardValue = Number(m[valueKeyInward] || 0)
+          const outwardValue = Number(m[valueKeyOutward] || 0)
 
-        return (
-          <g key={m.label}>
-            <rect
-              x={inwardX}
-              y={padding.top + chartH - inwardH}
-              width={barWidth}
-              height={inwardH}
-              rx="3"
-              fill="#1d5cff"
-            >
-              <title>{`${m.label} — Inward: ${formatter ? formatter(m[valueKeyInward]) : num(m[valueKeyInward])}`}</title>
-            </rect>
-            <rect
-              x={outwardX}
-              y={padding.top + chartH - outwardH}
-              width={barWidth}
-              height={outwardH}
-              rx="3"
-              fill="#14b8a6"
-            >
-              <title>{`${m.label} — Outward: ${formatter ? formatter(m[valueKeyOutward]) : num(m[valueKeyOutward])}`}</title>
-            </rect>
-            <text
-              x={groupX + groupWidth / 2}
-              y={height - padding.bottom + 16}
-              fontSize="10"
-              fill="#64748b"
-              textAnchor="middle"
-            >
-              {m.label}
-            </text>
-          </g>
-        )
-      })}
-    </svg>
+          const inwardH = (Math.max(inwardValue, 0) / niceMax) * chartH
+          const outwardH = (Math.max(outwardValue, 0) / niceMax) * chartH
+
+          const groupX = padding.left + groupWidth * idx
+          const centerX = groupX + groupWidth / 2
+
+          const inwardX = centerX - barWidth - gap / 2
+          const outwardX = centerX + gap / 2
+
+          const inwardY = padding.top + chartH - inwardH
+          const outwardY = padding.top + chartH - outwardH
+
+          return (
+            <g key={m.label}>
+              {/* Inward */}
+              <rect
+                x={inwardX}
+                y={inwardY}
+                width={barWidth}
+                height={inwardH}
+                rx="4"
+                fill="#2563eb"
+                className="dashboard-bar dashboard-bar-inward"
+              >
+                <title>
+                  {`${m.label} — Inward: ${fullValue(inwardValue)}`}
+                </title>
+              </rect>
+
+              {inwardValue > 0 && (
+                <text
+                  x={inwardX + barWidth / 2}
+                  y={Math.max(padding.top + 4, inwardY - 6)}
+                  fontSize="11"
+                  fontWeight="800"
+                  fill={isValueMode ? "#1e3a8a" : "#334155"}
+                  className="dashboard-chart-value-label"
+                  textAnchor="middle"
+                  transform={`rotate(-55 ${inwardX + barWidth / 2} ${Math.max(
+                    padding.top + 4,
+                    inwardY - 6
+                  )})`}
+                >
+                  {shortValue(inwardValue)}
+                </text>
+              )}
+
+              {/* Outward */}
+              <rect
+                x={outwardX}
+                y={outwardY}
+                width={barWidth}
+                height={outwardH}
+                rx="4"
+                fill="#14b8a6"
+                className="dashboard-bar dashboard-bar-outward"
+              >
+                <title>
+                  {`${m.label} — Outward: ${fullValue(outwardValue)}`}
+                </title>
+              </rect>
+
+              {outwardValue > 0 && (
+                <text
+                  x={outwardX + barWidth / 2}
+                  y={Math.max(padding.top + 4, outwardY - 6)}
+                  fontSize="11"
+                  fontWeight="800"
+                  fill={isValueMode ? "#1e3a8a" : "#334155"}
+                  className="dashboard-chart-value-label"
+                  textAnchor="middle"
+                  transform={`rotate(-55 ${outwardX + barWidth / 2} ${Math.max(
+                    padding.top + 4,
+                    outwardY - 6
+                  )})`}
+                >
+                  {shortValue(outwardValue)}
+                </text>
+              )}
+
+              {/* Month */}
+              <text
+                x={centerX}
+                y={height - 16}
+                fontSize="10"
+                fill="#64748b"
+                fontWeight="600"
+                textAnchor="middle"
+              >
+                {m.label}
+              </text>
+            </g>
+          )
+        })}
+      </svg>
+    </div>
   )
 }
 
@@ -265,26 +358,35 @@ const Dashboard = () => {
   const recentActivities = Array.isArray(data.recentActivities) ? data.recentActivities : []
 
   const isValueMode = mode === 'value'
-  const fmt = isValueMode ? money : num
+  // Summary cards always show quantity.
+  // Quantity / Value toggle is intentionally applied to the chart only.
+  const stockAlerts =
+    Number(stock.reorder?.count || 0) + Number(stock.danger?.count || 0)
 
   const kpiCards = [
     {
       label: 'Total Inwards',
-      value: isValueMode ? money(kpi.inwardValue) : num(kpi.inwardQty),
+      value: num(kpi.inwardQty),
       icon: <FaArrowDown />,
       tone: 'blue',
     },
     {
       label: 'Total Outward',
-      value: isValueMode ? money(kpi.outwardValue) : num(kpi.outwardQty),
+      value: num(kpi.outwardQty),
       icon: <FaArrowUp />,
       tone: 'green',
     },
     {
-      label: 'Total Available',
-      value: isValueMode ? money(kpi.availableValue) : num(kpi.availableQty),
+      label: 'Available Stock',
+      value: num(kpi.availableQty),
       icon: <FaBox />,
       tone: 'orange',
+    },
+    {
+      label: 'Stock Alerts',
+      value: num(stockAlerts),
+      icon: <FaExclamationTriangle />,
+      tone: 'red',
     },
   ]
 
@@ -351,13 +453,24 @@ const Dashboard = () => {
         <CCard className="dashboard-chart-card">
           <CCardBody>
             <div className="dashboard-card-header-row">
-              <div className="section-title">
-                <FaChartBar style={{ marginRight: 6 }} />
-                Inward vs Outward
+              <div className="dashboard-chart-title-wrap">
+                <div className="section-title">
+                  <FaChartBar style={{ marginRight: 6 }} />
+                  {isValueMode ? 'Inward vs Outward Value' : 'Inward vs Outward Quantity'}
+                </div>
+                <span className="dashboard-period-badge">
+                  {MONTH_NAMES[month - 1]} {year}
+                </span>
               </div>
               <div className="dashboard-chart-legend">
-                <span><span className="dashboard-legend-dot dot-blue" /> Inward</span>
-                <span><span className="dashboard-legend-dot dot-teal" /> Outward</span>
+                <span>
+                  <span className="dashboard-legend-dot dot-blue" />
+                  {isValueMode ? 'Inward Value' : 'Inward Quantity'}
+                </span>
+                <span>
+                  <span className="dashboard-legend-dot dot-teal" />
+                  {isValueMode ? 'Outward Value' : 'Outward Quantity'}
+                </span>
               </div>
             </div>
 
@@ -369,6 +482,7 @@ const Dashboard = () => {
                 valueKeyInward={isValueMode ? 'inwardValue' : 'inwardQty'}
                 valueKeyOutward={isValueMode ? 'outwardValue' : 'outwardQty'}
                 formatter={isValueMode ? money : num}
+                isValueMode={isValueMode}
               />
             )}
           </CCardBody>
@@ -391,7 +505,8 @@ const Dashboard = () => {
                   <span className="dashboard-legend-dot dot-safety" />
                   <div>
                     <div className="dashboard-legend-value">
-                      Safety Level {num(stock.safety?.count)} <span className="dashboard-legend-pct">{stock.safety?.pct || 0}%</span>
+                      Safety <strong>{num(stock.safety?.count)}</strong>
+                      <span className="dashboard-legend-pct">{stock.safety?.pct || 0}%</span>
                     </div>
                   </div>
                 </div>
@@ -400,7 +515,8 @@ const Dashboard = () => {
                   <span className="dashboard-legend-dot dot-reorder" />
                   <div>
                     <div className="dashboard-legend-value">
-                      Reorder Level {num(stock.reorder?.count)} <span className="dashboard-legend-pct">{stock.reorder?.pct || 0}%</span>
+                      Reorder <strong>{num(stock.reorder?.count)}</strong>
+                      <span className="dashboard-legend-pct">{stock.reorder?.pct || 0}%</span>
                     </div>
                   </div>
                 </div>
@@ -409,9 +525,16 @@ const Dashboard = () => {
                   <span className="dashboard-legend-dot dot-danger" />
                   <div>
                     <div className="dashboard-legend-value">
-                      Danger Level {num(stock.danger?.count)} <span className="dashboard-legend-pct">{stock.danger?.pct || 0}%</span>
+                      Danger <strong>{num(stock.danger?.count)}</strong>
+                      <span className="dashboard-legend-pct">{stock.danger?.pct || 0}%</span>
                     </div>
                   </div>
+                </div>
+
+                <div className="dashboard-stock-alert-note">
+                  {stockAlerts > 0
+                    ? `${num(stockAlerts)} item${stockAlerts === 1 ? '' : 's'} need attention`
+                    : 'All items are within stock limits'}
                 </div>
               </div>
             </div>
@@ -420,7 +543,7 @@ const Dashboard = () => {
       </div>
 
       {/* ---------- Recent Activities ---------- */}
-      <CCard className="mt-3">
+      <CCard className="dashboard-recent-card">
         <CCardBody>
           <div className="section-title">Recent Activities</div>
 
@@ -484,18 +607,18 @@ const Dashboard = () => {
             data={recentActivities}
             pagination
             paginationPerPage={5}
-            paginationRowsPerPageOptions={[5, 10, 25, 50]}
+            paginationRowsPerPageOptions={[5, 10, 20]}
             persistTableHead
             striped
             responsive
             highlightOnHover
             noDataComponent={<div className="dashboard-empty">No recent activity yet</div>}
             customStyles={{
-              rows: { style: { minHeight: '46px' } },
+              rows: { style: { minHeight: '38px' } },
               headRow: { style: { backgroundColor: '#fff', borderBottom: '1px solid #eef1f8' } },
               headCells: {
                 style: {
-                  fontSize: '14px',
+                  fontSize: '10px',
                   fontWeight: 700,
                   color: '#94a3b8',
                   letterSpacing: '0.03em',
@@ -504,7 +627,7 @@ const Dashboard = () => {
               },
               cells: {
                 style: {
-                  fontSize: '14px',
+                  fontSize: '11px',
                   color: '#1f2937',
                 },
               },
