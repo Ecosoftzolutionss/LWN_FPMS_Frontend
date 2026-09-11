@@ -1,128 +1,138 @@
-/* ==========================================================
-   Stock Report — dedicated stylesheet
-
-   Mirrors the GRN Report screen:
-   - Filter card
-   - React Select dropdowns
-   - Search / Clear buttons
-   - Export + search toolbar
-   - Data table
-   - Pagination
-   ========================================================== */
-
+/* ============================================================
+   STOCK REPORT PAGE
+   Matches GRN REPORT UI
+   ============================================================ */
 
 .sr-page {
-  padding: 20px 24px 32px;
   background: #f4f6fb;
+  padding: 15px;
   min-height: 100%;
 }
 
 
-/* ==========================================================
+/* ============================================================
+   COMMON CARD
+   ============================================================ */
+
+.sr-filter-card,
+.sr-table-card {
+  border: 1px solid #d8e0ed !important;
+  border-radius: 10px !important;
+  background: #ffffff !important;
+  box-shadow: none !important;
+}
+
+
+/* ============================================================
    FILTER CARD
-   ========================================================== */
+   ============================================================ */
 
 .sr-filter-card {
-  background: #ffffff;
-  border-radius: 10px;
-  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.06);
-  padding: 20px 24px 24px;
-  margin-bottom: 20px;
+  margin-bottom: 14px !important;
+  padding: 20px 24px !important;
 }
 
 
-/* ==========================================================
+/* ============================================================
    FILTER TITLE
-   ========================================================== */
+   ============================================================ */
 
 .sr-filter-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0d47a1;
+
+  border-left: 4px solid #0d47a1;
+
+  padding-left: 10px;
+
+  margin-bottom: 22px;
+
+  line-height: 28px;
+
   display: flex;
   align-items: center;
-  gap: 10px;
-
-  font-size: 16px;
-  font-weight: 700;
-
-  color: #1e293b;
-
-  margin-bottom: 18px;
 }
 
 
-.sr-filter-title::before {
-  content: '';
-
-  display: inline-block;
-
-  width: 4px;
-  height: 18px;
-
-  background: #2f5fdd;
-
-  border-radius: 2px;
-}
-
-
-/* ==========================================================
+/* ============================================================
    FILTER GRID
-   ========================================================== */
+   ============================================================ */
 
 .sr-filter-grid {
-  display: grid;
+  display: flex;
 
-  grid-template-columns:
-    repeat(
-      auto-fit,
-      minmax(220px, 1fr)
-    );
+  align-items: flex-end;
 
-  gap: 18px;
+  justify-content: flex-start;
 
-  margin-bottom: 20px;
+  gap: 22px;
+
+  width: 100%;
+
+  flex-wrap: nowrap;
+
+  margin-bottom: 0;
 }
 
 
-/* ==========================================================
-   FIELD
-   ========================================================== */
+/* ============================================================
+   FILTER FIELD
+   ============================================================ */
+
+.sr-field {
+  flex: 1 1 0;
+
+  width: auto;
+
+  min-width: 0;
+
+  max-width: none;
+}
+
+
+/* ============================================================
+   LABEL
+   ============================================================ */
 
 .sr-field label {
-  display: block;
+  font-size: 12px;
 
-  font-size: 11px;
+  color: #1f2937;
+
   font-weight: 700;
 
-  letter-spacing: 0.03em;
+  margin-bottom: 7px;
+
+  display: block;
 
   text-transform: uppercase;
 
-  color: #475569;
-
-  margin-bottom: 8px;
+  letter-spacing: 0.02em;
 }
 
 
-/* ==========================================================
+/* ============================================================
    REACT SELECT
-   ========================================================== */
+   ============================================================ */
 
-.sr-react-select {
+.sr-field .sr-react-select {
   width: 100%;
-  font-size: 13px;
 }
 
 
-/* Main control */
+/* ============================================================
+   REACT SELECT CONTROL
+   ============================================================ */
 
-.sr-select__control {
-  min-height: 42px !important;
+.sr-field .sr-select__control {
+  min-height: 40px !important;
 
-  height: 42px;
+  height: 40px !important;
 
-  border:
-    1px solid #dfe4ee !important;
+  border-radius: 6px !important;
 
-  border-radius: 8px !important;
+  border: 1px solid #c4d3ea !important;
 
   background: #ffffff !important;
 
@@ -130,396 +140,342 @@
 
   cursor: pointer;
 
+  font-size: 13px;
+
   transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 
-.sr-select__control:hover {
-  border-color:
-    #b8c4d8 !important;
+/* ============================================================
+   SELECT HOVER
+   ============================================================ */
+
+.sr-field .sr-select__control:hover {
+  border-color: #4d8df7 !important;
 }
 
 
-.sr-select__control--is-focused {
-  border-color:
-    #2f5fdd !important;
+/* ============================================================
+   SELECT FOCUS
+   ============================================================ */
+
+.sr-field .sr-select__control--is-focused {
+  border-color: #3d7ff0 !important;
 
   box-shadow:
-    0 0 0 1px #2f5fdd !important;
+    0 0 0 3px
+    rgba(61, 127, 240, 0.18) !important;
 }
 
 
-/* Value container */
+/* ============================================================
+   SELECT VALUE CONTAINER
+   ============================================================ */
 
-.sr-select__value-container {
-  padding:
-    0 14px !important;
+.sr-field .sr-select__value-container {
+  height: 40px;
+
+  min-height: 40px;
+
+  padding: 0 12px !important;
 }
 
 
-/* Placeholder */
+/* ============================================================
+   SELECT INPUT
+   ============================================================ */
 
-.sr-select__placeholder {
-  color:
-    #94a3b8 !important;
-
-  font-size: 13px;
-}
-
-
-/* Selected value */
-
-.sr-select__single-value {
-  color:
-    #1e293b !important;
-
-  font-size: 13px;
-}
-
-
-/* Input */
-
-.sr-select__input-container {
+.sr-field .sr-select__input-container {
   margin: 0 !important;
+
   padding: 0 !important;
+
+  font-size: 13px;
 }
 
 
-/* Indicators */
+/* ============================================================
+   SELECT PLACEHOLDER
+   ============================================================ */
 
-.sr-select__indicators {
+.sr-field .sr-select__placeholder {
+  color: #94a9cf !important;
+
+  font-size: 13px;
+}
+
+
+/* ============================================================
+   SELECT VALUE
+   ============================================================ */
+
+.sr-field .sr-select__single-value {
+  color: #1f2937 !important;
+
+  font-size: 13px;
+}
+
+
+/* ============================================================
+   SELECT INDICATORS
+   ============================================================ */
+
+.sr-field .sr-select__indicators {
   height: 40px;
 }
 
 
-.sr-select__indicator {
-  color:
-    #64748b !important;
+/* ============================================================
+   SELECT INDICATOR
+   ============================================================ */
+
+.sr-field .sr-select__indicator {
+  color: #64748b !important;
 
   padding: 8px !important;
 }
 
 
-.sr-select__indicator:hover {
-  color:
-    #1e293b !important;
+.sr-field .sr-select__indicator:hover {
+  color: #1e293b !important;
 }
 
 
-/* Separator */
+/* ============================================================
+   SELECT SEPARATOR
+   ============================================================ */
 
-.sr-select__indicator-separator {
-  background:
-    #dfe4ee !important;
+.sr-field .sr-select__indicator-separator {
+  background: #dfe4ee !important;
 }
 
 
-/* Clear */
+/* ============================================================
+   SELECT CLEAR
+   ============================================================ */
 
-.sr-select__clear-indicator {
+.sr-field .sr-select__clear-indicator {
   cursor: pointer;
 }
 
 
-.sr-select__clear-indicator:hover {
-  color:
-    #dc2626 !important;
+.sr-field .sr-select__clear-indicator:hover {
+  color: #dc2626 !important;
 }
 
 
-/* Dropdown menu */
+/* ============================================================
+   SELECT MENU
+   ============================================================ */
 
-.sr-select__menu {
-  border:
-    1px solid #dfe4ee !important;
+.sr-field .sr-select__menu {
+  border: 1px solid #dfe4ee !important;
 
-  border-radius:
-    8px !important;
+  border-radius: 8px !important;
 
   box-shadow:
     0 8px 24px
-    rgba(16, 24, 40, 0.12)
-    !important;
+    rgba(16, 24, 40, 0.12) !important;
 
   overflow: hidden;
 
-  margin-top:
-    4px !important;
+  margin-top: 4px !important;
 
   z-index: 9999 !important;
 }
 
 
-/* Dropdown list */
+/* ============================================================
+   SELECT MENU LIST
+   ============================================================ */
 
-.sr-select__menu-list {
+.sr-field .sr-select__menu-list {
   padding: 4px !important;
 
-  max-height:
-    220px !important;
+  max-height: 220px !important;
 }
 
 
-/* Dropdown option */
+/* ============================================================
+   SELECT OPTION
+   ============================================================ */
 
-.sr-select__option {
-  padding:
-    10px 12px !important;
+.sr-field .sr-select__option {
+  padding: 10px 12px !important;
 
-  border-radius:
-    5px;
+  border-radius: 5px;
 
   font-size: 13px;
 
-  color:
-    #1e293b;
+  color: #1e293b;
 
   cursor: pointer;
 }
 
 
-/* Hover */
+/* ============================================================
+   SELECT OPTION HOVER
+   ============================================================ */
 
-.sr-select__option--is-focused {
-  background:
-    #f1f5f9 !important;
+.sr-field .sr-select__option--is-focused {
+  background: #f1f5f9 !important;
 }
 
 
-/* Selected */
+/* ============================================================
+   SELECT OPTION SELECTED
+   ============================================================ */
 
-.sr-select__option--is-selected {
-  background:
-    #2f5fdd !important;
+.sr-field .sr-select__option--is-selected {
+  background: #2f5fdd !important;
 
-  color:
-    #ffffff !important;
+  color: #ffffff !important;
 }
 
 
-/* Selected hover */
+.sr-field .sr-select__option--is-selected:hover {
+  background: #2650bd !important;
 
-.sr-select__option--is-selected:hover {
-  background:
-    #2650bd !important;
-
-  color:
-    #ffffff !important;
+  color: #ffffff !important;
 }
 
 
-/* No options */
-
-.sr-select__no-options {
-  padding:
-    10px 12px !important;
-
-  color:
-    #94a3b8;
-
-  font-size: 13px;
-}
-
-
-/* ==========================================================
-   NORMAL INPUT / SELECT
-   Used by pagination select
-   ========================================================== */
-
-.sr-field select,
-.sr-field input {
-  width: 100%;
-
-  height: 42px;
-
-  padding:
-    0 14px;
-
-  border:
-    1px solid #dfe4ee;
-
-  border-radius:
-    8px;
-
-  font-size: 13px;
-
-  color:
-    #1e293b;
-
-  background:
-    #ffffff;
-
-  outline: none;
-
-  transition:
-    border-color 0.15s ease;
-}
-
-
-.sr-field select:focus,
-.sr-field input:focus {
-  border-color:
-    #2f5fdd;
-}
-
-
-/* ==========================================================
+/* ============================================================
    FILTER ACTIONS
-   ========================================================== */
+   ============================================================ */
 
 .sr-filter-actions {
   display: flex;
-
-  justify-content: center;
-
-  gap: 12px;
-}
-
-
-/* ==========================================================
-   COMMON BUTTON
-   ========================================================== */
-
-.sr-btn {
-  display: inline-flex;
 
   align-items: center;
 
   justify-content: center;
 
-  gap: 8px;
+  gap: 10px;
 
-  height: 42px;
+  width: 100%;
 
-  padding:
-    0 22px;
+  margin-top: 22px;
 
-  border-radius:
-    8px;
+  margin-bottom: 2px;
+}
 
-  font-size: 13px;
 
-  font-weight: 600;
+/* ============================================================
+   COMMON BUTTON
+   ============================================================ */
+
+.sr-btn {
+  height: 40px !important;
+
+  padding: 0 18px !important;
+
+  border-radius: 6px !important;
+
+  font-size: 13px !important;
+
+  font-weight: 600 !important;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 7px;
+
+  box-shadow: none !important;
 
   cursor: pointer;
 
-  border:
-    1px solid transparent;
-
   transition:
-    opacity 0.15s ease,
-    background 0.15s ease;
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
+
+  border: 1px solid transparent;
 }
 
 
-.sr-btn:disabled {
-  opacity: 0.6;
-
-  cursor:
-    not-allowed;
-}
-
-
-/* ==========================================================
+/* ============================================================
    SEARCH BUTTON
-   ========================================================== */
+   ============================================================ */
 
 .sr-btn-search {
-  background:
-    #2f5fdd;
+  min-width: 105px;
 
-  color:
-    #ffffff;
+  border: 1px solid #0d47a1 !important;
 
-  border-color:
-    #2f5fdd;
+  background: #0d47a1 !important;
+
+  color: #ffffff !important;
 }
 
 
 .sr-btn-search:hover:not(:disabled) {
-  background:
-    #2650bd;
+  background: #083b8c !important;
 
-  color:
-    #ffffff;
+  border-color: #083b8c !important;
 }
 
 
-/* ==========================================================
+.sr-btn-search:active:not(:disabled) {
+  background: #062f70 !important;
+
+  border-color: #062f70 !important;
+}
+
+
+.sr-btn-search:disabled {
+  opacity: 0.65;
+
+  cursor: not-allowed;
+}
+
+
+/* ============================================================
    CLEAR BUTTON
-   ========================================================== */
+   ============================================================ */
 
 .sr-btn-clear {
-  background:
-    #ffffff;
+  min-width: 110px;
 
-  color:
-    #475569;
+  border: 1px solid #c4d3ea !important;
 
-  border-color:
-    #dfe4ee;
+  background: #ffffff !important;
+
+  color: #475569 !important;
 }
 
 
 .sr-btn-clear:hover:not(:disabled) {
-  background:
-    #f4f6fb;
+  background: #f1f4fa !important;
 
-  color:
-    #475569;
+  border-color: #9eb2d1 !important;
+
+  color: #23395d !important;
 }
 
 
-/* ==========================================================
-   EXPORT BUTTON
-   ========================================================== */
-
-.sr-btn-export {
-  background:
-    #1e8a5f;
-
-  color:
-    #ffffff;
-
-  border-color:
-    #1e8a5f;
-}
-
-
-.sr-btn-export:hover:not(:disabled) {
-  background:
-    #197a53;
-
-  color:
-    #ffffff;
-}
-
-
-/* ==========================================================
+/* ============================================================
    TABLE CARD
-   ========================================================== */
+   ============================================================ */
 
 .sr-table-card {
-  background:
-    #ffffff;
+  margin-top: 0 !important;
 
-  border-radius:
-    10px;
-
-  box-shadow:
-    0 1px 3px
-    rgba(16, 24, 40, 0.06);
-
-  padding:
-    20px 24px 24px;
+  padding: 20px 24px 24px !important;
 }
 
 
-/* ==========================================================
+/* ============================================================
    TABLE TOOLBAR
-   ========================================================== */
+
+   LEFT  = EXPORT
+   RIGHT = SEARCH
+   ============================================================ */
 
 .sr-table-toolbar {
   display: flex;
@@ -528,31 +484,73 @@
 
   justify-content: space-between;
 
-  gap: 16px;
+  width: 100%;
 
-  margin-bottom: 16px;
+  gap: 20px;
 
-  flex-wrap: wrap;
+  margin-bottom: 8px;
+
+  flex-wrap: nowrap;
 }
 
 
-/* ==========================================================
-   TABLE SEARCH BOX
-   ========================================================== */
+/* ============================================================
+   EXPORT BUTTON
+   ============================================================ */
+
+.sr-btn-export {
+  height: 40px !important;
+
+  min-width: 105px;
+
+  padding: 0 18px !important;
+
+  border-radius: 6px !important;
+
+  border: none !important;
+
+  background: #1e7e34 !important;
+
+  color: #ffffff !important;
+}
+
+
+.sr-btn-export:hover:not(:disabled) {
+  background: #17652a !important;
+}
+
+
+.sr-btn-export:disabled {
+  opacity: 0.65;
+
+  cursor: not-allowed;
+}
+
+
+/* ============================================================
+   SEARCH BOX
+   ============================================================ */
 
 .sr-search-box {
   position: relative;
 
-  flex:
-    1 1 320px;
+  width: 400px;
 
-  max-width:
-    480px;
+  max-width: 100%;
 
-  margin-left:
-    auto;
+  display: flex;
+
+  align-items: center;
+
+  justify-content: flex-end;
+
+  margin-left: auto;
 }
 
+
+/* ============================================================
+   SEARCH ICON
+   ============================================================ */
 
 .sr-search-box svg {
   position: absolute;
@@ -561,328 +559,465 @@
 
   top: 50%;
 
-  transform:
-    translateY(-50%);
+  transform: translateY(-50%);
 
-  color:
-    #94a3b8;
+  color: #94a3b8;
 
   font-size: 13px;
+
+  z-index: 2;
 }
 
+
+/* ============================================================
+   SEARCH INPUT
+   ============================================================ */
 
 .sr-search-box input {
+  width: 400px !important;
+
+  height: 50px !important;
+
+  border-radius: 10px !important;
+
+  border: 1px solid #c4d3ea !important;
+
+  background: #ffffff !important;
+
+  padding: 0 16px 0 38px !important;
+
+  font-size: 14px !important;
+
+  color: #1f2937 !important;
+
+  box-shadow: none !important;
+
+  outline: none !important;
+
+  transition:
+    all 0.2s ease-in-out;
+}
+
+
+/* ============================================================
+   SEARCH HOVER
+   ============================================================ */
+
+.sr-search-box input:hover {
+  border-color: #4d8df7 !important;
+}
+
+
+/* ============================================================
+   SEARCH FOCUS
+   ============================================================ */
+
+.sr-search-box input:focus {
+  border: 2px solid #3d7ff0 !important;
+
+  box-shadow:
+    0 0 0 3px
+    rgba(61, 127, 240, 0.18) !important;
+
+  outline: none !important;
+}
+
+
+/* ============================================================
+   SEARCH PLACEHOLDER
+   ============================================================ */
+
+.sr-search-box input::placeholder {
+  color: #94a9cf !important;
+
+  opacity: 1 !important;
+
+  font-size: 14px;
+}
+
+
+/* ============================================================
+   TABLE WRAPPER
+   ============================================================ */
+
+.sr-table-wrapper {
   width: 100%;
 
-  height: 40px;
+  margin: 0;
 
-  padding:
-    0 14px 0 36px;
+  padding: 0;
 
-  border:
-    1px solid #dfe4ee;
+  overflow-x: auto;
+}
 
-  border-radius:
-    8px;
+
+/* ============================================================
+   DATA TABLE
+   ============================================================ */
+
+.sr-table-card .rdt_Table {
+  width: 100%;
+}
+
+
+/* ============================================================
+   TABLE HEADER
+   ============================================================ */
+
+.sr-table-card .rdt_TableHeadRow {
+  min-height: 32px !important;
+
+  background: #f1f4fa !important;
+
+  border-bottom:
+    1px solid #d8deea !important;
+}
+
+
+/* ============================================================
+   TABLE HEADER CELLS
+   ============================================================ */
+
+.sr-table-card .rdt_TableCol_Sortable,
+.sr-table-card .rdt_TableCol {
+  font-size: 12px !important;
+
+  font-weight: 700 !important;
+
+  color: #23395d !important;
+
+  text-transform: uppercase !important;
+
+  letter-spacing: 0.02em;
+}
+
+
+/* ============================================================
+   TABLE ROW
+   ============================================================ */
+
+.sr-table-card .rdt_TableRow {
+  min-height: 32px !important;
 
   font-size: 13px;
 
-  color:
-    #1e293b;
-
-  outline: none;
+  color: #1f2937;
 }
 
 
-.sr-search-box input:focus {
-  border-color:
-    #2f5fdd;
+/* ============================================================
+   TABLE ROW HOVER
+   ============================================================ */
+
+.sr-table-card .rdt_TableRow:hover {
+  background: #f9fafc;
 }
 
 
-/* ==========================================================
+/* ============================================================
+   TABLE CELLS
+   ============================================================ */
+
+.sr-table-card .rdt_TableCell {
+  font-size: 13px;
+
+  color: #1f2937;
+}
+
+
+/* ============================================================
    STATUS BADGE
-   ========================================================== */
+   ============================================================ */
 
 .sr-status-badge {
   display: inline-flex;
 
   align-items: center;
 
-  padding:
-    4px 12px;
+  justify-content: center;
 
-  border-radius:
-    999px;
+  padding: 4px 11px;
+
+  border-radius: 20px;
 
   font-size: 11px;
 
   font-weight: 700;
 
-  text-transform:
-    uppercase;
-
-  letter-spacing:
-    0.02em;
+  white-space: nowrap;
 }
 
+
+/* ============================================================
+   SAFETY
+   ============================================================ */
 
 .sr-status-safety {
-  background:
-    #e6f7ee;
+  background: #e6f6ea;
 
-  color:
-    #1e8a5f;
+  color: #1e7e34;
 }
 
+
+/* ============================================================
+   REORDER
+   ============================================================ */
 
 .sr-status-reorder {
-  background:
-    #fff4e5;
+  background: #fff4e5;
 
-  color:
-    #b45309;
+  color: #b45309;
 }
 
+
+/* ============================================================
+   DANGER
+   ============================================================ */
 
 .sr-status-danger {
-  background:
-    #fdecec;
+  background: #fdecec;
 
-  color:
-    #c0342c;
+  color: #c0342c;
 }
 
 
-/* ==========================================================
-   EMPTY / LOADING
-   ========================================================== */
+/* ============================================================
+   EMPTY TABLE
+   ============================================================ */
 
 .sr-empty {
-  padding:
-    40px 0;
+  padding: 30px;
 
-  text-align:
-    center;
+  text-align: center;
 
-  color:
-    #94a3b8;
+  color: #94a3b8;
 
-  font-size:
-    13px;
+  font-size: 13px;
 }
 
 
-/* ==========================================================
-   PAGINATION
-   ========================================================== */
+/* ============================================================
+   DATATABLE PAGINATION
 
-.sr-pagination-row {
-  display: flex;
+   Use react-data-table-component pagination.
+   Do NOT use custom .sr-pagination-row.
+   ============================================================ */
 
-  justify-content:
-    flex-end;
+.sr-table-card .rdt_Pagination {
+  border-top: none !important;
 
-  align-items:
-    center;
+  min-height: 52px !important;
 
-  gap:
-    12px;
+  padding-right: 10px !important;
 
-  margin-top:
-    16px;
-
-  flex-wrap:
-    wrap;
+  font-size: 12px;
 }
 
 
-.sr-pagination-row select {
-  height:
-    36px;
+/* ============================================================
+   PAGINATION SELECT
+   ============================================================ */
 
-  border:
-    1px solid #dfe4ee;
+.sr-table-card .rdt_Pagination select {
+  border: 1px solid #dfe4ee;
 
-  border-radius:
-    6px;
+  border-radius: 6px;
 
-  padding:
-    0 10px;
+  height: 32px;
 
-  font-size:
-    12px;
+  font-size: 12px;
 
-  color:
-    #1e293b;
+  color: #475569;
 
-  background:
-    #ffffff;
+  background: #ffffff;
 }
 
 
-.sr-pagination-row button {
-  height:
-    36px;
+/* ============================================================
+   PAGINATION BUTTONS
+   ============================================================ */
 
-  padding:
-    0 14px;
+.sr-table-card .rdt_Pagination button {
+  color: #475569;
 
-  border:
-    1px solid #dfe4ee;
-
-  border-radius:
-    6px;
-
-  background:
-    #ffffff;
-
-  font-size:
-    12px;
-
-  color:
-    #475569;
-
-  cursor:
-    pointer;
+  background: transparent;
 }
 
 
-.sr-pagination-row button:disabled {
-  opacity:
-    0.5;
-
-  cursor:
-    not-allowed;
+.sr-table-card .rdt_Pagination button:hover:not(:disabled) {
+  background: #f1f4fa;
 }
 
 
-.sr-pagination-row button:hover:not(:disabled) {
-  background:
-    #f4f6fb;
+/* ============================================================
+   TOOLTIP CELL
+   ============================================================ */
+
+.sr-tooltip-cell {
+  display: block;
+
+  width: 100%;
+
+  max-width: 100%;
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+
+  cursor: default;
+
+  color: #1f2937;
+
+  font-size: 13px;
 }
 
 
-.sr-page-info {
-  font-size:
-    12px;
+/* ============================================================
+   TOOLTIP HOVER
+   ============================================================ */
 
-  color:
-    #64748b;
+.sr-tooltip-cell:hover {
+  cursor: help;
 }
 
 
-/* ==========================================================
-   REACT DATA TABLE OVERRIDES
-   ========================================================== */
+/* ============================================================
+   TABLET
+   ============================================================ */
 
-.sr-table-card .rdt_TableHeadRow {
-  background:
-    #f7f9fd !important;
+@media (max-width: 1100px) {
 
-  min-height:
-    40px !important;
+  .sr-filter-grid {
+    flex-wrap: wrap;
+  }
+
+
+  .sr-field {
+    flex: 1 1 285px;
+
+    min-width: 285px;
+  }
+
+
+  .sr-search-box {
+    width: 330px;
+  }
+
+
+  .sr-search-box input {
+    width: 330px !important;
+  }
+
 }
 
 
-.sr-table-card .rdt_TableCol_Sortable,
-.sr-table-card .rdt_TableCol {
-  font-size:
-    11px !important;
+/* ============================================================
+   SMALL TABLET
+   ============================================================ */
 
-  font-weight:
-    700 !important;
+@media (max-width: 800px) {
 
-  color:
-    #64748b !important;
+  .sr-table-toolbar {
+    flex-wrap: wrap;
+  }
 
-  text-transform:
-    uppercase !important;
 
-  letter-spacing:
-    0.02em;
+  .sr-search-box {
+    width: 100%;
+
+    margin-left: 0;
+
+    justify-content: flex-end;
+  }
+
+
+  .sr-search-box input {
+    width: 100% !important;
+  }
+
 }
 
 
-.sr-table-card .rdt_TableRow {
-  font-size:
-    12.5px;
+/* ============================================================
+   MOBILE
+   ============================================================ */
 
-  color:
-    #1f2937;
-
-  min-height:
-    44px !important;
-}
-
-
-.sr-table-card .rdt_TableRow:hover {
-  background:
-    #f9fafc;
-}
-
-
-/* ==========================================================
-   RESPONSIVE
-   ========================================================== */
-
-@media (max-width: 768px) {
+@media (max-width: 600px) {
 
   .sr-page {
-    padding:
-      15px;
+    padding: 10px;
   }
 
 
   .sr-filter-card,
   .sr-table-card {
-    padding:
-      16px;
+    padding: 16px !important;
   }
 
 
   .sr-filter-grid {
-    grid-template-columns:
-      1fr;
+    flex-direction: column;
 
-    gap:
-      14px;
+    align-items: center;
+
+    gap: 14px;
+  }
+
+
+  .sr-field {
+    width: 100%;
+
+    min-width: 0;
+
+    flex: 1 1 100%;
   }
 
 
   .sr-filter-actions {
-    justify-content:
-      flex-start;
+    flex-direction: row;
 
-    flex-wrap:
-      wrap;
+    justify-content: center;
+
+    gap: 8px;
   }
 
 
-  .sr-btn {
-    min-width:
-      110px;
+  .sr-btn-search,
+  .sr-btn-clear {
+    min-width: 110px;
   }
 
 
   .sr-table-toolbar {
-    align-items:
-      stretch;
+    flex-direction: column;
+
+    align-items: stretch;
+
+    gap: 10px;
+  }
+
+
+  .sr-btn-export {
+    width: 100%;
   }
 
 
   .sr-search-box {
-    max-width:
-      none;
+    width: 100%;
 
-    width:
-      100%;
+    margin-left: 0;
   }
 
 
-  .sr-pagination-row {
-    justify-content:
-      center;
+  .sr-search-box input {
+    width: 100% !important;
+  }
+
+
+  .sr-table-card .rdt_Pagination {
+    justify-content: center !important;
   }
 
 }

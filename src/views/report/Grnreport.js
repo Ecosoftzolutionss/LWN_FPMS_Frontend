@@ -867,112 +867,76 @@ const GrnReport = () => {
   // DATA TABLE STYLES
   // ==========================================================
 
-  const customStyles = {
-
+const customStyles = {
     table: {
-
-      style: {
-        width: '100%',
-      },
-
+        style: {
+            width: '100%',
+        },
     },
-
 
     rows: {
-
-      style: {
-        minHeight: '44px',
-      },
-
+        style: {
+            minHeight: '34px',
+            height: '34px',
+        },
     },
-
 
     headRow: {
+        style: {
+            minHeight: '38px',
+            height: '38px',
 
-      style: {
+            backgroundColor: '#f1f4fa',
 
-        minHeight: '46px',
-
-        backgroundColor:
-          '#f1f4fa',
-
-        borderBottom:
-          '1px solid #d8deea',
-
-      },
-
+            borderBottom:
+                '1px solid #d8deea',
+        },
     },
-
 
     headCells: {
+        style: {
+            justifyContent: 'center',
+            textAlign: 'center',
 
-      style: {
+            fontSize: '11px',
 
-        justifyContent:
-          'center',
+            fontWeight: 700,
 
-        textAlign:
-          'center',
+            color: '#23395d',
 
-        fontSize:
-          '12px',
+            textTransform: 'uppercase',
 
-        fontWeight:
-          700,
+            backgroundColor: '#f1f4fa',
 
-        color:
-          '#23395d',
-
-        textTransform:
-          'uppercase',
-
-        backgroundColor:
-          '#f1f4fa',
-
-      },
-
+            paddingLeft: '8px',
+            paddingRight: '8px',
+        },
     },
-
 
     cells: {
+        style: {
+            justifyContent: 'center',
+            textAlign: 'center',
 
-      style: {
+            fontSize: '12px',
 
-        justifyContent:
-          'center',
+            color: '#1f2937',
 
-        textAlign:
-          'center',
-
-        fontSize:
-          '13px',
-
-        color:
-          '#1f2937',
-
-      },
-
+            paddingLeft: '8px',
+            paddingRight: '8px',
+        },
     },
-
 
     pagination: {
+        style: {
+            borderTop: 'none',
 
-      style: {
+            minHeight: '45px',
 
-        borderTop:
-          'none',
-
-        minHeight:
-          '52px',
-
-        paddingRight:
-          '10px',
-
-      },
-
+            paddingRight: '10px',
+        },
     },
-
-  }
+}
 
 
   // ==========================================================

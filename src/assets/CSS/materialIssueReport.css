@@ -593,32 +593,21 @@
 
 .mi-report-page
 .mi-report-search-input.form-control::placeholder {
-
   color: #94a9cf !important;
-
   opacity: 1 !important;
-
   font-size: 14px;
 }
 
 
-/* ============================================================
-   TABLE WRAPPER
-   ============================================================ */
 
 .mi-report-table-wrapper {
-
   width: 100%;
-
   margin: 0;
-
   padding: 0;
 }
 
 
-/* ============================================================
-   DATA TABLE
-   ============================================================ */
+
 
 .mi-report-table-wrapper
 .rdt_Table {
@@ -627,45 +616,30 @@
 }
 
 
-/* ============================================================
-   TABLE HEADER
-   ============================================================ */
 
 .mi-report-table-wrapper
 .rdt_TableHeadRow {
-
-  min-height: 46px !important;
-
+  min-height: 32px !important;
   background: #f1f4fa !important;
-
   border-bottom:
     1px solid #d8deea !important;
 }
 
 
-/* ============================================================
-   TABLE ROW
-   ============================================================ */
+
 
 .mi-report-table-wrapper
 .rdt_TableRow {
-
-  min-height: 44px !important;
+  min-height: 32px !important;
 }
 
 
-/* ============================================================
-   STATUS / EMPTY
-   ============================================================ */
+
 
 .mi-report-empty {
-
   padding: 30px;
-
   text-align: center;
-
   color: #94a3b8;
-
   font-size: 13px;
 }
 
@@ -675,9 +649,7 @@
    ============================================================ */
 
 @media (max-width: 1000px) {
-
   .mi-report-grid-search {
-
     width: 330px;
   }
 
@@ -689,9 +661,7 @@
    ============================================================ */
 
 @media (max-width: 800px) {
-
   .mi-report-filter-row {
-
     justify-content: flex-start;
   }
 

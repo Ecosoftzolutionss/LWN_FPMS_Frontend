@@ -325,13 +325,13 @@
 }
 
 .store-report-table-wrapper .rdt_TableHeadRow {
-  min-height: 46px !important;
+  min-height: 32px !important;
   background: #f1f4fa !important;
   border-bottom: 1px solid #d8deea !important;
 }
 
 .store-report-table-wrapper .rdt_TableRow {
-  min-height: 44px !important;
+  min-height: 32px !important;
 }
 
 /* ============================================================

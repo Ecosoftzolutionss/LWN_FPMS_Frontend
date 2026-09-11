@@ -1,24 +1,6 @@
 import React from 'react';
 import { FaCheck, FaDatabase, FaServer, FaExclamationTriangle } from 'react-icons/fa';
-
 import '../../assets/CSS/dataSyncModal.css';
-
-// ==========================================
-// Data Sync Success Modal
-// ==========================================
-//
-// Props:
-//   open           : boolean - show/hide modal
-//   onClose        : function - called when OK is clicked
-//   downloadedCount: number - records cached locally this sync (default 0)
-//   uploadedCount  : number - records uploaded to the server this sync (default 0)
-//   failedCount    : number - records that failed to upload (default 0)
-//   downloadLabel  : string - what was downloaded, e.g. "pallets", "locations" (default "records")
-//   uploadLabel    : string - what was uploaded, e.g. "issues", "verifications" (default "records")
-//
-// Same UI/layout as before — only the text content is now driven by
-// real sync results instead of being hardcoded.
-// ==========================================
 
 const DataSyncModal = ({
   open,

@@ -17,6 +17,7 @@ const GRN_TYPE_OPTIONS = [
 const EMPTY_HEADER = {
   grnNo: '',
   supplierId: '',
+  partyType: '',
   poNumber: '',
   poDate: '',
   grnType: '',
@@ -57,6 +58,7 @@ const GRNEntry = () => {
   const isEditMode = !!editGrnId
   const [items, setItems] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
+  const [customers, setCustomers] = useState([]);
 
   const [header, setHeader] = useState(EMPTY_HEADER);
   const [line, setLine] = useState(EMPTY_LINE);
@@ -92,6 +94,7 @@ const GRNEntry = () => {
   useEffect(() => {
     loadItems()
     loadSuppliers()
+    loadCustomers()
 
     if (editGrnId) {
       loadGrnForEdit(editGrnId)
@@ -99,6 +102,15 @@ const GRNEntry = () => {
       loadNextGrnNo()
     }
   }, [editGrnId])
+
+  const loadCustomers = async () => {
+    try {
+      const res = await API.get('/CustomerMaster')
+      setCustomers(res.data || [])
+    } catch {
+      toast.error('Failed to load customers')
+    }
+  }
 
   const loadNextGrnNo = async () => {
     try {
@@ -222,147 +234,181 @@ const GRNEntry = () => {
     unitPrice: i.unitPrice,
     effectiveDate: i.effectiveDate,
     stuffQuantity: i.stuffQuantity,
+    customerOrSupplier: i.customerOrSupplier,
   }))
 
+
+  const filteredItemOptions = header.partyType
+    ? itemOptions.filter(
+      (item) =>
+        String(item.customerOrSupplier || '').toLowerCase() ===
+        String(header.partyType).toLowerCase()
+    )
+    : []
   const handlePartSelect = async (selected) => {
-  if (!selected) {
-    setLine(EMPTY_LINE)
+    if (!selected) {
+      setLine(EMPTY_LINE)
 
-    setErrors((prev) => ({
-      ...prev,
-      itemId: '',
-      rate: '',
-      stuffQuantity: '',
-      palletQuantity: '',
-    }))
+      setErrors((prev) => ({
+        ...prev,
+        itemId: '',
+        rate: '',
+        stuffQuantity: '',
+        palletQuantity: '',
+      }))
 
-    return
-  }
+      return
+    }
 
-  try {
-    // --------------------------------------------------
-    // 1. Load latest Part Master details
-    // --------------------------------------------------
-    const itemRes = await API.get(`/ItemMaster/${selected.value}`)
-    const item = itemRes.data || {}
+    try {
+      // --------------------------------------------------
+      // 1. Load latest Part Master details
+      // --------------------------------------------------
+      const itemRes = await API.get(`/ItemMaster/${selected.value}`)
+      const item = itemRes.data || {}
 
-    const rate = item.unitPrice ?? ''
+      const rate = item.unitPrice ?? ''
 
-    const effectiveDate = item.effectiveDate
-      ? String(item.effectiveDate).substring(0, 10)
-      : ''
-
-    const stuffQuantity =
-      item.stuffQuantity !== null &&
-      item.stuffQuantity !== undefined &&
-      Number(item.stuffQuantity) > 0
-        ? Number(item.stuffQuantity)
+      const effectiveDate = item.effectiveDate
+        ? String(item.effectiveDate).substring(0, 10)
         : ''
 
-    // --------------------------------------------------
-    // 2. Check Location Master configuration
-    // --------------------------------------------------
-    const locationRes = await API.get(
-      `/StoreMovement/rack-slots?itemId=${selected.value}`
-    )
+      const stuffQuantity =
+        item.stuffQuantity !== null &&
+          item.stuffQuantity !== undefined &&
+          Number(item.stuffQuantity) > 0
+          ? Number(item.stuffQuantity)
+          : ''
 
-    const locations = locationRes.data || []
-
-    const hasLocationConfiguration =
-      locations.length > 0 &&
-      locations.some(
-        (store) =>
-          store.racks &&
-          store.racks.length > 0
+      // --------------------------------------------------
+      // 2. Check Location Master configuration
+      // --------------------------------------------------
+      const locationRes = await API.get(
+        `/StoreMovement/rack-slots?itemId=${selected.value}`
       )
 
-    // --------------------------------------------------
-    // 3. If location is NOT configured
-    // --------------------------------------------------
-    if (!hasLocationConfiguration) {
+      const locations = locationRes.data || []
+
+      const hasLocationConfiguration =
+        locations.length > 0 &&
+        locations.some(
+          (store) =>
+            store.racks &&
+            store.racks.length > 0
+        )
+
+      // --------------------------------------------------
+      // 3. If location is NOT configured
+      // --------------------------------------------------
+      if (!hasLocationConfiguration) {
+        setLine((prev) => ({
+          ...prev,
+          itemId: selected.value,
+          stuffQuantity: '',
+          palletQuantity: '',
+          rate: '',
+        }))
+
+        setErrors((prev) => ({
+          ...prev,
+          itemId:
+            `Location is not configured for Part Number ${selected.label}. ` +
+            'Please configure the location in Location Master.',
+          rate: '',
+          stuffQuantity: '',
+          palletQuantity: '',
+        }))
+
+        return
+      }
+
+      // --------------------------------------------------
+      // 4. Existing Effective Date validation
+      // --------------------------------------------------
+      const today = getTodayInputDate()
+
+      if (!effectiveDate) {
+        setLine((prev) => ({
+          ...prev,
+          itemId: selected.value,
+          stuffQuantity: '',
+          palletQuantity: '',
+          rate: '',
+        }))
+
+        setErrors((prev) => ({
+          ...prev,
+          itemId:
+            'Effective Date is not configured for this Part Number. Please update the Part Master.',
+          rate: '',
+          stuffQuantity: '',
+          palletQuantity: '',
+        }))
+
+        return
+      }
+
+      if (effectiveDate < today) {
+        const displayDate = effectiveDate
+          .split('-')
+          .reverse()
+          .join('/')
+
+        setLine((prev) => ({
+          ...prev,
+          itemId: selected.value,
+          stuffQuantity: '',
+          palletQuantity: '',
+          rate: '',
+        }))
+
+        setErrors((prev) => ({
+          ...prev,
+          itemId:
+            `Rate for Part Number ${selected.label} is effective from ${displayDate}. ` +
+            'Please update the Part Master Effective Date and Rate before continuing with the GRN process.',
+          rate: '',
+          stuffQuantity: '',
+          palletQuantity: '',
+        }))
+
+        return
+      }
+
+      // --------------------------------------------------
+      // 5. Stuff Quantity validation
+      // --------------------------------------------------
+      if (!stuffQuantity) {
+        setLine((prev) => ({
+          ...prev,
+          itemId: selected.value,
+          stuffQuantity: '',
+          palletQuantity: '',
+          rate,
+        }))
+
+        setErrors((prev) => ({
+          ...prev,
+          itemId: '',
+          rate: rate
+            ? ''
+            : 'Rate is not configured for this Part Number',
+          stuffQuantity:
+            'Stuff Quantity is not configured for this Part Number. Please update the Part Master.',
+          palletQuantity: '',
+        }))
+
+        return
+      }
+
+      // --------------------------------------------------
+      // 6. Valid Part + Valid Location
+      // --------------------------------------------------
       setLine((prev) => ({
         ...prev,
         itemId: selected.value,
-        stuffQuantity: '',
-        palletQuantity: '',
-        rate: '',
-      }))
-
-      setErrors((prev) => ({
-        ...prev,
-        itemId:
-          `Location is not configured for Part Number ${selected.label}. ` +
-          'Please configure the location in Location Master.',
-        rate: '',
-        stuffQuantity: '',
-        palletQuantity: '',
-      }))
-
-      return
-    }
-
-    // --------------------------------------------------
-    // 4. Existing Effective Date validation
-    // --------------------------------------------------
-    const today = getTodayInputDate()
-
-    if (!effectiveDate) {
-      setLine((prev) => ({
-        ...prev,
-        itemId: selected.value,
-        stuffQuantity: '',
-        palletQuantity: '',
-        rate: '',
-      }))
-
-      setErrors((prev) => ({
-        ...prev,
-        itemId:
-          'Effective Date is not configured for this Part Number. Please update the Part Master.',
-        rate: '',
-        stuffQuantity: '',
-        palletQuantity: '',
-      }))
-
-      return
-    }
-
-    if (effectiveDate < today) {
-      const displayDate = effectiveDate
-        .split('-')
-        .reverse()
-        .join('/')
-
-      setLine((prev) => ({
-        ...prev,
-        itemId: selected.value,
-        stuffQuantity: '',
-        palletQuantity: '',
-        rate: '',
-      }))
-
-      setErrors((prev) => ({
-        ...prev,
-        itemId:
-          `Rate for Part Number ${selected.label} is effective from ${displayDate}. ` +
-          'Please update the Part Master Effective Date and Rate before continuing with the GRN process.',
-        rate: '',
-        stuffQuantity: '',
-        palletQuantity: '',
-      }))
-
-      return
-    }
-
-    // --------------------------------------------------
-    // 5. Stuff Quantity validation
-    // --------------------------------------------------
-    if (!stuffQuantity) {
-      setLine((prev) => ({
-        ...prev,
-        itemId: selected.value,
-        stuffQuantity: '',
-        palletQuantity: '',
+        stuffQuantity,
+        palletQuantity: stuffQuantity,
         rate,
       }))
 
@@ -372,68 +418,57 @@ const GRNEntry = () => {
         rate: rate
           ? ''
           : 'Rate is not configured for this Part Number',
-        stuffQuantity:
-          'Stuff Quantity is not configured for this Part Number. Please update the Part Master.',
+        stuffQuantity: '',
         palletQuantity: '',
       }))
 
-      return
-    }
+    } catch (err) {
+      setLine((prev) => ({
+        ...prev,
+        itemId: selected.value,
+        stuffQuantity: '',
+        palletQuantity: '',
+        rate: '',
+      }))
 
-    // --------------------------------------------------
-    // 6. Valid Part + Valid Location
-    // --------------------------------------------------
-    setLine((prev) => ({
-      ...prev,
-      itemId: selected.value,
-      stuffQuantity,
-      palletQuantity: stuffQuantity,
-      rate,
-    }))
+      setErrors((prev) => ({
+        ...prev,
+        itemId: '',
+        rate: 'Failed to load Part Master details',
+        stuffQuantity: '',
+      }))
 
-    setErrors((prev) => ({
-      ...prev,
-      itemId: '',
-      rate: rate
-        ? ''
-        : 'Rate is not configured for this Part Number',
-      stuffQuantity: '',
-      palletQuantity: '',
-    }))
-
-  } catch (err) {
-    setLine((prev) => ({
-      ...prev,
-      itemId: selected.value,
-      stuffQuantity: '',
-      palletQuantity: '',
-      rate: '',
-    }))
-
-    setErrors((prev) => ({
-      ...prev,
-      itemId: '',
-      rate: 'Failed to load Part Master details',
-      stuffQuantity: '',
-    }))
-
-    toast.error(
-      getErrorMessage(
-        err,
-        'Failed to check Part Number / Location configuration'
+      toast.error(
+        getErrorMessage(
+          err,
+          'Failed to check Part Number / Location configuration'
+        )
       )
-    )
+    }
   }
-}
+
+
 
   const supplierOptions = suppliers.map((s) => ({
     value: s.id,
     label: s.supplierName,
+    type: 'Supplier',
   }))
 
-  const selectedItem = itemOptions.find(
-    (x) => String(x.value) === String(line.itemId)
-  )
+  const customerOptions = customers.map((c) => ({
+    value: c.id,
+    label: c.customerName,
+    type: 'Customer',
+  }))
+
+  const partyOptions = [
+    ...supplierOptions,
+    ...customerOptions,
+  ]
+
+ const selectedItem = filteredItemOptions.find(
+  (x) => String(x.value) === String(line.itemId)
+)
 
   const clearError = (name) =>
     setErrors((prev) => ({ ...prev, [name]: '' }))
@@ -521,7 +556,9 @@ const GRNEntry = () => {
         : 'Enter a GRN No or uncheck "Edit GRN No" to use the auto value'
     }
 
-    if (!header.supplierId) temp.supplierId = 'Supplier is required'
+   if (!header.supplierId) {
+  temp.supplierId = 'Supplier / Customer is required'
+}
     if (!header.poNumber.trim()) temp.poNumber = 'PO Number is required'
     if (!header.poDate) temp.poDate = 'PO Date is required'
     if (!header.grnType) temp.grnType = 'GRN Type is required'
@@ -751,6 +788,7 @@ const GRNEntry = () => {
         overrideGrnNo: isEditMode ? false : editGrnNo,
         createdBy: getCurrentUsername(),
         supplierId: Number(header.supplierId),
+          partyType: header.partyType,
         poNumber: header.poNumber.trim(),
         poDate: header.poDate,
         grnType: header.grnType,
@@ -898,16 +936,39 @@ const GRNEntry = () => {
             </CCol>
 
             <CCol md={4}>
-              <label className="custom-label"><strong>Supplier</strong> <span className="required">*</span></label>
+              <label className="custom-label">
+                <strong>Supplier / Customer</strong>{' '}
+                <span className="required">*</span>
+              </label>
               <div className={errors.supplierId ? 'react-select-error' : ''}>
                 <Select
                   classNamePrefix="react-select"
-                  placeholder="Select Supplier"
-                  options={supplierOptions}
-                  value={supplierOptions.find((x) => String(x.value) === String(header.supplierId)) || null}
+                  placeholder="Select Supplier / Customer"
+                  options={partyOptions}
+                  value={
+                    partyOptions.find(
+                      (x) =>
+                        String(x.value) === String(header.supplierId) &&
+                        x.type === header.partyType
+                    ) || null
+                  }
                   onChange={(selected) => {
-                    setHeader({ ...header, supplierId: selected?.value || '' })
-                    clearError('supplierId')
+                    setHeader((prev) => ({
+                      ...prev,
+                      supplierId: selected?.value || '',
+                      partyType: selected?.type || '',
+                    }))
+
+                    // Clear selected part when Supplier / Customer changes
+                    setLine(EMPTY_LINE)
+                    setErrors((prev) => ({
+                      ...prev,
+                      supplierId: '',
+                      itemId: '',
+                      rate: '',
+                      stuffQuantity: '',
+                      palletQuantity: '',
+                    }))
                   }}
                   isClearable
                 />
@@ -973,11 +1034,16 @@ const GRNEntry = () => {
               <div className={errors.itemId ? 'react-select-error' : ''}>
                 <Select
                   classNamePrefix="react-select"
-                  placeholder="Select Part Number"
-                  options={itemOptions}
+                  placeholder={
+                    header.partyType
+                      ? `Select ${header.partyType} Part Number`
+                      : 'Select Supplier / Customer first'
+                  }
+                  options={filteredItemOptions}
                   value={selectedItem || null}
                   onChange={handlePartSelect}
                   isClearable
+                  isDisabled={!header.partyType}
                 />
               </div>
 
