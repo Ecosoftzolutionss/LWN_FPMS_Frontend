@@ -20,6 +20,9 @@ const StoreMovement = React.lazy(() => import('./views/transaction/storemovement
 //const Reports = React.lazy(() => import('./views/report/reports'))
 const GrnReport = React.lazy(()=> import('./views/report/Grnreport'))
 const MaterialIssueReport = React.lazy(()=> import('./views/report/MaterialIssueReport'))
+const StoreReport = React.lazy(()=> import('./views/report/StoreReport'))
+const StockReport = React.lazy(()=> import('./views/report/StockReport'))
+
 
 const routes = [
   { path: '/', exact: true, name: 'Home' },
@@ -50,7 +53,8 @@ const routes = [
   //{ path: '/report/reports', name: 'Reports', element: Reports },
   { path: '/report/Grnreport', name: 'GRN Report', element: GrnReport },
   { path: '/report/MaterialIssueReport', name: 'Material Issue Report', element: MaterialIssueReport },
-  
+  { path: '/report/StoreReport', name: 'Store Report', element: StoreReport },
+  { path: '/report/StockReport', name: 'Stock Report', element: StockReport }
 ]
 
 export default routes

@@ -56,11 +56,11 @@ export const MENU_CONFIG = [
   // },
   {
     name: 'Pallet Master',
-     icon: cilStorage,
+    icon: cilStorage,
   },
-   {
+  {
     name: 'Location Master',
-     icon: cilDescription,
+    icon: cilDescription,
   },
   {
     name: 'Mail Settings',
@@ -86,12 +86,23 @@ export const MENU_CONFIG = [
   //   name: 'Reports',
   //   icon: cilChartLine,
   // },
- {
-  name: 'GRN Report',
-  icon: cilCloudDownload,
-},
-{
-  name: 'Issue Report',
-  icon: cilListRich,
-},
+
+
+  {
+    name: 'GRN Report',
+    icon: cilCloudDownload,
+  },
+
+  {
+    name: 'Store Report',
+    icon: cilCloudDownload,
+  },
+  {
+    name: 'Material Issue Report',
+    icon: cilListRich,
+  },
+   {
+    name: 'Stock Report',
+    icon: cilListRich,
+  },
 ]

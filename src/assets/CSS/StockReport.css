@@ -1,0 +1,888 @@
+/* ==========================================================
+   Stock Report — dedicated stylesheet
+
+   Mirrors the GRN Report screen:
+   - Filter card
+   - React Select dropdowns
+   - Search / Clear buttons
+   - Export + search toolbar
+   - Data table
+   - Pagination
+   ========================================================== */
+
+
+.sr-page {
+  padding: 20px 24px 32px;
+  background: #f4f6fb;
+  min-height: 100%;
+}
+
+
+/* ==========================================================
+   FILTER CARD
+   ========================================================== */
+
+.sr-filter-card {
+  background: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.06);
+  padding: 20px 24px 24px;
+  margin-bottom: 20px;
+}
+
+
+/* ==========================================================
+   FILTER TITLE
+   ========================================================== */
+
+.sr-filter-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  font-size: 16px;
+  font-weight: 700;
+
+  color: #1e293b;
+
+  margin-bottom: 18px;
+}
+
+
+.sr-filter-title::before {
+  content: '';
+
+  display: inline-block;
+
+  width: 4px;
+  height: 18px;
+
+  background: #2f5fdd;
+
+  border-radius: 2px;
+}
+
+
+/* ==========================================================
+   FILTER GRID
+   ========================================================== */
+
+.sr-filter-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(
+      auto-fit,
+      minmax(220px, 1fr)
+    );
+
+  gap: 18px;
+
+  margin-bottom: 20px;
+}
+
+
+/* ==========================================================
+   FIELD
+   ========================================================== */
+
+.sr-field label {
+  display: block;
+
+  font-size: 11px;
+  font-weight: 700;
+
+  letter-spacing: 0.03em;
+
+  text-transform: uppercase;
+
+  color: #475569;
+
+  margin-bottom: 8px;
+}
+
+
+/* ==========================================================
+   REACT SELECT
+   ========================================================== */
+
+.sr-react-select {
+  width: 100%;
+  font-size: 13px;
+}
+
+
+/* Main control */
+
+.sr-select__control {
+  min-height: 42px !important;
+
+  height: 42px;
+
+  border:
+    1px solid #dfe4ee !important;
+
+  border-radius: 8px !important;
+
+  background: #ffffff !important;
+
+  box-shadow: none !important;
+
+  cursor: pointer;
+
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+
+.sr-select__control:hover {
+  border-color:
+    #b8c4d8 !important;
+}
+
+
+.sr-select__control--is-focused {
+  border-color:
+    #2f5fdd !important;
+
+  box-shadow:
+    0 0 0 1px #2f5fdd !important;
+}
+
+
+/* Value container */
+
+.sr-select__value-container {
+  padding:
+    0 14px !important;
+}
+
+
+/* Placeholder */
+
+.sr-select__placeholder {
+  color:
+    #94a3b8 !important;
+
+  font-size: 13px;
+}
+
+
+/* Selected value */
+
+.sr-select__single-value {
+  color:
+    #1e293b !important;
+
+  font-size: 13px;
+}
+
+
+/* Input */
+
+.sr-select__input-container {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+
+/* Indicators */
+
+.sr-select__indicators {
+  height: 40px;
+}
+
+
+.sr-select__indicator {
+  color:
+    #64748b !important;
+
+  padding: 8px !important;
+}
+
+
+.sr-select__indicator:hover {
+  color:
+    #1e293b !important;
+}
+
+
+/* Separator */
+
+.sr-select__indicator-separator {
+  background:
+    #dfe4ee !important;
+}
+
+
+/* Clear */
+
+.sr-select__clear-indicator {
+  cursor: pointer;
+}
+
+
+.sr-select__clear-indicator:hover {
+  color:
+    #dc2626 !important;
+}
+
+
+/* Dropdown menu */
+
+.sr-select__menu {
+  border:
+    1px solid #dfe4ee !important;
+
+  border-radius:
+    8px !important;
+
+  box-shadow:
+    0 8px 24px
+    rgba(16, 24, 40, 0.12)
+    !important;
+
+  overflow: hidden;
+
+  margin-top:
+    4px !important;
+
+  z-index: 9999 !important;
+}
+
+
+/* Dropdown list */
+
+.sr-select__menu-list {
+  padding: 4px !important;
+
+  max-height:
+    220px !important;
+}
+
+
+/* Dropdown option */
+
+.sr-select__option {
+  padding:
+    10px 12px !important;
+
+  border-radius:
+    5px;
+
+  font-size: 13px;
+
+  color:
+    #1e293b;
+
+  cursor: pointer;
+}
+
+
+/* Hover */
+
+.sr-select__option--is-focused {
+  background:
+    #f1f5f9 !important;
+}
+
+
+/* Selected */
+
+.sr-select__option--is-selected {
+  background:
+    #2f5fdd !important;
+
+  color:
+    #ffffff !important;
+}
+
+
+/* Selected hover */
+
+.sr-select__option--is-selected:hover {
+  background:
+    #2650bd !important;
+
+  color:
+    #ffffff !important;
+}
+
+
+/* No options */
+
+.sr-select__no-options {
+  padding:
+    10px 12px !important;
+
+  color:
+    #94a3b8;
+
+  font-size: 13px;
+}
+
+
+/* ==========================================================
+   NORMAL INPUT / SELECT
+   Used by pagination select
+   ========================================================== */
+
+.sr-field select,
+.sr-field input {
+  width: 100%;
+
+  height: 42px;
+
+  padding:
+    0 14px;
+
+  border:
+    1px solid #dfe4ee;
+
+  border-radius:
+    8px;
+
+  font-size: 13px;
+
+  color:
+    #1e293b;
+
+  background:
+    #ffffff;
+
+  outline: none;
+
+  transition:
+    border-color 0.15s ease;
+}
+
+
+.sr-field select:focus,
+.sr-field input:focus {
+  border-color:
+    #2f5fdd;
+}
+
+
+/* ==========================================================
+   FILTER ACTIONS
+   ========================================================== */
+
+.sr-filter-actions {
+  display: flex;
+
+  justify-content: center;
+
+  gap: 12px;
+}
+
+
+/* ==========================================================
+   COMMON BUTTON
+   ========================================================== */
+
+.sr-btn {
+  display: inline-flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 8px;
+
+  height: 42px;
+
+  padding:
+    0 22px;
+
+  border-radius:
+    8px;
+
+  font-size: 13px;
+
+  font-weight: 600;
+
+  cursor: pointer;
+
+  border:
+    1px solid transparent;
+
+  transition:
+    opacity 0.15s ease,
+    background 0.15s ease;
+}
+
+
+.sr-btn:disabled {
+  opacity: 0.6;
+
+  cursor:
+    not-allowed;
+}
+
+
+/* ==========================================================
+   SEARCH BUTTON
+   ========================================================== */
+
+.sr-btn-search {
+  background:
+    #2f5fdd;
+
+  color:
+    #ffffff;
+
+  border-color:
+    #2f5fdd;
+}
+
+
+.sr-btn-search:hover:not(:disabled) {
+  background:
+    #2650bd;
+
+  color:
+    #ffffff;
+}
+
+
+/* ==========================================================
+   CLEAR BUTTON
+   ========================================================== */
+
+.sr-btn-clear {
+  background:
+    #ffffff;
+
+  color:
+    #475569;
+
+  border-color:
+    #dfe4ee;
+}
+
+
+.sr-btn-clear:hover:not(:disabled) {
+  background:
+    #f4f6fb;
+
+  color:
+    #475569;
+}
+
+
+/* ==========================================================
+   EXPORT BUTTON
+   ========================================================== */
+
+.sr-btn-export {
+  background:
+    #1e8a5f;
+
+  color:
+    #ffffff;
+
+  border-color:
+    #1e8a5f;
+}
+
+
+.sr-btn-export:hover:not(:disabled) {
+  background:
+    #197a53;
+
+  color:
+    #ffffff;
+}
+
+
+/* ==========================================================
+   TABLE CARD
+   ========================================================== */
+
+.sr-table-card {
+  background:
+    #ffffff;
+
+  border-radius:
+    10px;
+
+  box-shadow:
+    0 1px 3px
+    rgba(16, 24, 40, 0.06);
+
+  padding:
+    20px 24px 24px;
+}
+
+
+/* ==========================================================
+   TABLE TOOLBAR
+   ========================================================== */
+
+.sr-table-toolbar {
+  display: flex;
+
+  align-items: center;
+
+  justify-content: space-between;
+
+  gap: 16px;
+
+  margin-bottom: 16px;
+
+  flex-wrap: wrap;
+}
+
+
+/* ==========================================================
+   TABLE SEARCH BOX
+   ========================================================== */
+
+.sr-search-box {
+  position: relative;
+
+  flex:
+    1 1 320px;
+
+  max-width:
+    480px;
+
+  margin-left:
+    auto;
+}
+
+
+.sr-search-box svg {
+  position: absolute;
+
+  left: 14px;
+
+  top: 50%;
+
+  transform:
+    translateY(-50%);
+
+  color:
+    #94a3b8;
+
+  font-size: 13px;
+}
+
+
+.sr-search-box input {
+  width: 100%;
+
+  height: 40px;
+
+  padding:
+    0 14px 0 36px;
+
+  border:
+    1px solid #dfe4ee;
+
+  border-radius:
+    8px;
+
+  font-size: 13px;
+
+  color:
+    #1e293b;
+
+  outline: none;
+}
+
+
+.sr-search-box input:focus {
+  border-color:
+    #2f5fdd;
+}
+
+
+/* ==========================================================
+   STATUS BADGE
+   ========================================================== */
+
+.sr-status-badge {
+  display: inline-flex;
+
+  align-items: center;
+
+  padding:
+    4px 12px;
+
+  border-radius:
+    999px;
+
+  font-size: 11px;
+
+  font-weight: 700;
+
+  text-transform:
+    uppercase;
+
+  letter-spacing:
+    0.02em;
+}
+
+
+.sr-status-safety {
+  background:
+    #e6f7ee;
+
+  color:
+    #1e8a5f;
+}
+
+
+.sr-status-reorder {
+  background:
+    #fff4e5;
+
+  color:
+    #b45309;
+}
+
+
+.sr-status-danger {
+  background:
+    #fdecec;
+
+  color:
+    #c0342c;
+}
+
+
+/* ==========================================================
+   EMPTY / LOADING
+   ========================================================== */
+
+.sr-empty {
+  padding:
+    40px 0;
+
+  text-align:
+    center;
+
+  color:
+    #94a3b8;
+
+  font-size:
+    13px;
+}
+
+
+/* ==========================================================
+   PAGINATION
+   ========================================================== */
+
+.sr-pagination-row {
+  display: flex;
+
+  justify-content:
+    flex-end;
+
+  align-items:
+    center;
+
+  gap:
+    12px;
+
+  margin-top:
+    16px;
+
+  flex-wrap:
+    wrap;
+}
+
+
+.sr-pagination-row select {
+  height:
+    36px;
+
+  border:
+    1px solid #dfe4ee;
+
+  border-radius:
+    6px;
+
+  padding:
+    0 10px;
+
+  font-size:
+    12px;
+
+  color:
+    #1e293b;
+
+  background:
+    #ffffff;
+}
+
+
+.sr-pagination-row button {
+  height:
+    36px;
+
+  padding:
+    0 14px;
+
+  border:
+    1px solid #dfe4ee;
+
+  border-radius:
+    6px;
+
+  background:
+    #ffffff;
+
+  font-size:
+    12px;
+
+  color:
+    #475569;
+
+  cursor:
+    pointer;
+}
+
+
+.sr-pagination-row button:disabled {
+  opacity:
+    0.5;
+
+  cursor:
+    not-allowed;
+}
+
+
+.sr-pagination-row button:hover:not(:disabled) {
+  background:
+    #f4f6fb;
+}
+
+
+.sr-page-info {
+  font-size:
+    12px;
+
+  color:
+    #64748b;
+}
+
+
+/* ==========================================================
+   REACT DATA TABLE OVERRIDES
+   ========================================================== */
+
+.sr-table-card .rdt_TableHeadRow {
+  background:
+    #f7f9fd !important;
+
+  min-height:
+    40px !important;
+}
+
+
+.sr-table-card .rdt_TableCol_Sortable,
+.sr-table-card .rdt_TableCol {
+  font-size:
+    11px !important;
+
+  font-weight:
+    700 !important;
+
+  color:
+    #64748b !important;
+
+  text-transform:
+    uppercase !important;
+
+  letter-spacing:
+    0.02em;
+}
+
+
+.sr-table-card .rdt_TableRow {
+  font-size:
+    12.5px;
+
+  color:
+    #1f2937;
+
+  min-height:
+    44px !important;
+}
+
+
+.sr-table-card .rdt_TableRow:hover {
+  background:
+    #f9fafc;
+}
+
+
+/* ==========================================================
+   RESPONSIVE
+   ========================================================== */
+
+@media (max-width: 768px) {
+
+  .sr-page {
+    padding:
+      15px;
+  }
+
+
+  .sr-filter-card,
+  .sr-table-card {
+    padding:
+      16px;
+  }
+
+
+  .sr-filter-grid {
+    grid-template-columns:
+      1fr;
+
+    gap:
+      14px;
+  }
+
+
+  .sr-filter-actions {
+    justify-content:
+      flex-start;
+
+    flex-wrap:
+      wrap;
+  }
+
+
+  .sr-btn {
+    min-width:
+      110px;
+  }
+
+
+  .sr-table-toolbar {
+    align-items:
+      stretch;
+  }
+
+
+  .sr-search-box {
+    max-width:
+      none;
+
+    width:
+      100%;
+  }
+
+
+  .sr-pagination-row {
+    justify-content:
+      center;
+  }
+
+}

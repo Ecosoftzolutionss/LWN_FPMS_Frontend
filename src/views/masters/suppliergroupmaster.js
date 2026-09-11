@@ -73,6 +73,8 @@ const SupplierGroupMaster = () => {
   const [editId, setEditId] = useState(null)
   const [search, setSearch] = useState('')
   const [deleteId, setDeleteId] = useState(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [rowsPerPage, setRowsPerPage] = useState(10)
   const [deleteGroup, setDeleteGroup] = useState(null)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const { privileges: userPrivileges = [] } = usePrivilege()
@@ -171,6 +173,18 @@ const SupplierGroupMaster = () => {
       })
 
       setErrors({ supplierGroupType: '' })
+      // Open the form
+      setShowForm(true)
+
+      // Scroll to top and focus Supplier Group Type
+      setTimeout(() => {
+        window.scrollTo({
+          top: 0,
+          behavior: 'smooth',
+        })
+
+        typeRef.current?.focus()
+      }, 250)
     } catch {
       toast.error('Failed to load supplier group')
     }
@@ -200,28 +214,28 @@ const SupplierGroupMaster = () => {
     setShowForm(false)
   }
 
- const confirmDelete = async () => {
-  try {
-    const res = await API.delete(`/SupplierGroup/${deleteId}`)
+  const confirmDelete = async () => {
+    try {
+      const res = await API.delete(`/SupplierGroup/${deleteId}`)
 
-    toast.success(
-      res.data?.message || 'Supplier Group deleted successfully'
-    )
-
-    await loadGroups()
-  } catch (err) {
-    toast.error(
-      getErrorMessage(
-        err,
-        'Failed to delete Supplier Group'
+      toast.success(
+        res.data?.message || 'Supplier Group deleted successfully'
       )
-    )
-  } finally {
-    setShowDeleteModal(false)
-    setDeleteId(null)
-    setDeleteGroup(null)
+
+      await loadGroups()
+    } catch (err) {
+      toast.error(
+        getErrorMessage(
+          err,
+          'Failed to delete Supplier Group'
+        )
+      )
+    } finally {
+      setShowDeleteModal(false)
+      setDeleteId(null)
+      setDeleteGroup(null)
+    }
   }
-}
 
   const filteredGroups = groups.filter(
     (g) =>
@@ -231,9 +245,11 @@ const SupplierGroupMaster = () => {
 
   const columns = [
     {
-      name: 'SL.NO',
-      selector: (row, index) => index + 1,
+      name: 'S.NO',
       width: '80px',
+      center: true,
+      cell: (row, index) =>
+        (currentPage - 1) * rowsPerPage + index + 1,
     },
     { name: 'SUPPLIER GROUP TYPE', selector: (row) => row.supplierGroupType, wrap: true },
     { name: 'DESCRIPTION', selector: (row) => row.description, wrap: true },
@@ -356,6 +372,15 @@ const SupplierGroupMaster = () => {
             columns={columns}
             data={filteredGroups}
             pagination
+            paginationPerPage={rowsPerPage}
+            paginationRowsPerPageOptions={[10, 20, 30, 50, 100]}
+            onChangePage={(page) => {
+              setCurrentPage(page)
+            }}
+            onChangeRowsPerPage={(newPerPage, page) => {
+              setRowsPerPage(newPerPage)
+              setCurrentPage(page)
+            }}
             striped
             responsive
             highlightOnHover

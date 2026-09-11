@@ -93,7 +93,7 @@
 
   width: 100%;
 
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 
@@ -102,11 +102,39 @@
    ============================================================ */
 
 .grn-report-filter-field {
-  width: 285px;
+  flex: 1 1 0;
 
-  max-width: 100%;
+  width: auto;
+
+  min-width: 0;
+
+  max-width: none;
 }
 
+
+/* ============================================================
+   REACT SELECT - ITEM GROUP / SUPPLIER GROUP
+   ============================================================ */
+
+.grn-report-page .grn-report-react-select {
+  width: 100%;
+}
+
+.grn-report-page .grn-report-react-select .grn-select__control {
+  min-height: 40px !important;
+}
+
+.grn-report-page .grn-report-react-select .grn-select__value-container {
+  min-height: 40px;
+}
+
+.grn-report-page .grn-report-react-select .grn-select__menu {
+  z-index: 9999 !important;
+}
+
+.grn-report-page .grn-report-react-select .grn-select__option {
+  font-size: 13px;
+}
 
 /* ============================================================
    DATE WRAPPER
@@ -677,6 +705,19 @@
    TABLET
    ============================================================ */
 
+@media (max-width: 1100px) {
+
+  .grn-report-filter-row {
+    flex-wrap: wrap;
+  }
+
+  .grn-report-filter-field {
+    flex: 1 1 285px;
+    min-width: 285px;
+  }
+
+}
+
 @media (max-width: 1000px) {
 
   .grn-report-grid-search {
@@ -737,6 +778,8 @@
 
   .grn-report-filter-field {
     width: 100%;
+    min-width: 0;
+    flex: 1 1 100%;
   }
 
 

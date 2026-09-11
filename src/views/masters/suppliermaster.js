@@ -177,6 +177,10 @@ const SupplierMaster = () => {
     useState(false)
 
 
+  const [currentPage, setCurrentPage] = useState(1)
+  const [rowsPerPage, setRowsPerPage] = useState(10)
+
+
   // =========================================================
   // PRIVILEGES
   // =========================================================
@@ -689,6 +693,19 @@ const SupplierMaster = () => {
 
       setErrors({})
 
+      // Open edit form
+      setShowForm(true)
+
+      // Scroll to top and focus Supplier ID
+      setTimeout(() => {
+        window.scrollTo({
+          top: 0,
+          behavior: 'smooth',
+        })
+
+        supplierIdRef.current?.focus()
+      }, 250)
+
     } catch (err) {
 
       toast.error(
@@ -881,10 +898,11 @@ const SupplierMaster = () => {
   const columns = [
 
     {
-      name: 'SL.NO',
-      selector: (row, index) => index + 1,
+      name: 'S.NO',
       width: '80px',
       center: true,
+      cell: (row, index) =>
+        (currentPage - 1) * rowsPerPage + index + 1,
     },
 
     {
@@ -1522,13 +1540,11 @@ const SupplierMaster = () => {
 
 
                 {errors.gstNo && (
-
                   <small className="text-danger">
                     {errors.gstNo}
                   </small>
 
                 )}
-
               </CCol>
 
 
@@ -1537,19 +1553,14 @@ const SupplierMaster = () => {
                   ------------------------------------------------- */}
 
               <CCol md={4}>
-
                 <label className="custom-label">
-
                   <strong>
                     PAN No.
                   </strong>
-
                   <span className="required">
                     *
                   </span>
-
                 </label>
-
 
                 <CFormInput
                   name="panNo"
@@ -1579,15 +1590,11 @@ const SupplierMaster = () => {
 
 
                 {errors.panNo && (
-
                   <small className="text-danger">
                     {errors.panNo}
                   </small>
-
                 )}
-
               </CCol>
-
             </CRow>
 
 
@@ -1612,19 +1619,14 @@ const SupplierMaster = () => {
                   : 'Save'}
 
               </CButton>
-
-
               <CButton
                 className="clear-btn"
                 onClick={resetForm}
               >
                 Clear
               </CButton>
-
             </div>
-
           </CCardBody>
-
         </CCard>
       )}
 
@@ -1653,9 +1655,10 @@ const SupplierMaster = () => {
 
               value={search}
 
-              onChange={(e) =>
+              onChange={(e) => {
                 setSearch(e.target.value)
-              }
+                setCurrentPage(1)
+              }}
             />
 
           </div>
@@ -1663,21 +1666,33 @@ const SupplierMaster = () => {
 
           <DataTable
             columns={columns}
-
             data={filteredSuppliers}
-
             pagination
 
+            paginationPerPage={rowsPerPage}
+
+            paginationRowsPerPageOptions={[
+              10,
+              20,
+              30,
+              50,
+              100,
+            ]}
+
+            onChangePage={(page) => {
+              setCurrentPage(page)
+            }}
+
+            onChangeRowsPerPage={(newPerPage, page) => {
+              setRowsPerPage(newPerPage)
+              setCurrentPage(page)
+            }}
+
             striped
-
             responsive
-
             highlightOnHover
-
             customStyles={customStyles}
-
             noDataComponent="No suppliers found"
-
           />
         </CCardBody>
       </CCard>
@@ -1746,7 +1761,6 @@ const SupplierMaster = () => {
           >
             Cancel
           </CButton>
-
 
           <CButton
             color="danger"

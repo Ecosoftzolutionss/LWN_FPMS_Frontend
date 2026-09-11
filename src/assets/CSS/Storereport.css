@@ -1,0 +1,474 @@
+/* ============================================================
+   STORE REPORT PAGE
+   ============================================================ */
+
+.store-report-page {
+  background: #f4f6fb;
+  padding: 15px;
+  min-height: 100%;
+}
+
+/* ============================================================
+   COMMON CARD
+   ============================================================ */
+
+.store-report-filter-card,
+.store-report-result-card {
+  border: 1px solid #d8e0ed !important;
+  border-radius: 10px !important;
+  background: #ffffff !important;
+  box-shadow: none !important;
+}
+
+/* ============================================================
+   TITLE
+   ============================================================ */
+
+.store-report-page .section-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0d47a1;
+  border-left: 4px solid #0d47a1;
+  padding-left: 10px;
+  margin-bottom: 22px;
+  line-height: 28px;
+}
+
+/* ============================================================
+   LABEL
+   ============================================================ */
+
+.store-report-page .custom-label {
+  font-size: 12px;
+  color: #1f2937;
+  font-weight: 700;
+  margin-bottom: 7px;
+  display: block;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+/* ============================================================
+   FILTER ROW
+   ============================================================ */
+
+.store-report-filter-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+  gap: 22px;
+  width: 100%;
+  flex-wrap: nowrap;
+}
+
+.store-report-filter-field {
+  flex: 1 1 0;
+  width: auto;
+  min-width: 0;
+}
+
+/* ============================================================
+   DATE
+   ============================================================ */
+
+.store-report-date-wrapper {
+  width: 100%;
+  cursor: pointer;
+}
+
+.store-report-page .store-report-date-input.form-control {
+  width: 100%;
+  height: 40px !important;
+  padding: 0 12px !important;
+  border-radius: 6px !important;
+  border: 1px solid #c4d3ea !important;
+  background-color: #ffffff !important;
+  color: #1f2937 !important;
+  font-size: 13px !important;
+  box-shadow: none !important;
+  cursor: pointer;
+}
+
+.store-report-page
+.store-report-date-input.form-control:hover {
+  border-color: #1d5cff !important;
+}
+
+.store-report-page
+.store-report-date-input.form-control:focus {
+  border-color: #1d5cff !important;
+  box-shadow:
+    0 0 0 3px rgba(29, 92, 255, 0.15) !important;
+  outline: none !important;
+}
+
+.store-report-date-input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  width: 18px;
+  height: 18px;
+  opacity: 0.85;
+}
+
+/* ============================================================
+   SELECT
+   ============================================================ */
+
+.store-report-page .store-select__control {
+  min-height: 40px !important;
+  height: 40px !important;
+}
+
+.store-report-page .store-select__value-container {
+  min-height: 40px;
+}
+
+.store-report-page .store-select__menu {
+  z-index: 9999 !important;
+}
+
+.store-report-page .store-select__option {
+  font-size: 13px;
+}
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+
+.store-report-date-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  margin-top: 22px;
+  margin-bottom: 2px;
+}
+
+.store-report-search-btn {
+  height: 40px !important;
+  min-width: 128px;
+  padding: 0 18px !important;
+  border-radius: 6px !important;
+  border: 1px solid #0d47a1 !important;
+  background: #0d47a1 !important;
+  color: #ffffff !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  box-shadow: none !important;
+}
+
+.store-report-search-btn:hover {
+  background: #083b8c !important;
+  border-color: #083b8c !important;
+}
+
+.store-report-clear-btn {
+  height: 40px !important;
+  min-width: 110px;
+  padding: 0 18px !important;
+  border-radius: 6px !important;
+  border: 1px solid #c4d3ea !important;
+  background: #ffffff !important;
+  color: #475569 !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  box-shadow: none !important;
+}
+
+.store-report-clear-btn:hover {
+  background: #f1f4fa !important;
+  border-color: #9eb2d1 !important;
+  color: #23395d !important;
+}
+
+/* ============================================================
+   SUMMARY
+   ============================================================ */
+
+.store-report-summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 60px;
+  width: 100%;
+  background: #f7f9fd;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 14px 20px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.store-report-summary-row div {
+  display: flex;
+  flex-direction: column;
+  min-width: 100px;
+}
+
+.store-report-summary-row span {
+  font-size: 10px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  margin-bottom: 3px;
+}
+
+.store-report-summary-row strong {
+  font-size: 16px;
+  color: #1f2937;
+  font-weight: 700;
+}
+
+/* ============================================================
+   TOOLBAR
+   ============================================================ */
+
+.store-report-result-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 20px;
+  margin-bottom: 8px;
+}
+
+.store-report-export-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex: 0 0 auto;
+}
+
+.store-report-export-btn {
+  height: 40px !important;
+  padding: 0 18px !important;
+  border-radius: 6px !important;
+  border: none !important;
+  background: #1e7e34 !important;
+  color: #ffffff !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  box-shadow: none !important;
+}
+
+.store-report-export-btn:hover {
+  background: #17652a !important;
+}
+
+.store-report-grid-search {
+  width: 400px;
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-left: auto;
+}
+
+.store-report-page
+.store-report-search-input.form-control {
+  width: 400px !important;
+  height: 50px !important;
+  border-radius: 10px !important;
+  border: 1px solid #c4d3ea !important;
+  background: #ffffff !important;
+  padding: 0 16px !important;
+  font-size: 14px !important;
+  color: #1f2937 !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.store-report-page
+.store-report-search-input.form-control:hover {
+  border-color: #4d8df7 !important;
+}
+
+.store-report-page
+.store-report-search-input.form-control:focus {
+  border: 2px solid #3d7ff0 !important;
+  box-shadow:
+    0 0 0 3px rgba(61, 127, 240, 0.18) !important;
+  outline: none !important;
+}
+
+.store-report-page
+.store-report-search-input.form-control::placeholder {
+  color: #94a9cf !important;
+  opacity: 1 !important;
+}
+
+/* ============================================================
+   TABLE
+   ============================================================ */
+
+.store-report-table-wrapper {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow-x: auto;
+}
+
+.store-report-table-wrapper .rdt_Table {
+  width: 100%;
+}
+
+.store-report-table-wrapper .rdt_TableHeadRow {
+  min-height: 46px !important;
+  background: #f1f4fa !important;
+  border-bottom: 1px solid #d8deea !important;
+}
+
+.store-report-table-wrapper .rdt_TableRow {
+  min-height: 44px !important;
+}
+
+/* ============================================================
+   STATUS
+   ============================================================ */
+
+.store-report-status-badge {
+  display: inline-block;
+  padding: 4px 11px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.store-report-status-badge.in-store {
+  background: #e6f6ea;
+  color: #1e7e34;
+}
+
+.store-report-status-badge.issued {
+  background: #fff0f0;
+  color: #c62828;
+}
+
+/* ============================================================
+   TOOLTIP CELL
+   ============================================================ */
+
+.store-report-page .store-report-tooltip-cell {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: default;
+  color: #1f2937;
+  font-size: 13px;
+}
+
+.store-report-page
+.store-report-tooltip-cell:hover {
+  cursor: help;
+}
+
+.store-report-empty {
+  padding: 30px;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+
+@media (max-width: 1200px) {
+  .store-report-filter-row {
+    flex-wrap: wrap;
+  }
+
+  .store-report-filter-field {
+    flex: 1 1 285px;
+    min-width: 285px;
+  }
+}
+
+@media (max-width: 800px) {
+  .store-report-result-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .store-report-grid-search {
+    width: 100%;
+  }
+
+  .store-report-page
+  .store-report-search-input.form-control {
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .store-report-page {
+    padding: 10px;
+  }
+
+  .store-report-filter-row {
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .store-report-filter-field {
+    width: 100%;
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+
+  .store-report-date-actions {
+    flex-direction: row;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .store-report-search-btn,
+  .store-report-clear-btn {
+    min-width: 110px;
+  }
+
+  .store-report-summary-row {
+    gap: 20px;
+    justify-content: space-between;
+  }
+
+  .store-report-result-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .store-report-export-wrapper {
+    width: 100%;
+  }
+
+  .store-report-export-btn {
+    width: 100%;
+  }
+
+  .store-report-grid-search {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .store-report-page
+  .store-report-search-input.form-control {
+    width: 100% !important;
+  }
+}

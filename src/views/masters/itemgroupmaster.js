@@ -55,6 +55,8 @@ const ItemGroupMaster = () => {
 
   const [groups, setGroups] = useState([])
   const [showForm, setShowForm] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [rowsPerPage, setRowsPerPage] = useState(10)
 
   const [form, setForm] = useState({
     groupName: '',
@@ -191,6 +193,19 @@ const ItemGroupMaster = () => {
       setErrors({
         groupName: '',
       })
+      // Open the form
+      setShowForm(true)
+
+      // Scroll to top and focus Part Number
+      setTimeout(() => {
+        window.scrollTo({
+          top: 0,
+          behavior: 'smooth',
+        })
+
+        itemNumberRef.current?.focus()
+      }, 250)
+
     } catch {
       toast.error('Failed to load item group')
     }
@@ -244,8 +259,10 @@ const ItemGroupMaster = () => {
   const columns = [
     {
       name: 'S.NO',
-      selector: (row, index) => index + 1,
       width: '80px',
+      center: true,
+      cell: (row, index) =>
+        (currentPage - 1) * rowsPerPage + index + 1,
     },
     {
       name: 'GROUP NAME',
@@ -409,6 +426,13 @@ const ItemGroupMaster = () => {
             columns={columns}
             data={filteredGroups}
             pagination
+            paginationPerPage={rowsPerPage}
+            paginationRowsPerPageOptions={[10, 20, 30, 50, 100]}
+            onChangePage={(page) => setCurrentPage(page)}
+            onChangeRowsPerPage={(newPerPage, page) => {
+              setRowsPerPage(newPerPage)
+              setCurrentPage(page)
+            }}
             striped
             responsive
             highlightOnHover

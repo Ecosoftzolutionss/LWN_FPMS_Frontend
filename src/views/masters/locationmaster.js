@@ -145,7 +145,6 @@ const LocationMaster = () => {
   const [rackFormCols, setRackFormCols] = useState(1)
   const [draftGrid, setDraftGrid] = useState([]) // [{ columnNo, rowNo, hasFront, hasRear, fixture, _c, _r }]
   const [editingRackNo, setEditingRackNo] = useState('') // set when bulk-editing an existing rack
-  const [rackFormTouched, setRackFormTouched] = useState(false) // becomes true once user has generated at least once
 
   // ---- "Manage Racks" modal (opened from the pencil/edit icon) ----
   const [showManageModal, setShowManageModal] = useState(false)
@@ -231,7 +230,6 @@ const LocationMaster = () => {
     setActiveStore(store)
     setShowRackPanel(false)
     setDraftGrid([])
-    setRackFormTouched(false)
     setRackFormNo('')
     setSelectedRackKey(null)
 
@@ -292,9 +290,9 @@ const LocationMaster = () => {
 
   // ─────────────────────────────────────────────────────────────────
   // ---------- Add Rack (inline panel) ----------
-  // The grid auto-syncs live from Rack No / Rows / Columns any time
-  // they change, instead of only updating once when "+ Generate" is
-  // clicked. Per-row edits are preserved by position.
+  // The grid is created immediately when Add Rack is clicked and
+  // auto-syncs whenever Rack No / Rows / Columns change.
+  // Per-row Front/Rear/Fixture edits are preserved by position.
   // ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!showRackPanel) return
@@ -308,39 +306,35 @@ const LocationMaster = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rackFormNo, rackFormRows, rackFormCols, showRackPanel])
 
+  const getNextRackNo = () => {
+    const usedRackNos = new Set(
+      racks.map((r) => r.rackNo?.trim().toUpperCase()).filter(Boolean),
+    )
+
+    for (let i = 0; i < 26; i++) {
+      const rackNo = String.fromCharCode(65 + i)
+      if (!usedRackNos.has(rackNo)) return rackNo
+    }
+
+    return ''
+  }
+
   const handleOpenAddRack = () => {
+    const defaultRackNo = getNextRackNo()
+
     setShowRackPanel(true)
     setEditingRackNo('')
-    setRackFormNo('')
+    setRackFormNo(defaultRackNo)
     setRackFormRows(5)
     setRackFormCols(1)
-    setDraftGrid([])
-    setRackFormTouched(false)
-  }
-
-  const handleGenerateGrid = () => {
-    const rackNo = rackFormNo.trim().toUpperCase()
-    const rows = Number(rackFormRows)
-    const cols = Number(rackFormCols)
-
-    if (!rackNo) {
-      toast.error('Enter Rack No')
-      return
-    }
-    if (!/^[A-Z]{1,5}$/.test(rackNo)) {
-      toast.error('Rack No must be letters only (A-Z)')
-      return
-    }
-    if (!rows || rows < 1 || !cols || cols < 1) {
-      toast.error('Enter Rows and Columns')
-      return
-    }
-
-    setDraftGrid((prev) => buildGridFromInputs(rackNo, rows, cols, prev))
+    setDraftGrid(
+      defaultRackNo
+        ? buildGridFromInputs(defaultRackNo, 5, 1, [])
+        : [],
+    )
     setSelectedRackKey('__PREVIEW__')
-    setRackFormTouched(true)
-    toast.success('Grid generated — you can still change Rows/Columns any time')
   }
+
 
   const updateDraftRow = (index, field, value) => {
     setDraftGrid((prev) => {
@@ -355,26 +349,48 @@ const LocationMaster = () => {
   }
 
   const handleClearRackForm = () => {
-    setRackFormNo('')
+    const defaultRackNo = getNextRackNo()
+
+    setEditingRackNo('')
+    setRackFormNo(defaultRackNo)
     setRackFormRows(5)
     setRackFormCols(1)
-    setDraftGrid([])
-    setEditingRackNo('')
-    setRackFormTouched(false)
-    setSelectedRackKey(racks[0]?.id ?? null)
+
+    setDraftGrid(
+      defaultRackNo
+        ? buildGridFromInputs(defaultRackNo, 5, 1, [])
+        : [],
+    )
+
+    setSelectedRackKey(
+      defaultRackNo ? '__PREVIEW__' : (racks[0]?.id ?? null),
+    )
   }
 
   const handleSaveRack = async () => {
     const rackNo = rackFormNo.trim().toUpperCase()
 
     if (!rackNo) {
-      toast.error('Enter Rack No')
+      toast.error('Enter Rack Name')
       return
     }
 
 
     if (!/^[A-Z]{1,5}$/.test(rackNo)) {
       toast.error('Rack No must be letters only (A-Z)')
+      return
+    }
+
+    const rows = Number(rackFormRows)
+    const cols = Number(rackFormCols)
+
+    if (!rows || rows < 1 || rows > 50) {
+      toast.error('Rows must be between 1 and 50')
+      return
+    }
+
+    if (!cols || cols < 1 || cols > 20) {
+      toast.error('Columns must be between 1 and 20')
       return
     }
 
@@ -390,11 +406,7 @@ const LocationMaster = () => {
     }
 
     if (draftGrid.length === 0) {
-      toast.error('Enter Rows and Columns to build the grid first')
-      return
-    }
-    if (draftGrid.length === 0) {
-      toast.error('Enter Rows and Columns to build the grid first')
+      toast.error('Grid is empty. Enter valid Rows and Columns.')
       return
     }
 
@@ -411,8 +423,7 @@ const LocationMaster = () => {
       setRackFormCols(1)
       setDraftGrid([])
       setEditingRackNo('')
-      setRackFormTouched(false)
-
+  
       const res = await API.get(`/LocationRack/store/${activeStore.id}`)
       const freshRacks = res.data || []
       setRacks(freshRacks)
@@ -439,7 +450,6 @@ const normalRowCount = rackRows.filter(
 setRackFormRows(normalRowCount || 1)
     setRackFormCols(rack.columns.length || 1)
     setDraftGrid(attachPositions(rack.columns))
-    setRackFormTouched(true)
     setSelectedRackKey('__PREVIEW__')
     toast.info(`Editing Rack ${rack.rackNo} — modify and click Save`)
   }
@@ -621,11 +631,11 @@ setModalRows(normalRowCount || 1)
     const cols = Number(modalCols)
 
     if (!rackNo) {
-      toast.error('Enter Rack No')
+      toast.error('Enter Rack Name')
       return
     }
     if (!/^[A-Z]{1,5}$/.test(rackNo)) {
-      toast.error('Rack No must be letters only (A-Z)')
+      toast.error('Rack Name must be letters only (A-Z)')
       return
     }
     if (!rows || rows < 1 || !cols || cols < 1) {
@@ -653,11 +663,11 @@ setModalRows(normalRowCount || 1)
     const rackNo = modalRackNo.trim().toUpperCase()
 
     if (!rackNo) {
-      toast.error('Enter Rack No')
+      toast.error('Enter Rack Name')
       return
     }
     if (!/^[A-Z]{1,5}$/.test(rackNo)) {
-      toast.error('Rack No must be letters only (A-Z)')
+      toast.error('Rack Name must be letters only (A-Z)')
       return
     }
     if (modalGrid.length === 0) {
@@ -835,57 +845,109 @@ setModalRows(normalRowCount || 1)
                   <div className="rack-input-grid">
                     <div className="rack-input-field">
                       <label className="rack-input-label">
-                        Rack No
-                        <span className="rack-input-help">Letters only — A, B, AB...</span>
+                        Rack Name
+                        <span className="rack-input-help">
+                          Letters only — A, B, AB...
+                        </span>
                       </label>
+
                       <input
                         className="ri-full"
                         placeholder="e.g. A"
                         value={rackFormNo}
                         disabled={!!editingRackNo}
-                        onChange={(e) => setRackFormNo(e.target.value.replace(/[^a-zA-Z]/g, '').toUpperCase())}
+                        maxLength={5}
+                        onChange={(e) =>
+                          setRackFormNo(
+                            e.target.value
+                              .replace(/[^a-zA-Z]/g, '')
+                              .toUpperCase(),
+                          )
+                        }
                       />
                     </div>
 
                     <div className="rack-input-field">
                       <label className="rack-input-label">
                         Rows
-                        <span className="rack-input-help">Change any time — grid updates live</span>
+                        <span className="rack-input-help">
+                          Grid updates automatically
+                        </span>
                       </label>
+
                       <input
                         className="ri-full"
                         type="number"
                         min={1}
+                        max={50}
                         placeholder="e.g. 5"
                         value={rackFormRows}
-                        onChange={(e) => setRackFormRows(e.target.value)}
+                        onChange={(e) => {
+                          const value = e.target.value
+                          setRackFormRows(
+                            value === ''
+                              ? ''
+                              : Math.min(50, Math.max(1, Number(value))),
+                          )
+                        }}
                       />
                     </div>
 
                     <div className="rack-input-field">
                       <label className="rack-input-label">
                         Columns
-                        <span className="rack-input-help">Change any time — grid updates live</span>
+                        <span className="rack-input-help">
+                          Grid updates automatically
+                        </span>
                       </label>
+
                       <input
                         className="ri-full"
                         type="number"
                         min={1}
+                        max={20}
                         placeholder="e.g. 1"
                         value={rackFormCols}
-                        onChange={(e) => setRackFormCols(e.target.value)}
+                        onChange={(e) => {
+                          const value = e.target.value
+                          setRackFormCols(
+                            value === ''
+                              ? ''
+                              : Math.min(20, Math.max(1, Number(value))),
+                          )
+                        }}
                       />
                     </div>
                   </div>
 
-                  <button className="rack-generate-btn" type="button" onClick={handleGenerateGrid}>
-                    <FaPlus size={12} /> {rackFormTouched ? 'Regenerate Grid' : 'Generate Grid'}
-                  </button>
+                  <div
+                    style={{
+                      marginTop: 8,
+                      padding: '7px 9px',
+                      borderRadius: 6,
+                      background: '#eef4ff',
+                      color: '#315eb8',
+                      fontSize: 10.5,
+                      fontWeight: 600,
+                    }}
+                  >
+                    Grid is ready automatically. Change Rows or Columns and
+                    the grid will update instantly.
+                  </div>
 
                   {draftGrid.length > 0 && (
                     <>
-                      <small style={{ display: 'block', margin: '6px 0', color: '#4e73df', fontWeight: 600, fontSize: 10.5 }}>
-                        {draftGrid.length} slot row(s) — edit Front/Rear/Pallet below, or change Rows/Columns above any time.
+                      <small
+                        style={{
+                          display: 'block',
+                          margin: '7px 0',
+                          color: '#4e73df',
+                          fontWeight: 600,
+                          fontSize: 10.5,
+                        }}
+                      >
+                        {draftGrid.length} row(s) ready — configure Front,
+                        Rear and Pallet count below.
                       </small>
                       <table className="rgt">
                         <thead>
@@ -945,8 +1007,22 @@ setModalRows(normalRowCount || 1)
                   )}
 
                   <div className="pf">
-                    <button className="bs" onClick={handleSaveRack}>{editingRackNo ? 'Update' : 'Save'}</button>
-                    <button className="bc" onClick={handleClearRackForm}>Clear</button>
+                    <button
+                      className="bs"
+                      type="button"
+                      onClick={handleSaveRack}
+                      disabled={!draftGrid.length}
+                    >
+                      {editingRackNo ? 'Update Rack' : 'Save Rack'}
+                    </button>
+
+                    <button
+                      className="bc"
+                      type="button"
+                      onClick={handleClearRackForm}
+                    >
+                      Clear
+                    </button>
                   </div>
                 </div>
               </div>
@@ -1150,12 +1226,12 @@ setModalRows(normalRowCount || 1)
             {modalEditingRackNo ? `Edit Rack ${modalEditingRackNo}` : 'Add New Rack'}
           </div>
           <div className="text-muted mb-2" style={{ fontSize: 11 }}>
-            Rack No: letters only (A, B, AB…). Rows/Columns update the grid live — change them any time.
+            Rack Name: letters only (A, B, AB…). Rows/Columns update the grid live — change them any time.
           </div>
 
           <div className="row g-2 align-items-end mb-3">
             <div className="col-4">
-              <CFormLabel className="small mb-1">Rack No</CFormLabel>
+              <CFormLabel className="small mb-1">Rack Name</CFormLabel>
               <CFormInput
                 placeholder="A"
                 value={modalRackNo}

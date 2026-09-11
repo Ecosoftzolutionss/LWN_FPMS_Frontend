@@ -1,10 +1,14 @@
 /* =========================================================
-   DASHBOARD PAGE — SCOPED CSS
+   DASHBOARD PAGE — SCOPED CSS (consolidated, no duplicates)
 ========================================================= */
 
 .dashboard-page {
   background: #f4f6fb;
-  padding: 15px;
+  padding: 6px 8px 8px;
+  min-height: auto;
+  width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 .dashboard-subtitle {
@@ -19,55 +23,159 @@
   font-weight: 800;
   color: #23395d;
   letter-spacing: 0.03em;
-  margin-bottom: 16px;
+  margin-bottom: 6px;
 }
 
 .dashboard-loading {
   text-align: center;
-  padding: 60px;
+  padding: 35px;
   color: #94a3b8;
   font-size: 14px;
 }
 
 .dashboard-empty {
   text-align: center;
-  padding: 30px;
+  padding: 18px;
   color: #94a3b8;
   font-size: 13px;
 }
 
-/* ---- KPI cards ---- */
+/* =========================================================
+   HEADER: mode toggle + year/month/part-no filters
+========================================================= */
+
+.dashboard-header {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.dashboard-mode-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-right: 2px;
+}
+
+.dashboard-radio {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+}
+
+.dashboard-radio input[type='radio'] {
+  accent-color: #1d5cff;
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+}
+
+.dashboard-select {
+  height: 34px;
+  padding: 0 9px;
+  border: 1px solid #e1e6ef;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #23395d;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dashboard-select:focus {
+  outline: none;
+  border-color: #1d5cff;
+  box-shadow: 0 0 0 2px rgba(29, 92, 255, 0.08);
+}
+
+@media (max-width: 768px) {
+  .dashboard-header {
+    justify-content: flex-start;
+    gap: 7px;
+  }
+
+  .dashboard-mode-toggle {
+    width: auto;
+    margin-right: 0;
+  }
+}
+
+/* Part No search box */
+
+.dashboard-partno-search {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.dashboard-partno-input {
+  padding-right: 24px;
+  min-width: 160px;
+}
+
+.dashboard-partno-clear {
+  position: absolute;
+  right: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #94a3b8;
+  font-size: 14px;
+  line-height: 1;
+}
+
+/* =========================================================
+   KPI CARDS
+========================================================= */
 
 .dashboard-kpi-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 14px;
-  margin-bottom: 16px;
+  gap: 9px;
+  margin-bottom: 9px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.dashboard-kpi-grid-3,
+.dashboard-kpi-grid-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .dashboard-kpi-card {
   border: none !important;
   border-radius: 12px !important;
+  min-height: 88px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
 }
 
 .dashboard-kpi-card .card-body {
-  padding: 18px;
+  padding: 10px 13px;
 }
 
 .dashboard-kpi-card.tone-blue { background: #eaf1ff; }
 .dashboard-kpi-card.tone-green { background: #e9f9ee; }
 .dashboard-kpi-card.tone-orange { background: #fff2e6; }
 .dashboard-kpi-card.tone-purple { background: #f2edff; }
+.dashboard-kpi-card.tone-red { background: #fff0f0; }
 
 .dashboard-kpi-icon {
-  width: 34px;
-  height: 34px;
-  border-radius: 9px;
+  width: 29px;
+  height: 29px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
-  margin-bottom: 10px;
+  font-size: 12px;
+  margin-bottom: 5px;
   background: rgba(255, 255, 255, 0.65);
 }
 
@@ -75,81 +183,265 @@
 .tone-green .dashboard-kpi-icon { color: #1fa855; }
 .tone-orange .dashboard-kpi-icon { color: #e8792b; }
 .tone-purple .dashboard-kpi-icon { color: #7c3aed; }
+.tone-red .dashboard-kpi-icon { color: #dc2626; }
 
 .dashboard-kpi-label {
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.04em;
   color: #64748b;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
 }
 
 .dashboard-kpi-value {
-  font-size: 24px;
+  font-size: 21px;
   font-weight: 800;
   color: #1f2937;
-  line-height: 1.15;
+  line-height: 1.05;
 }
 
 .dashboard-kpi-sub {
-  font-size: 11px;
+  font-size: 9px;
   font-weight: 600;
   margin-top: 3px;
+  line-height: 1.2;
+  opacity: 0.78;
 }
 
 .tone-blue .dashboard-kpi-sub { color: #1d5cff; }
 .tone-green .dashboard-kpi-sub { color: #1fa855; }
 .tone-orange .dashboard-kpi-sub { color: #e8792b; }
 .tone-purple .dashboard-kpi-sub { color: #7c3aed; }
+.tone-red .dashboard-kpi-sub { color: #dc2626; }
 
-/* ---- Mid section: status donut / location bars / transaction summary ---- */
-
-.dashboard-mid-grid-3 {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 14px;
-  margin-bottom: 14px;
-  align-items: stretch;
+@media (max-width: 1200px) {
+  .dashboard-kpi-grid-3,
+  .dashboard-kpi-grid-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
-@media (max-width: 1100px) {
-  .dashboard-mid-grid-3 {
+@media (max-width: 768px) {
+  .dashboard-kpi-card {
+    min-height: 82px;
+  }
+
+  .dashboard-kpi-card .dashboard-kpi-value {
+    font-size: 19px;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-kpi-grid-3,
+  .dashboard-kpi-grid-4 {
     grid-template-columns: 1fr;
   }
 }
 
-.dashboard-status-card,
-.dashboard-location-card,
-.dashboard-transaction-card {
-  border-radius: 12px !important;
-  border: 1px solid #eef1f8 !important;
+/* =========================================================
+   CHART + STOCK STATUS ROW
+========================================================= */
+
+.dashboard-mid-grid-2 {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(280px, 0.85fr);
+  gap: 9px;
+  margin-bottom: 9px;
+  align-items: stretch;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-/* -- Donut chart -- */
+@media (max-width: 1100px) {
+  .dashboard-mid-grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
 
-.dashboard-donut-row {
+.dashboard-chart-card,
+.dashboard-status-card,
+.dashboard-recent-card {
+  border: 1px solid #e7ebf2 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.045);
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.dashboard-chart-card .card-body,
+.dashboard-status-card .card-body {
+  padding: 10px 13px;
+}
+
+.dashboard-card-header-row {
   display: flex;
   align-items: center;
-  gap: 20px;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  min-height: 25px;
+}
+
+.dashboard-card-header-row .section-title {
+  margin-bottom: 0;
+  display: flex;
+  align-items: center;
+}
+
+.dashboard-chart-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.dashboard-chart-title-wrap .section-title {
+  margin-bottom: 0 !important;
+  white-space: nowrap;
+}
+
+.dashboard-period-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: #f1f5ff;
+  color: #3159a6;
+  font-size: 9px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.dashboard-chart-legend {
+  display: flex;
+  gap: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.dashboard-chart-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* --- Chart SVG: scales to container, NEVER scrolls --- */
+
+.dashboard-chart-scroll {
+  width: 100%;
+  overflow: visible;
+}
+
+.dashboard-chart-svg {
+  display: block;
+  width: 100%;
+  height: 200px;
+  min-height: 0;
+  max-height: none;
+}
+
+.dashboard-bar {
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.dashboard-bar:hover {
+  opacity: 0.78;
+}
+
+.dot-blue { background: #1d5cff; }
+.dot-teal { background: #14b8a6; }
+.dot-orange { background: #f97316; }
+.dot-grey { background: #cbd5e1; }
+.dot-safety { background: #22c55e; }
+.dot-reorder { background: #f97316; }
+.dot-danger { background: #ef4444; }
+
+@media (max-width: 1100px) {
+  .dashboard-chart-svg {
+    height: 210px;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-chart-svg {
+    height: 190px;
+  }
+
+  .dashboard-chart-legend {
+    display: none;
+  }
+}
+
+/* =========================================================
+   CHART VALUE LABELS — always horizontal, never rotate
+========================================================= */
+
+.dashboard-chart-value-label {
+  display: block !important;
+  font-size: 10px !important;
+  font-family: Arial, sans-serif !important;
+  font-weight: 800 !important;
+  letter-spacing: 0 !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  writing-mode: horizontal-tb !important;
+  text-orientation: mixed !important;
+  transform: none !important;
+  rotate: none !important;
+  direction: ltr !important;
+  unicode-bidi: normal !important;
+  pointer-events: none !important;
+  paint-order: stroke;
+  stroke: #ffffff;
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+/* =========================================================
+   STOCK STATUS DONUT
+========================================================= */
+
+.dashboard-status-card .dashboard-donut-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 175px;
 }
 
 .dashboard-donut {
-  width: 130px;
-  height: 130px;
-  border-radius: 50%;
   position: relative;
+  width: 132px;
+  height: 132px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
+}
+
+.dashboard-donut-svg {
+  width: 132px;
+  height: 132px;
+  overflow: visible;
+}
+
+.dashboard-donut-segment {
+  cursor: pointer;
+  transition: stroke-width 0.2s ease, opacity 0.2s ease;
+}
+
+.dashboard-donut-segment:hover {
+  stroke-width: 15;
+  opacity: 0.85;
 }
 
 .dashboard-donut-center {
   position: absolute;
-  inset: 20px;
-  background: #fff;
-  border-radius: 50%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
 }
 
 .dashboard-donut-total {
@@ -168,7 +460,8 @@
 .dashboard-donut-legend {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
+  min-width: 0;
 }
 
 .dashboard-legend-item {
@@ -184,14 +477,22 @@
   flex-shrink: 0;
 }
 
-.dot-blue { background: #1d5cff; }
-.dot-orange { background: #f97316; }
-.dot-grey { background: #cbd5e1; }
-
 .dashboard-legend-value {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   color: #1f2937;
+  white-space: nowrap;
+}
+
+.dashboard-legend-value strong {
+  margin-left: 3px;
+}
+
+.dashboard-legend-pct {
+  color: #94a3b8;
+  font-weight: 600;
+  font-size: 11px;
+  margin-left: 5px;
 }
 
 .dashboard-legend-label {
@@ -200,95 +501,73 @@
   font-weight: 600;
 }
 
-/* -- Pallets by Location bars -- */
-
-.dashboard-location-list {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.dashboard-location-row {
-  display: grid;
-  grid-template-columns: 60px 1fr 50px;
-  align-items: center;
-  gap: 10px;
-}
-
-.dashboard-location-label {
-  font-size: 12px;
-  font-weight: 700;
-  color: #1f2937;
-}
-
-.dashboard-location-bar-track {
-  height: 8px;
-  background: #f1f4fa;
-  border-radius: 6px;
-  overflow: hidden;
-}
-
-.dashboard-location-bar-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #1e7e34, #4caf50);
-  border-radius: 6px;
-  transition: width 0.3s ease;
-}
-
-.dashboard-location-value {
-  font-size: 12px;
-  font-weight: 700;
-  color: #1f2937;
-  text-align: right;
-}
-
-/* -- Transaction summary -- */
-
-.dashboard-transaction-list {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.dashboard-transaction-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.dashboard-transaction-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.dashboard-transaction-icon {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-}
-
-.dashboard-transaction-icon.tone-blue { background: #eaf1ff; color: #1d5cff; }
-.dashboard-transaction-icon.tone-green { background: #e9f9ee; color: #1fa855; }
-.dashboard-transaction-icon.tone-orange { background: #fff2e6; color: #e8792b; }
-
-.dashboard-transaction-label {
-  font-size: 13px;
+.dashboard-stock-alert-note {
+  margin-top: 3px;
+  padding-top: 7px;
+  border-top: 1px solid #eef1f6;
+  font-size: 10px;
+  line-height: 1.3;
+  color: #64748b;
   font-weight: 600;
-  color: #1f2937;
 }
 
-.dashboard-transaction-value {
-  font-size: 14px;
-  font-weight: 800;
-  color: #1f2937;
+/* =========================================================
+   RECENT ACTIVITIES TABLE
+========================================================= */
+
+.dashboard-recent-card {
+  margin-top: 0 !important;
 }
 
-/* ---- Recent Activities table ---- */
+.dashboard-recent-card .card-body {
+  padding: 7px 12px 4px;
+}
+
+.dashboard-recent-card .section-title {
+  margin-bottom: 4px !important;
+}
+
+.dashboard-recent-card .rdt_TableHeadRow {
+  min-height: 30px !important;
+}
+
+.dashboard-recent-card .rdt_TableRow {
+  min-height: 34px !important;
+}
+
+.dashboard-recent-card .rdt_TableCell,
+.dashboard-recent-card .rdt_TableCol {
+  padding-left: 7px;
+  padding-right: 7px;
+}
+
+.dashboard-recent-card .rdt_Pagination {
+  min-height: 34px !important;
+}
+
+.dashboard-recent-card .rdt_TableHeadRow .rdt_TableCol {
+  font-size: 10px !important;
+}
+
+.dashboard-recent-card .rdt_TableRow .rdt_TableCell {
+  font-size: 11px !important;
+}
+
+.dashboard-recent-card .rdt_TableCell > div {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-activity-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+/* Legacy plain-table variant (kept in case any other page reuses it) */
 
 .dashboard-recent-table-wrap {
   overflow-x: auto;
@@ -319,92 +598,71 @@
   white-space: nowrap;
 }
 
-.dashboard-activity-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 700;
-  font-size: 12px;
+/* =========================================================
+   OPTIONAL CHART SUMMARY STRIP (if used)
+========================================================= */
+
+.dashboard-chart-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #eef1f8;
 }
 
-.dashboard-donut {
-  position: relative;
-  width: 150px;
-  height: 150px;
+.dashboard-chart-summary-item {
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
-.dashboard-donut-svg {
-  width: 150px;
-  height: 150px;
-  overflow: visible;
+.dashboard-chart-summary-item span {
+  font-size: 9px;
+  font-weight: 700;
+  color: #94a3b8;
+  white-space: nowrap;
 }
 
-.dashboard-donut-segment {
-  cursor: pointer;
-  transition: stroke-width 0.2s ease, opacity 0.2s ease;
+.dashboard-chart-summary-item strong {
+  font-size: 12px;
+  font-weight: 800;
+  color: #23395d;
+  white-space: nowrap;
 }
 
-.dashboard-donut-segment:hover {
-  stroke-width: 15;
-  opacity: 0.85;
-}
-
-.dashboard-donut-center {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  text-align: center;
-  pointer-events: none;
+@media (max-width: 768px) {
+  .dashboard-chart-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 /* =========================================================
-   DASHBOARD DATE RANGE FILTER
+   DATE RANGE PICKER (kept from original — unused by current
+   header but left intact in case another view relies on it)
 ========================================================= */
-
-.dashboard-header {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  width: 100%;
-  margin-bottom: 18px;
-}
 
 .dashboard-date-filter {
   display: inline-flex;
   align-items: center;
 }
 
-/* Single compact date-range button */
 .dashboard-date-range-button {
   height: 38px;
   min-width: 235px;
-
   display: flex;
   align-items: center;
   justify-content: space-between;
-
   gap: 8px;
-
   padding: 0 10px;
-
   background: #ffffff;
-
   border: 1px solid #e1e6ef;
-
   border-radius: 7px;
-
   color: #475569;
-
   font-size: 11px;
-
   font-weight: 500;
-
   cursor: pointer;
-
   transition: all 0.2s ease;
 }
 
@@ -419,258 +677,74 @@
   box-shadow: 0 0 0 2px rgba(29, 92, 255, 0.08);
 }
 
-/* Calendar icon */
 .dashboard-calendar-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-
   font-size: 12px;
-
   flex-shrink: 0;
 }
 
-/* Date text */
 .dashboard-date-range-text {
   flex: 1;
-
   text-align: left;
-
   white-space: nowrap;
-
   color: #475569;
-
   font-size: 11px;
 }
 
-/* Dropdown arrow */
 .dashboard-date-range-arrow {
   font-size: 14px;
-
   color: #94a3b8;
-
   line-height: 1;
-
   margin-top: -2px;
-
   flex-shrink: 0;
 }
 
-/* React DatePicker popup */
 .react-datepicker {
   border: 1px solid #e5eaf2 !important;
-
   border-radius: 8px !important;
-
   font-family: inherit !important;
-
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12) !important;
 }
 
 .react-datepicker__header {
   background: #ffffff !important;
-
   border-bottom: 1px solid #eef1f8 !important;
-
   border-radius: 8px 8px 0 0 !important;
 }
 
 .react-datepicker__current-month {
   font-size: 12px !important;
-
   font-weight: 700 !important;
-
   color: #23395d !important;
 }
 
 .react-datepicker__day-name {
   font-size: 10px !important;
-
   color: #94a3b8 !important;
-
   font-weight: 600 !important;
 }
 
 .react-datepicker__day {
   font-size: 11px !important;
-
-  border-radius: 5px !important;
-}
-
-.react-datepicker__day:hover {
   border-radius: 5px !important;
 }
 
 .react-datepicker__day--selected,
 .react-datepicker__day--in-range {
   background: #1d5cff !important;
-
   color: #ffffff !important;
 }
 
-.react-datepicker__day--keyboard-selected {
-  background: #eaf1ff !important;
-
-  color: #1d5cff !important;
-}
-
+.react-datepicker__day--keyboard-selected,
 .react-datepicker__day--in-selecting-range {
   background: #eaf1ff !important;
-
   color: #1d5cff !important;
 }
 
-/* Mobile */
 @media (max-width: 768px) {
-  .dashboard-header {
-    justify-content: flex-start;
-  }
-
   .dashboard-date-range-button {
     min-width: 220px;
   }
-}
-
-/* =========================================================
-   NEW DASHBOARD SECTIONS — append to dashboard.css
-   (keeps existing shared classes like .dashboard-donut,
-   .dashboard-activity-label, .dashboard-empty, .dashboard-loading,
-   .section-title, table styles, etc. from the original file)
-========================================================= */
-
-/* ---- Header: mode toggle + year/month selects ---- */
-
-.dashboard-header {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  margin-bottom: 18px;
-  flex-wrap: wrap;
-}
-
-.dashboard-mode-toggle {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-right: 8px;
-}
-
-.dashboard-radio {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #475569;
-  cursor: pointer;
-}
-
-.dashboard-radio input[type='radio'] {
-  accent-color: #1d5cff;
-  width: 15px;
-  height: 15px;
-  cursor: pointer;
-}
-
-.dashboard-select {
-  height: 38px;
-  padding: 0 10px;
-  border: 1px solid #e1e6ef;
-  border-radius: 7px;
-  background: #ffffff;
-  color: #23395d;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.dashboard-select:focus {
-  outline: none;
-  border-color: #1d5cff;
-  box-shadow: 0 0 0 2px rgba(29, 92, 255, 0.08);
-}
-
-@media (max-width: 768px) {
-  .dashboard-header {
-    justify-content: flex-start;
-  }
-}
-
-/* ---- KPI cards (3-up, no sub-line) ---- */
-
-.dashboard-kpi-grid-3 {
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-}
-
-/* ---- Chart + Stock Status mid section ---- */
-
-.dashboard-mid-grid-2 {
-  display: grid;
-  grid-template-columns: 1.6fr 1fr;
-  gap: 14px;
-  margin-bottom: 14px;
-  align-items: stretch;
-}
-
-@media (max-width: 1100px) {
-  .dashboard-mid-grid-2 {
-    grid-template-columns: 1fr;
-  }
-}
-
-.dashboard-chart-card,
-.dashboard-status-card {
-  border-radius: 12px !important;
-  border: 1px solid #eef1f8 !important;
-}
-
-.dashboard-card-header-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
-
-.dashboard-card-header-row .section-title {
-  margin-bottom: 0;
-  display: flex;
-  align-items: center;
-}
-
-.dashboard-chart-legend {
-  display: flex;
-  gap: 16px;
-  font-size: 11px;
-  font-weight: 600;
-  color: #64748b;
-}
-
-.dashboard-chart-legend span {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.dashboard-chart-svg {
-  width: 100%;
-  height: auto;
-  min-height: 260px;
-}
-
-.dot-teal { background: #14b8a6; }
-.dot-safety { background: #22c55e; }
-.dot-reorder { background: #f97316; }
-.dot-danger { background: #ef4444; }
-
-.dashboard-legend-pct {
-  color: #94a3b8;
-  font-weight: 600;
-  font-size: 11px;
-}
-
-/* Stock status donut sits a little larger here */
-.dashboard-status-card .dashboard-donut-row {
-  gap: 24px;
 }

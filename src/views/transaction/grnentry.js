@@ -26,6 +26,7 @@ const EMPTY_HEADER = {
 
 const EMPTY_LINE = {
   itemId: '',
+  stuffQuantity: '',
   palletQuantity: '',
   rate: '',
   quantity: '',
@@ -47,20 +48,22 @@ const getErrorMessage = (err, fallback) => {
 }
 
 const GRNEntry = () => {
-  const navigate = useNavigate()
-  const location = useLocation()
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [currentPage, setCurrentPage] = useState(1)
+  const [rowsPerPage, setRowsPerPage] = useState(5)
 
   const editGrnId = location.state?.editGrnId || null
   const isEditMode = !!editGrnId
-  const [items, setItems] = useState([])
-  const [suppliers, setSuppliers] = useState([])
+  const [items, setItems] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
 
-  const [header, setHeader] = useState(EMPTY_HEADER)
-  const [line, setLine] = useState(EMPTY_LINE)
-  const [lineItems, setLineItems] = useState([])
-  const [editingLineKey, setEditingLineKey] = useState(null)// rows added to the grid, not yet saved
-  const [errors, setErrors] = useState({})
-  const [grnNoIsManual, setGrnNoIsManual] = useState(true)
+  const [header, setHeader] = useState(EMPTY_HEADER);
+  const [line, setLine] = useState(EMPTY_LINE);
+  const [lineItems, setLineItems] = useState([]);
+  const [editingLineKey, setEditingLineKey] = useState(null);// rows added to the grid, not yet saved
+  const [errors, setErrors] = useState({});
+  const [grnNoIsManual, setGrnNoIsManual] = useState(true);
 
 
 
@@ -127,6 +130,16 @@ const GRNEntry = () => {
     return `${yyyy}-${mm}-${dd}`
   }
 
+  const getTodayInputDate = () => {
+    const today = new Date()
+
+    const yyyy = today.getFullYear()
+    const mm = String(today.getMonth() + 1).padStart(2, '0')
+    const dd = String(today.getDate()).padStart(2, '0')
+
+    return `${yyyy}-${mm}-${dd}`
+  }
+
   const loadGrnForEdit = async (id) => {
     try {
       const res = await API.get(`/GrnEntry/${id}`)
@@ -157,6 +170,10 @@ const GRNEntry = () => {
         itemName: l.partName || '',
         uom: l.uom || '',
         quantity: Number(l.quantity || 0),
+        stuffQuantity:
+          l.palletQuantity === null || l.palletQuantity === undefined
+            ? ''
+            : Number(l.palletQuantity),
         palletQuantity:
           l.palletQuantity === null || l.palletQuantity === undefined
             ? ''
@@ -190,13 +207,13 @@ const GRNEntry = () => {
 
   const loadItems = async () => {
     try {
-      const res = await API.get('/StoreMaster/configured-parts')
+      // Load ALL Part Numbers from Part Master
+      const res = await API.get('/ItemMaster')
       setItems(res.data || [])
     } catch {
       toast.error('Failed to load part numbers')
     }
   }
-
   const itemOptions = items.map((i) => ({
     value: i.id,
     label: i.itemNumber,
@@ -204,6 +221,7 @@ const GRNEntry = () => {
     uom: i.uom,
     unitPrice: i.unitPrice,
     effectiveDate: i.effectiveDate,
+    stuffQuantity: i.stuffQuantity,
   }))
 
   const handlePartSelect = async (selected) => {
@@ -214,123 +232,222 @@ const GRNEntry = () => {
       ...prev,
       itemId: '',
       rate: '',
+      stuffQuantity: '',
+      palletQuantity: '',
     }))
 
     return
   }
 
   try {
-    const res = await API.get(`/ItemMaster/${selected.value}`)
-    const item = res.data
+    // --------------------------------------------------
+    // 1. Load latest Part Master details
+    // --------------------------------------------------
+    const itemRes = await API.get(`/ItemMaster/${selected.value}`)
+    const item = itemRes.data || {}
 
     const rate = item.unitPrice ?? ''
+
     const effectiveDate = item.effectiveDate
-      ? item.effectiveDate.substring(0, 10)
+      ? String(item.effectiveDate).substring(0, 10)
       : ''
 
+    const stuffQuantity =
+      item.stuffQuantity !== null &&
+      item.stuffQuantity !== undefined &&
+      Number(item.stuffQuantity) > 0
+        ? Number(item.stuffQuantity)
+        : ''
+
+    // --------------------------------------------------
+    // 2. Check Location Master configuration
+    // --------------------------------------------------
+    const locationRes = await API.get(
+      `/StoreMovement/rack-slots?itemId=${selected.value}`
+    )
+
+    const locations = locationRes.data || []
+
+    const hasLocationConfiguration =
+      locations.length > 0 &&
+      locations.some(
+        (store) =>
+          store.racks &&
+          store.racks.length > 0
+      )
+
+    // --------------------------------------------------
+    // 3. If location is NOT configured
+    // --------------------------------------------------
+    if (!hasLocationConfiguration) {
+      setLine((prev) => ({
+        ...prev,
+        itemId: selected.value,
+        stuffQuantity: '',
+        palletQuantity: '',
+        rate: '',
+      }))
+
+      setErrors((prev) => ({
+        ...prev,
+        itemId:
+          `Location is not configured for Part Number ${selected.label}. ` +
+          'Please configure the location in Location Master.',
+        rate: '',
+        stuffQuantity: '',
+        palletQuantity: '',
+      }))
+
+      return
+    }
+
+    // --------------------------------------------------
+    // 4. Existing Effective Date validation
+    // --------------------------------------------------
+    const today = getTodayInputDate()
+
+    if (!effectiveDate) {
+      setLine((prev) => ({
+        ...prev,
+        itemId: selected.value,
+        stuffQuantity: '',
+        palletQuantity: '',
+        rate: '',
+      }))
+
+      setErrors((prev) => ({
+        ...prev,
+        itemId:
+          'Effective Date is not configured for this Part Number. Please update the Part Master.',
+        rate: '',
+        stuffQuantity: '',
+        palletQuantity: '',
+      }))
+
+      return
+    }
+
+    if (effectiveDate < today) {
+      const displayDate = effectiveDate
+        .split('-')
+        .reverse()
+        .join('/')
+
+      setLine((prev) => ({
+        ...prev,
+        itemId: selected.value,
+        stuffQuantity: '',
+        palletQuantity: '',
+        rate: '',
+      }))
+
+      setErrors((prev) => ({
+        ...prev,
+        itemId:
+          `Rate for Part Number ${selected.label} is effective from ${displayDate}. ` +
+          'Please update the Part Master Effective Date and Rate before continuing with the GRN process.',
+        rate: '',
+        stuffQuantity: '',
+        palletQuantity: '',
+      }))
+
+      return
+    }
+
+    // --------------------------------------------------
+    // 5. Stuff Quantity validation
+    // --------------------------------------------------
+    if (!stuffQuantity) {
+      setLine((prev) => ({
+        ...prev,
+        itemId: selected.value,
+        stuffQuantity: '',
+        palletQuantity: '',
+        rate,
+      }))
+
+      setErrors((prev) => ({
+        ...prev,
+        itemId: '',
+        rate: rate
+          ? ''
+          : 'Rate is not configured for this Part Number',
+        stuffQuantity:
+          'Stuff Quantity is not configured for this Part Number. Please update the Part Master.',
+        palletQuantity: '',
+      }))
+
+      return
+    }
+
+    // --------------------------------------------------
+    // 6. Valid Part + Valid Location
+    // --------------------------------------------------
     setLine((prev) => ({
       ...prev,
       itemId: selected.value,
-      rate: rate,
+      stuffQuantity,
+      palletQuantity: stuffQuantity,
+      rate,
     }))
 
     setErrors((prev) => ({
       ...prev,
       itemId: '',
-      rate: '',
+      rate: rate
+        ? ''
+        : 'Rate is not configured for this Part Number',
+      stuffQuantity: '',
+      palletQuantity: '',
     }))
 
-    // If invoice date is already selected, validate immediately
-    if (header.supplierInvoiceDate && effectiveDate) {
-      if (header.supplierInvoiceDate < effectiveDate) {
-        setLine((prev) => ({
-          ...prev,
-          itemId: selected.value,
-          rate: '',
-        }))
-
-        setErrors((prev) => ({
-          ...prev,
-          rate:
-            `Rate is not effective for the selected Supplier Invoice Date. ` +
-            `Effective Date is ${effectiveDate}`,
-        }))
-      }
-    }
   } catch (err) {
     setLine((prev) => ({
       ...prev,
       itemId: selected.value,
+      stuffQuantity: '',
+      palletQuantity: '',
       rate: '',
     }))
 
     setErrors((prev) => ({
       ...prev,
-      rate: 'Failed to load Item Master Rate',
+      itemId: '',
+      rate: 'Failed to load Part Master details',
+      stuffQuantity: '',
     }))
 
-    toast.error('Failed to load Item Price')
+    toast.error(
+      getErrorMessage(
+        err,
+        'Failed to check Part Number / Location configuration'
+      )
+    )
   }
 }
 
-  const supplierOptions = suppliers.map((s) => ({ value: s.id, label: s.supplierName }))
-
-  const selectedItem = itemOptions.find((x) => String(x.value) === String(line.itemId))
-
-  const clearError = (name) => setErrors((prev) => ({ ...prev, [name]: '' }))
-
-  const handleHeaderChange = async (e) => {
-  const { name, value } = e.target
-
-  setHeader((prev) => ({
-    ...prev,
-    [name]: value,
+  const supplierOptions = suppliers.map((s) => ({
+    value: s.id,
+    label: s.supplierName,
   }))
 
-  clearError(name)
+  const selectedItem = itemOptions.find(
+    (x) => String(x.value) === String(line.itemId)
+  )
 
-  if (name === 'supplierInvoiceDate' && line.itemId) {
-    try {
-      const res = await API.get(`/ItemMaster/${line.itemId}`)
-      const item = res.data
+  const clearError = (name) =>
+    setErrors((prev) => ({ ...prev, [name]: '' }))
 
-      const effectiveDate = item.effectiveDate
-        ? item.effectiveDate.substring(0, 10)
-        : ''
+  const handleHeaderChange = (e) => {
+    const { name, value } = e.target
 
-      if (!effectiveDate) {
-        setLine((prev) => ({ ...prev, rate: '' }))
-        setErrors((prev) => ({
-          ...prev,
-          rate: 'Effective Date is not configured for this Part Number',
-        }))
-        return
-      }
+    setHeader((prev) => ({
+      ...prev,
+      [name]: value,
+    }))
 
-      if (value < effectiveDate) {
-        setLine((prev) => ({ ...prev, rate: '' }))
-
-        setErrors((prev) => ({
-          ...prev,
-          rate:
-            `Rate is not effective for the selected Supplier Invoice Date. ` +
-            `Effective Date is ${effectiveDate}`,
-        }))
-        return
-      }
-
-      setLine((prev) => ({
-        ...prev,
-        rate: item.unitPrice ?? '',
-      }))
-
-      clearError('rate')
-    } catch {
-      setLine((prev) => ({ ...prev, rate: '' }))
-      toast.error('Failed to validate Item Price')
-    }
+    clearError(name)
   }
-}
 
   // Native <input type="date"> only opens its picker when the small
   // calendar icon is clicked, not the rest of the field. This makes a
@@ -349,7 +466,17 @@ const GRNEntry = () => {
 
   const handleLineChange = (e) => {
     const { name, value } = e.target
-    setLine({ ...line, [name]: value })
+
+    // Stuff Quantity / Pallet Quantity are master-driven values.
+    if (name === 'stuffQuantity' || name === 'palletQuantity') {
+      return
+    }
+
+    setLine((prev) => ({
+      ...prev,
+      [name]: value,
+    }))
+
     clearError(name)
   }
 
@@ -398,30 +525,43 @@ const GRNEntry = () => {
     if (!header.poNumber.trim()) temp.poNumber = 'PO Number is required'
     if (!header.poDate) temp.poDate = 'PO Date is required'
     if (!header.grnType) temp.grnType = 'GRN Type is required'
+
     const invoiceNumber = header.supplierInvoiceNumber.trim()
     if (!invoiceNumber) {
       temp.supplierInvoiceNumber = 'Supplier Invoice Number is required'
     } else if (!/^[0-9]+$/.test(invoiceNumber)) {
-      temp.supplierInvoiceNumber = 'Supplier Invoice Number must be numbers only'
+      temp.supplierInvoiceNumber =
+        'Supplier Invoice Number must be numbers only'
     }
 
-    if (!header.supplierInvoiceDate) temp.supplierInvoiceDate = 'Supplier Invoice Date is required'
+    if (!header.supplierInvoiceDate) {
+      temp.supplierInvoiceDate = 'Supplier Invoice Date is required'
+    }
 
     if (!line.itemId) {
       temp.itemId = 'Part Number is required'
+    } else if (errors.itemId) {
+      // Effective Date validation errors are stored against Part Number.
+      temp.itemId = errors.itemId
     } else if (
       !editingLineKey &&
-      lineItems.some((l) => l.itemId === line.itemId)
+      lineItems.some((l) => String(l.itemId) === String(line.itemId))
     ) {
       temp.itemId = 'This part has already been added'
     }
-    if (line.rate === '' || Number(line.rate) <= 0) temp.rate = 'Rate is required'
-    if (line.quantity === '' || Number(line.quantity) <= 0) temp.quantity = 'Quantity is required'
 
-    if (line.palletQuantity !== '' && Number(line.palletQuantity) > 0 && line.quantity !== '') {
-      if (Number(line.palletQuantity) > Number(line.quantity)) {
-        temp.palletQuantity = 'Pallet Quantity cannot be greater than Quantity'
-      }
+    if (line.rate === '' || Number(line.rate) <= 0) {
+      temp.rate = errors.rate || 'Rate is required'
+    }
+
+    if (line.stuffQuantity === '' || Number(line.stuffQuantity) <= 0) {
+      temp.stuffQuantity =
+        errors.stuffQuantity ||
+        'Stuff Quantity is required. Please update the Part Master.'
+    }
+
+    if (line.quantity === '' || Number(line.quantity) <= 0) {
+      temp.quantity = 'Quantity is required'
     }
 
     setErrors(temp)
@@ -432,7 +572,7 @@ const GRNEntry = () => {
     if (!validateAdd()) return
 
     const quantity = Number(line.quantity)
-    const palletQty = Number(line.palletQuantity) || 0
+    const stuffQuantity = Number(line.stuffQuantity)
     const rate = Number(line.rate)
 
     const baseRow = {
@@ -441,26 +581,24 @@ const GRNEntry = () => {
       itemName: selectedItem?.itemName || '',
       uom: selectedItem?.uom || '',
       rate,
+      stuffQuantity,
     }
 
     let newRows = []
 
-    if (palletQty > 0 && palletQty < quantity) {
-      // Split into full pallets of `palletQty` each, plus one remainder
-      // row if the quantity doesn't divide evenly — e.g. Quantity 1000,
-      // Pallet Qty 200 -> five rows of 200 each. Each split row's Total
-      // Value = rate × that row's own quantity (its pallet chunk), which
-      // is still "Qty × Rate" per row — no change needed here.
-      const fullPallets = Math.floor(quantity / palletQty)
-      const remainder = quantity % palletQty
+    // Stuff Quantity is the configured quantity per pallet.
+    // Split the received quantity into full pallets + remainder.
+    if (stuffQuantity > 0 && stuffQuantity < quantity) {
+      const fullPallets = Math.floor(quantity / stuffQuantity)
+      const remainder = quantity % stuffQuantity
 
       for (let i = 0; i < fullPallets; i++) {
         newRows.push({
           ...baseRow,
           key: `${line.itemId}-${Date.now()}-${i}`,
-          quantity: palletQty,
-          palletQuantity: palletQty,
-          totalValue: Math.round(rate * palletQty * 100) / 100,
+          quantity: stuffQuantity,
+          palletQuantity: stuffQuantity,
+          totalValue: Math.round(rate * stuffQuantity * 100) / 100,
         })
       }
 
@@ -474,26 +612,23 @@ const GRNEntry = () => {
         })
       }
     } else {
-      // No split needed — Pallet Qty blank, zero, or >= Quantity.
-      // ★ CHANGED: totalValue here now comes from the Qty × Rate constant above.
+      // If received quantity <= Stuff Quantity, this GRN line is one
+      // partial pallet. Never send palletQuantity greater than quantity.
       newRows = [
         {
           ...baseRow,
           key: `${line.itemId}-${Date.now()}`,
           quantity,
-          palletQuantity: line.palletQuantity,
-          totalValue: Math.round(totalValue * 100) / 100,
+          palletQuantity: quantity,
+          totalValue: Math.round(rate * quantity * 100) / 100,
         },
       ]
     }
 
-    if (editingLineKey) {
-      setLineItems((prev) => [...prev, ...newRows])
-    } else {
-      setLineItems((prev) => [...prev, ...newRows])
-    }
+    setLineItems((prev) => [...prev, ...newRows])
     setLine(EMPTY_LINE)
     setEditingLineKey(null)
+    setErrors({})
   }
 
   const handleCancel = () => {
@@ -505,6 +640,7 @@ const GRNEntry = () => {
       itemId: '',
       rate: '',
       quantity: '',
+      stuffQuantity: '',
       palletQuantity: '',
     }))
   }
@@ -513,29 +649,70 @@ const GRNEntry = () => {
     setLineItems((prev) => prev.filter((x) => x.key !== key))
   }
 
-  const handleEditLine = (row) => {
+  const handleEditLine = async (row) => {
     if (row.isPosted) {
       toast.info('Posted item cannot be edited')
       return
     }
 
-    setLine({
-      itemId: String(row.itemId),
-      palletQuantity:
-        row.palletQuantity === null || row.palletQuantity === undefined
-          ? ''
-          : row.palletQuantity,
-      rate: row.rate,
-      quantity: row.quantity,
-    })
+    try {
+      const res = await API.get(`/ItemMaster/${row.itemId}`)
+      const item = res.data || {}
 
-    setEditingLineKey(row.key)
+      const effectiveDate = item.effectiveDate
+        ? String(item.effectiveDate).substring(0, 10)
+        : ''
 
-    // Remove it temporarily from the grid.
-    // It will be added back when Update Item is clicked.
-    setLineItems((prev) => prev.filter((x) => x.key !== row.key))
+      const today = getTodayInputDate()
 
-    setErrors({})
+      if (!effectiveDate) {
+        toast.error(
+          'Effective Date is not configured for this Part Number. Please update the Part Master.'
+        )
+        return
+      }
+
+      if (effectiveDate < today) {
+        const displayDate = effectiveDate.split('-').reverse().join('/')
+
+        toast.error(
+          `Part is not effective. Effective Date is ${displayDate}. ` +
+          'Please update the Part Master Effective Date and then continue the GRN process.'
+        )
+        return
+      }
+
+      const masterStuffQuantity =
+        item.stuffQuantity !== null &&
+          item.stuffQuantity !== undefined &&
+          Number(item.stuffQuantity) > 0
+          ? Number(item.stuffQuantity)
+          : ''
+
+      setLine({
+        itemId: String(row.itemId),
+        stuffQuantity: masterStuffQuantity,
+        palletQuantity:
+          row.palletQuantity === null ||
+            row.palletQuantity === undefined
+            ? ''
+            : Number(row.palletQuantity),
+        rate: Number(item.unitPrice ?? row.rate ?? 0),
+        quantity: Number(row.quantity || 0),
+      })
+
+      setEditingLineKey(row.key)
+
+      // Remove it temporarily from the grid.
+      // It will be added back when Update Item is clicked.
+      setLineItems((prev) => prev.filter((x) => x.key !== row.key))
+
+      setErrors({})
+    } catch (err) {
+      toast.error(
+        getErrorMessage(err, 'Failed to load Part Master details')
+      )
+    }
   }
 
   const handleClearAll = () => {
@@ -629,7 +806,13 @@ const GRNEntry = () => {
   // Movement, etc.) instead of a plain HTML <table>, with built-in
   // pagination for GRNs that end up with a lot of split pallet rows.
   const lineColumns = [
-    { name: 'S.NO', selector: (row, index) => index + 1, width: '70px' },
+    {
+      name: 'S.NO',
+      width: '70px',
+      center: true,
+      cell: (row, index) =>
+        (currentPage - 1) * rowsPerPage + index + 1,
+    },
     {
       name: 'PART',
       grow: 2,
@@ -648,22 +831,13 @@ const GRNEntry = () => {
       name: 'ACTION',
       center: true,
       cell: (row) => (
-        <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
-          <button
-            type="button"
-            className="grn-edit-btn"
-            onClick={() => handleEditLine(row)}
-            disabled={row.isPosted}
-            title={row.isPosted ? 'Posted item cannot be edited' : 'Edit Item'}
-          >
-            <FaEdit size={11} /> Edit
-          </button>
-
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
           <button
             type="button"
             className="grn-delete-btn"
             onClick={() => handleDeleteLine(row.key)}
             disabled={row.isPosted}
+            title={row.isPosted ? 'Posted item cannot be deleted' : 'Delete Item'}
           >
             <FaTrash size={11} /> Delete
           </button>
@@ -691,7 +865,13 @@ const GRNEntry = () => {
                 disabled={isEditMode || !grnNoEditable}
                 className={errors.grnNo ? 'error-input' : ''}
                 onChange={(e) => {
-                  setHeader({ ...header, grnNo: e.target.value })
+                  const value = e.target.value.replace(/[^0-9]/g, '')
+
+                  setHeader((prev) => ({
+                    ...prev,
+                    grnNo: value,
+                  }))
+
                   clearError('grnNo')
                 }}
               />
@@ -785,26 +965,26 @@ const GRNEntry = () => {
               {errors.grnType && <small className="text-danger">{errors.grnType}</small>}
             </CCol>
 
-          <CCol md={4}>
-  <label className="custom-label">
-    <strong>Part Number</strong> <span className="required">*</span>
-  </label>
+            <CCol md={4}>
+              <label className="custom-label">
+                <strong>Part Number</strong> <span className="required">*</span>
+              </label>
 
-  <div className={errors.itemId ? 'react-select-error' : ''}>
-    <Select
-      classNamePrefix="react-select"
-      placeholder="Select Part Number"
-      options={itemOptions}
-      value={selectedItem || null}
-      onChange={handlePartSelect}
-      isClearable
-    />
-  </div>
+              <div className={errors.itemId ? 'react-select-error' : ''}>
+                <Select
+                  classNamePrefix="react-select"
+                  placeholder="Select Part Number"
+                  options={itemOptions}
+                  value={selectedItem || null}
+                  onChange={handlePartSelect}
+                  isClearable
+                />
+              </div>
 
-  {errors.itemId && (
-    <small className="text-danger">{errors.itemId}</small>
-  )}
-</CCol>
+              {errors.itemId && (
+                <small className="text-danger">{errors.itemId}</small>
+              )}
+            </CCol>
             <CCol md={4}>
               <label className="custom-label"><strong>Part Name</strong></label>
               <CFormInput value={selectedItem?.itemName || ''} placeholder="Auto-filled from Part Number" disabled />
@@ -876,16 +1056,27 @@ const GRNEntry = () => {
               )}
             </CCol>
             <CCol md={4}>
-              <label className="custom-label"><strong>Pallet Quantity</strong></label>
+              <label className="custom-label">
+                <strong>Stuff Quantity</strong>
+              </label>
               <CFormInput
                 type="number"
                 name="palletQuantity"
-                placeholder="Enter Pallet Quantity"
-                value={line.palletQuantity}
-                className={errors.palletQuantity ? 'error-input' : ''}
-                onChange={handleLineChange}
+                placeholder="Auto-filled from Part Master"
+                value={line.stuffQuantity}
+                className={errors.stuffQuantity ? 'error-input' : ''}
+                disabled
               />
-              {errors.palletQuantity && <small className="text-danger">{errors.palletQuantity}</small>}
+              {errors.stuffQuantity && (
+                <small className="text-danger">
+                  {errors.stuffQuantity}
+                </small>
+              )}
+              {!errors.stuffQuantity && line.stuffQuantity !== '' && (
+                <small className="text-muted">
+                  Auto-filled from Part Master
+                </small>
+              )}
             </CCol>
 
             <CCol md={4}>
@@ -920,16 +1111,35 @@ const GRNEntry = () => {
               columns={lineColumns}
               data={lineItems}
               pagination
-              paginationPerPage={5}
+              paginationPerPage={rowsPerPage}
               paginationRowsPerPageOptions={[5, 10, 25, 50]}
+              onChangePage={(page) => {
+                setCurrentPage(page)
+              }}
+              onChangeRowsPerPage={(newPerPage, page) => {
+                setRowsPerPage(newPerPage)
+                setCurrentPage(page)
+              }}
               persistTableHead
               striped
               responsive
               highlightOnHover
-              noDataComponent={<div className="grn-empty-row">No parts added yet</div>}
+              noDataComponent={
+                <div className="grn-empty-row">
+                  No parts added yet
+                </div>
+              }
               customStyles={{
-                rows: { style: { minHeight: '38px' } },
-                headRow: { style: { backgroundColor: '#f1f4fa' } },
+                rows: {
+                  style: {
+                    minHeight: '38px',
+                  },
+                },
+                headRow: {
+                  style: {
+                    backgroundColor: '#f1f4fa',
+                  },
+                },
                 headCells: {
                   style: {
                     justifyContent: 'center',
@@ -948,12 +1158,6 @@ const GRNEntry = () => {
                 },
               }}
             />
-
-            {/* Totals bar — sums the FULL lineItems array (every page),
-                not just whichever page the DataTable happens to be
-                showing. Pallet Qty is intentionally excluded, same as
-                before — it's a per-line split marker, not a meaningful
-                running total. */}
             {lineItems.length > 0 && (
               <div
                 style={{

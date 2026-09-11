@@ -185,7 +185,7 @@ const MaterialIssueSlip = () => {
         },
 
         {
-            name: 'ISSUE SLIP NO',
+            name: 'ISSUE NO',
             selector: row =>
                 row.issueNumber || '—',
 
@@ -434,7 +434,7 @@ const MaterialIssueSlip = () => {
                                     <div className="header-cell">
 
                                         <strong>
-                                            ISSUE SLIP NO.
+                                            ISSUE NO.
                                         </strong>
 
                                         <div className="value-line">
@@ -608,7 +608,7 @@ const MaterialIssueSlip = () => {
                                 <div className="remarks">
 
                                     <strong>
-                                        Remarks
+                                        Remarks:
                                     </strong>
 
                                     <br />
@@ -625,14 +625,10 @@ const MaterialIssueSlip = () => {
                                 <div className="approval-grid">
 
                                     <div className="approval-box">
-
                                         PREPARED BY
-
                                         <br />
                                         <br />
-
-                                        {selectedSlip.issuedBy || ''}
-
+                                        {selectedSlip.issuedTo || ''}
                                     </div>
 
 
