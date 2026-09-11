@@ -105,16 +105,13 @@ const StoreMaster = () => {
   })
 
   const [showForm, setShowForm] = useState(false)
-
   const [editId, setEditId] = useState(null)
-
   const [search, setSearch] = useState('')
-
   const [deleteId, setDeleteId] = useState(null)
-
   const [deleteStore, setDeleteStore] = useState(null)
-
   const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [rowsPerPage, setRowsPerPage] = useState(10)
 
   const {
     privileges: userPrivileges = [],
@@ -767,13 +764,10 @@ const StoreMaster = () => {
 
     {
       name: 'SL.NO',
-
-      selector: (row, index) =>
-        index + 1,
-
       width: '90px',
-
       center: true,
+      cell: (row, index) =>
+        (currentPage - 1) * rowsPerPage + index + 1,
     },
 
 
@@ -1347,47 +1341,51 @@ const StoreMaster = () => {
 
             <CFormInput
               placeholder="Search..."
-
               className="search-box"
-
               style={{
                 width: '320px',
               }}
-
               value={search}
-
-              onChange={(e) =>
-                setSearch(
-                  e.target.value
-                )
-              }
+              onChange={(e) => {
+                setSearch(e.target.value)
+                setCurrentPage(1)
+              }}
             />
 
           </div>
 
 
           <DataTable
-
             columns={columns}
-
             data={filteredStores}
 
             pagination
 
+            paginationPerPage={rowsPerPage}
+
+            paginationRowsPerPageOptions={[
+              10,
+              20,
+              30,
+              50,
+              100,
+            ]}
+
+            onChangePage={(page) => {
+              setCurrentPage(page)
+            }}
+
+            onChangeRowsPerPage={(newPerPage, page) => {
+              setRowsPerPage(newPerPage)
+              setCurrentPage(page)
+            }}
+
             striped
-
             responsive
-
             highlightOnHover
-
-            customStyles={
-              customStyles
-            }
-
+            customStyles={customStyles}
           />
-
         </CCardBody>
-
       </CCard>
 
 
@@ -1409,7 +1407,6 @@ const StoreMaster = () => {
 
         backdrop="static"
       >
-
         <CModalHeader
           className="border-0"
         >
@@ -1419,14 +1416,11 @@ const StoreMaster = () => {
           >
             ⚠ Confirm Delete
           </CModalTitle>
-
         </CModalHeader>
-
 
         <CModalBody
           className="text-center"
         >
-
           <p>
             Are you sure you want
             to delete this Store record?
@@ -1436,21 +1430,16 @@ const StoreMaster = () => {
           <div
             style={{
               background: '#f8f9fa',
-
               padding: '12px',
-
               borderRadius: '8px',
-
               marginTop: '10px',
             }}
           >
 
             <div>
-
               <strong>
                 Pallet Number :
               </strong>{' '}
-
               <span
                 className="text-primary fw-bold"
               >
@@ -1458,18 +1447,14 @@ const StoreMaster = () => {
                   deleteStore?.palletNumber
                 }
               </span>
-
             </div>
-
           </div>
-
         </CModalBody>
 
 
         <CModalFooter
           className="border-0 d-flex justify-content-center"
         >
-
           <CButton
             color="secondary"
 
@@ -1479,8 +1464,6 @@ const StoreMaster = () => {
           >
             Cancel
           </CButton>
-
-
           <CButton
             color="danger"
 
@@ -1490,11 +1473,8 @@ const StoreMaster = () => {
           >
             Delete
           </CButton>
-
         </CModalFooter>
-
       </CModal>
-
     </div>
   )
 }

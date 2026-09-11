@@ -21,6 +21,7 @@ import {
   cilNotes,
   cilChart,
   cilListRich,
+  cilLocationPin
 } from '@coreui/icons'
 
 import { CNavGroup, CNavItem } from '@coreui/react'
@@ -153,13 +154,26 @@ const _nav = [
       to: '/report/Grnreport',
       icon: <CIcon icon={cilNotes} customClassName="nav-icon" />,
     },
-
     {
       component: CNavItem,
-      name: 'Issue Report',
+      name: 'Store Report',
+      to: '/report/StoreReport',
+      icon: <CIcon icon={cilLocationPin} customClassName="nav-icon" />,
+    },
+    {
+      component: CNavItem,
+      name: 'Material Issue Report',
       to: '/report/MaterialIssueReport',
       icon: <CIcon icon={cilListRich} customClassName="nav-icon" />,
     },
+
+     {
+      component: CNavItem,
+      name: 'Stock Report',
+      to: '/report/StockReport',
+      icon: <CIcon icon={cilListRich} customClassName="nav-icon" />,
+    },
+
   ],
 }
 

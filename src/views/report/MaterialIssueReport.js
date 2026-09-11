@@ -11,7 +11,7 @@ import {
   CFormInput,
   CCard,
   CCardBody,
-   CTooltip,
+  CTooltip,
 } from '@coreui/react'
 
 import {
@@ -98,8 +98,8 @@ const getErrorMessage = (err, fallback) => {
 const TooltipCell = ({ value }) => {
   const text =
     value === null ||
-    value === undefined ||
-    value === ''
+      value === undefined ||
+      value === ''
       ? '—'
       : String(value)
 
@@ -490,148 +490,153 @@ const MaterialIssueReport = () => {
   // TABLE COLUMNS
   // ==========================================================
 
- // ============================================================
-// TABLE COLUMNS
-// ============================================================
+  // ============================================================
+  // TABLE COLUMNS
+  // ============================================================
 
-const columns = [
-  {
-    name: 'ISSUE NO',
-    selector: (row) => row.issueNumber,
-    sortable: true,
-    minWidth: '120px',
-
-    cell: (row) => (
-      <TooltipCell value={row.issueNumber} />
-    ),
-  },
-
-  {
-    name: 'PART',
-    selector: (row) => row.partNumber,
-    sortable: true,
-    width: '100px',
-
-    cell: (row) => (
-      <TooltipCell value={row.partNumber} />
-    ),
-  },
-
-  {
-    name: 'PART NAME',
-    selector: (row) => row.partName,
-    wrap: true,
-    minWidth: '150px',
-
-    cell: (row) => (
-      <TooltipCell value={row.partName} />
-    ),
-  },
-
-  {
-    name: 'QTY',
-    selector: (row) => row.quantity ?? 0,
-    sortable: true,
-    center: true,
-    width: '75px',
-
-    cell: (row) => (
-      <TooltipCell
-        value={row.quantity ?? 0}
-      />
-    ),
-  },
-
-  // {
-  //   name: 'ISSUED TO',
-  //   selector: (row) => row.issuedTo,
-  //   sortable: true,
-  //   wrap: true,
-  //   minWidth: '120px',
-
-  //   cell: (row) => (
-  //     <TooltipCell value={row.issuedTo} />
-  //   ),
-  // },
-
-  {
-    name: 'ISSUED BY',
-    selector: (row) => row.issuedTo,
-    minWidth: '110px',
-
-    cell: (row) => (
-      <TooltipCell value={row.issuedTo} />
-    ),
-  },
-
-  {
-    name: 'STORE LOCATION',
-    selector: (row) => row.storeLocation ?? '—',
-    minWidth: '130px',
-
-    cell: (row) => (
-      <TooltipCell
-        value={row.storeLocation ?? '—'}
-      />
-    ),
-  },
-
-  {
-    name: 'PALLET NO',
-    selector: (row) => row.palletNo ?? '—',
-    width: '110px',
-
-    cell: (row) => (
-      <TooltipCell
-        value={row.palletNo ?? '—'}
-      />
-    ),
-  },
-
-  {
-    name: 'GRN NO',
-    selector: (row) => row.grnNumber ?? '—',
-    minWidth: '110px',
-
-    cell: (row) => (
-      <TooltipCell
-        value={row.grnNumber ?? '—'}
-      />
-    ),
-  },
-
-  {
-    name: 'ISSUE DATE',
-    selector: (row) => row.issueDate,
-    sortable: true,
-    minWidth: '155px',
-
-    cell: (row) => (
-      <TooltipCell
-        value={formatDateTime(row.issueDate)}
-      />
-    ),
-  },
-]
+  const columns = [
 
 
-  // ==========================================================
-  // SUMMARY
-  // Values come from the complete filtered dataset on the server.
-  // ==========================================================
+    {
+      name: 'S.NO',
+      width: '65px',
+      center: true,
+      cell: (row, index) => (
+        <TooltipCell
+          value={
+            (currentPage - 1) * rowsPerPage + index + 1
+          }
+        />
+      ),
+    },
 
-  // ==========================================================
-  // DATA TABLE STYLES
-  // ==========================================================
+    {
+      name: 'PART NUMBER',
+      selector: (row) => row.partNumber,
+      sortable: true,
+      width: '120px',
+
+      cell: (row) => (
+        <TooltipCell value={row.partNumber} />
+      ),
+    },
+
+    {
+      name: 'PART NAME',
+      selector: (row) => row.partName,
+      wrap: true,
+      minWidth: '150px',
+
+      cell: (row) => (
+        <TooltipCell value={row.partName} />
+      ),
+    },
+
+    {
+      name: 'QTY',
+      selector: (row) => row.quantity ?? 0,
+      sortable: true,
+      center: true,
+      width: '75px',
+
+      cell: (row) => (
+        <TooltipCell
+          value={row.quantity ?? 0}
+        />
+      ),
+    },
+
+    {
+      name: 'PALLET NO',
+      selector: (row) => row.palletNo ?? '—',
+      width: '110px',
+
+      cell: (row) => (
+        <TooltipCell
+          value={row.palletNo ?? '—'}
+        />
+      ),
+    },
+
+    {
+      name: 'GRN NO',
+      selector: (row) => row.grnNumber ?? '—',
+      minWidth: '110px',
+
+      cell: (row) => (
+        <TooltipCell
+          value={row.grnNumber ?? '—'}
+        />
+      ),
+    },
+
+
+    // {
+    //   name: 'ISSUED TO',
+    //   selector: (row) => row.issuedTo,
+    //   sortable: true,
+    //   wrap: true,
+    //   minWidth: '120px',
+
+    //   cell: (row) => (
+    //     <TooltipCell value={row.issuedTo} />
+    //   ),
+    // },
+
+    {
+      name: 'ISSUE NO',
+      selector: (row) => row.issueNumber,
+      sortable: true,
+      minWidth: '120px',
+
+      cell: (row) => (
+        <TooltipCell value={row.issueNumber} />
+      ),
+    },
+
+    {
+      name: 'ISSUED BY',
+      selector: (row) => row.issuedTo,
+      minWidth: '110px',
+
+      cell: (row) => (
+        <TooltipCell value={row.issuedTo} />
+      ),
+    },
+
+    // {
+    //   name: 'STORE LOCATION',
+    //   selector: (row) => row.storeLocation ?? '—',
+    //   minWidth: '130px',
+
+    //   cell: (row) => (
+    //     <TooltipCell
+    //       value={row.storeLocation ?? '—'}
+    //     />
+    //   ),
+    // },
+
+
+    {
+      name: 'ISSUE DATE',
+      selector: (row) => row.issueDate,
+      sortable: true,
+      minWidth: '155px',
+
+      cell: (row) => (
+        <TooltipCell
+          value={formatDateTime(row.issueDate)}
+        />
+      ),
+    },
+  ]
 
   const customStyles = {
-
     table: {
       style: {
         width: '100%',
       },
     },
-
 
     rows: {
       style: {
@@ -639,14 +644,11 @@ const columns = [
       },
     },
 
-
     headRow: {
       style: {
         minHeight: '46px',
-
         backgroundColor:
           '#f1f4fa',
-
         borderBottom:
           '1px solid #d8deea',
       },
@@ -719,40 +721,18 @@ const columns = [
   return (
 
     <div className="mi-report-page">
-
-
-      {/* ======================================================
-          FIRST CARD
-          DATE + CENTER BUTTONS
-          ====================================================== */}
-
       <CCard
         className="mi-report-filter-card"
       >
-
         <CCardBody>
-
-
           {/* TITLE */}
-
           <div className="section-title">
             Material Issue Report
           </div>
-
-
-          {/* ==================================================
-              DATE ROW
-              ================================================== */}
-
           <div className="mi-report-filter-row">
-
-
-            {/* FROM DATE */}
-
             <div
               className="mi-report-filter-field"
             >
-
               <label className="custom-label">
                 From Date
               </label>
@@ -784,18 +764,12 @@ const columns = [
 
                   aria-label="From Date"
                 />
-
               </div>
-
             </div>
-
-
-            {/* TO DATE */}
 
             <div
               className="mi-report-filter-field"
             >
-
               <label className="custom-label">
                 To Date
               </label>
@@ -812,27 +786,18 @@ const columns = [
 
                 <CFormInput
                   ref={toDateRef}
-
                   type="date"
-
                   value={toDate}
-
                   onChange={(e) =>
                     setToDate(
                       e.target.value,
                     )
                   }
-
                   className="mi-report-date-input"
-
                   aria-label="To Date"
                 />
-
               </div>
-
             </div>
-
-
           </div>
 
 
@@ -841,13 +806,9 @@ const columns = [
               ================================================== */}
 
           <div className="mi-report-date-actions">
-
-
             <CButton
               type="button"
-
               className="mi-report-search-btn"
-
               onClick={() =>
                 loadReport()
               }
@@ -865,7 +826,6 @@ const columns = [
 
             </CButton>
 
-
             <CButton
               type="button"
 
@@ -877,27 +837,13 @@ const columns = [
             >
 
               <FaSyncAlt size={12} />
-
               <span>
                 Clear
               </span>
-
             </CButton>
-
-
           </div>
-
-
         </CCardBody>
-
       </CCard>
-
-
-
-      {/* ======================================================
-          SECOND CARD
-          SUMMARY + EXPORT + SEARCH + GRID
-          ====================================================== */}
 
       <CCard
         className="mi-report-result-card"
@@ -910,7 +856,7 @@ const columns = [
               SUMMARY
               ================================================== */}
 
-          <div className="mi-report-summary-row">
+          {/* <div className="mi-report-summary-row">
 
 
             <div>
@@ -952,47 +898,29 @@ const columns = [
             </div>
 
 
-          </div>
+          </div> */}
 
 
-          {/* ==================================================
-              SECOND CARD TOOLBAR
-              LEFT  = EXPORT
-              RIGHT = SEARCH
-              ================================================== */}
+         
 
           <div className="mi-report-result-toolbar">
-
-
-            {/* EXPORT LEFT */}
-
             <div className="mi-report-export-wrapper">
-
               <CButton
                 type="button"
-
                 className="mi-report-export-btn"
-
                 onClick={
                   handleExportExcel
                 }
               >
 
                 <FaFileExcel size={13} />
-
                 <span>
-                  Export to Excel
+                  Export
                 </span>
-
               </CButton>
-
             </div>
 
-
-            {/* SEARCH RIGHT */}
-
             <div className="mi-report-grid-search">
-
               <CFormInput
                 type="text"
 
@@ -1012,19 +940,9 @@ const columns = [
               />
 
             </div>
-
-
           </div>
-
-
-          {/* ==================================================
-              GRID
-              ================================================== */}
-
           <div className="mi-report-table-wrapper">
-
             <DataTable
-
               columns={columns}
 
               data={rows}
@@ -1098,19 +1016,11 @@ const columns = [
               }
 
             />
-
           </div>
-
-
         </CCardBody>
-
       </CCard>
-
-
     </div>
 
   )
 }
-
-
 export default MaterialIssueReport

@@ -31,7 +31,14 @@
   font-weight: 700;
   font-size: 17px;
 }
+/* =========================================================
+   PRICE INFORMATION SECTION
+========================================================= */
 
+.item-master-page .price-section-title {
+  margin-top: 30px;
+  margin-bottom: 26px;
+}
 .item-master-page .summary-value {
   font-size: 26px;
   font-weight: 700;

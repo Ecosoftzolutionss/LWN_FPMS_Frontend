@@ -16,6 +16,7 @@ import {
 import { FaEdit, FaTrash, FaPlus, FaArrowLeft } from 'react-icons/fa'
 import { toast } from 'react-toastify'
 import API from '../../api.js'
+import Select from 'react-select'
 import '../../assets/CSS/customerGroup.css'
 import usePrivilege from '../hooks/usePrivilege.js'
 
@@ -35,6 +36,10 @@ const getErrorMessage = (err, fallback) => {
 }
 
 const CustomerGroupMaster = () => {
+  const customerGroupTypeOptions = [
+    { value: 'Internal', label: 'Internal' },
+    { value: 'External', label: 'External' },
+  ]
   const typeRef = useRef()
 
   const customStyles = {
@@ -74,7 +79,9 @@ const CustomerGroupMaster = () => {
   const [deleteId, setDeleteId] = useState(null)
   const [deleteGroup, setDeleteGroup] = useState(null)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
-    const { privileges: userPrivileges = [] } = usePrivilege()
+  const [currentPage, setCurrentPage] = useState(1)
+  const [rowsPerPage, setRowsPerPage] = useState(10)
+  const { privileges: userPrivileges = [] } = usePrivilege()
   const uPrivilege = userPrivileges.find((p) => p.menuName === 'Customer Group Master') || {}
 
   useEffect(() => {
@@ -167,17 +174,17 @@ const CustomerGroupMaster = () => {
       })
 
       setErrors({ customerGroupType: '' })
-       setShowForm(true)
+      setShowForm(true)
 
-    // Scroll to top and focus Customer Group Type
-    setTimeout(() => {
-      window.scrollTo({
-        top: 0,
-        behavior: 'smooth',
-      })
+      // Scroll to top and focus Customer Group Type
+      setTimeout(() => {
+        window.scrollTo({
+          top: 0,
+          behavior: 'smooth',
+        })
 
-      typeRef.current?.focus()
-    }, 250)
+        typeRef.current?.focus()
+      }, 250)
     } catch {
       toast.error('Failed to load customer group')
     }
@@ -229,7 +236,13 @@ const CustomerGroupMaster = () => {
   )
 
   const columns = [
-    { name: 'SL.NO', selector: (row, index) => index + 1, width: '80px' },
+    {
+      name: 'S.NO',
+      width: '80px',
+      center: true,
+      cell: (row, index) =>
+        (currentPage - 1) * rowsPerPage + index + 1,
+    },
     { name: 'CUSTOMER GROUP TYPE', selector: (row) => row.customerGroupType, wrap: true },
     { name: 'DESCRIPTION', selector: (row) => row.description, wrap: true },
     {
@@ -238,23 +251,23 @@ const CustomerGroupMaster = () => {
       cell: (row) => (
         <div className="action-wrapper">
           {uPrivilege?.canEdit && (
-          <button className="table-action-btn edit-btn" title="Edit" onClick={() => handleEdit(row)}>
-            <FaEdit />
-          </button>
+            <button className="table-action-btn edit-btn" title="Edit" onClick={() => handleEdit(row)}>
+              <FaEdit />
+            </button>
           )}
-          {uPrivilege?.canDelete && ( 
+          {uPrivilege?.canDelete && (
 
-          <button
-            className="table-action-btn delete-btn"
-            title="Delete"
-            onClick={() => {
-              setDeleteId(row.id)
-              setDeleteGroup(row)
-              setShowDeleteModal(true)
-            }}
-          >
-            <FaTrash />
-          </button>
+            <button
+              className="table-action-btn delete-btn"
+              title="Delete"
+              onClick={() => {
+                setDeleteId(row.id)
+                setDeleteGroup(row)
+                setShowDeleteModal(true)
+              }}
+            >
+              <FaTrash />
+            </button>
           )}
         </div>
       ),
@@ -290,26 +303,51 @@ const CustomerGroupMaster = () => {
             <CRow className="g-3">
               <CCol md={6}>
                 <label className="custom-label">
-                  <strong>Customer Group Type</strong> <span className="required">*</span>
+                  <strong>Customer Group Type</strong>{' '}
+                  <span className="required">*</span>
                 </label>
 
-                <CFormInput
-                  ref={typeRef}
-                  placeholder="Enter Customer Group Type"
-                  name="customerGroupType"
-                  value={form.customerGroupType}
-                  className={errors.customerGroupType ? 'error-input' : ''}
-                  onChange={handleChange}
-                />
+                <div
+                  className={
+                    errors.customerGroupType
+                      ? 'react-select-error'
+                      : ''
+                  }
+                >
+                  <Select
+                    ref={typeRef}
+                    classNamePrefix="react-select"
+                    placeholder="Select Customer Group Type"
+                    options={customerGroupTypeOptions}
+                    value={
+                      customerGroupTypeOptions.find(
+                        (option) =>
+                          option.value === form.customerGroupType
+                      ) || null
+                    }
+                    onChange={(selected) => {
+                      setForm((prev) => ({
+                        ...prev,
+                        customerGroupType:
+                          selected?.value || '',
+                      }))
+
+                      clearError('customerGroupType')
+                    }}
+                    isClearable
+                  />
+                </div>
 
                 {errors.customerGroupType && (
-                  <small className="text-danger">{errors.customerGroupType}</small>
+                  <small className="text-danger">
+                    {errors.customerGroupType}
+                  </small>
                 )}
               </CCol>
 
               <CCol md={6}>
                 <label className="custom-label">
-                  <strong>Description</strong> 
+                  <strong>Description</strong>
                 </label>
 
                 <CFormInput
@@ -343,14 +381,38 @@ const CustomerGroupMaster = () => {
               placeholder="Search..."
               className="search-box"
               style={{ width: '320px' }}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value)
+                setCurrentPage(1)
+              }}
             />
           </div>
 
           <DataTable
             columns={columns}
             data={filteredGroups}
+
             pagination
+
+            paginationPerPage={rowsPerPage}
+
+            paginationRowsPerPageOptions={[
+              10,
+              20,
+              30,
+              50,
+              100,
+            ]}
+
+            onChangePage={(page) => {
+              setCurrentPage(page)
+            }}
+
+            onChangeRowsPerPage={(newPerPage, page) => {
+              setRowsPerPage(newPerPage)
+              setCurrentPage(page)
+            }}
+
             striped
             responsive
             highlightOnHover

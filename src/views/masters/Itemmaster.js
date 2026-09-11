@@ -61,6 +61,7 @@ const getErrorMessage = (err, fallback) => {
 
 const ItemMaster = () => {
   const itemNumberRef = useRef()
+  const effectiveDateRef = useRef()
 
   const customStyles = {
     rows: {
@@ -102,6 +103,9 @@ const ItemMaster = () => {
   const [uomInputValue, setUomInputValue] = useState('')
 
   const [showForm, setShowForm] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [rowsPerPage, setRowsPerPage] = useState(10)
+
 
   const [form, setForm] = useState(EMPTY_FORM)
 
@@ -325,7 +329,7 @@ const ItemMaster = () => {
       setErrors({
         itemNumber: '',
         itemName: '',
-          itemGroupId: '',
+        itemGroupId: '',
         unitPrice: '',
         customerOrSupplier: '',
         effectiveDate: '',
@@ -335,19 +339,19 @@ const ItemMaster = () => {
         dangerLevel: '',
       })
 
-        // Show the edit form
-    setShowForm(true)
+      // Show the edit form
+      setShowForm(true)
 
-    // Scroll page to the top
-    setTimeout(() => {
-      window.scrollTo({
-        top: 0,
-        behavior: 'smooth',
-      })
+      // Scroll page to the top
+      setTimeout(() => {
+        window.scrollTo({
+          top: 0,
+          behavior: 'smooth',
+        })
 
-      // Focus Part Number
-      itemNumberRef.current?.focus()
-    }, 200)
+        // Focus Part Number
+        itemNumberRef.current?.focus()
+      }, 200)
     } catch {
       toast.error('Failed to load item')
     }
@@ -428,10 +432,11 @@ const ItemMaster = () => {
 
   const columns = [
     {
-      name: 'SL.NO',
-      selector: (row, index) => index + 1,
+      name: 'S.NO',
       width: '90px',
       center: true,
+      cell: (row, index) =>
+        (currentPage - 1) * rowsPerPage + index + 1,
     },
     {
       name: 'PART NUMBER',
@@ -455,7 +460,7 @@ const ItemMaster = () => {
       cell: (row) => <TooltipCell value={row.itemGroupName} />,
     },
     {
-      name: 'HSN CODE',
+      name: 'HSN /SAC CODE',
       selector: (row) => row.hsnCode,
       minWidth: '130px',
       cell: (row) => <TooltipCell value={row.hsnCode} />,
@@ -470,7 +475,7 @@ const ItemMaster = () => {
         <TooltipCell value={Number(row.unitPrice || 0).toFixed(2)} />
       ),
     },
-  
+
     {
       name: 'CUSTOMER / SUPPLIER',
       selector: (row) => row.customerOrSupplier,
@@ -503,7 +508,7 @@ const ItemMaster = () => {
       center: true,
       cell: (row) => <TooltipCell value={row.stuffQuantity} />,
     },
-      {
+    {
       name: 'DESCRIPTION',
       selector: (row) => row.description,
       minWidth: '130px',
@@ -571,7 +576,7 @@ const ItemMaster = () => {
             <div className="section-title">Basic Information</div>
 
             <CRow className="g-3">
-              <CCol md={4}>
+              <CCol md={3}>
                 <label className="custom-label">
                   <strong>Part Number</strong> <span className="required">*</span>
                 </label>
@@ -585,8 +590,7 @@ const ItemMaster = () => {
                 />
                 {errors.itemNumber && <small className="text-danger">{errors.itemNumber}</small>}
               </CCol>
-
-              <CCol md={4}>
+              <CCol md={3}>
                 <label className="custom-label">
                   <strong>Part Name</strong> <span className="required">*</span>
                 </label>
@@ -599,8 +603,7 @@ const ItemMaster = () => {
                 />
                 {errors.itemName && <small className="text-danger">{errors.itemName}</small>}
               </CCol>
-
-              <CCol md={4}>
+              <CCol md={3}>
                 <label className="custom-label">
                   <strong>Part Group</strong> <span className="required">*</span>
                 </label>
@@ -619,10 +622,9 @@ const ItemMaster = () => {
                 </div>
                 {errors.itemGroupId && <small className="text-danger">{errors.itemGroupId}</small>}
               </CCol>
-
-              <CCol md={4}>
+              <CCol md={3}>
                 <label className="custom-label">
-                  <strong>HSN Code</strong>
+                  <strong>HSN/SAC Code</strong>
                 </label>
 
                 <CFormInput
@@ -630,7 +632,7 @@ const ItemMaster = () => {
                   type="text"
                   inputMode="numeric"
                   maxLength={8}
-                  placeholder="Enter HSN Code"
+                  placeholder="Enter HSN/SAC Code"
                   value={form.hsnCode}
                   onChange={(e) => {
                     const value = e.target.value.replace(/\D/g, '').slice(0, 8)
@@ -642,75 +644,7 @@ const ItemMaster = () => {
                   }}
                 />
               </CCol>
-
-              <CCol md={4}>
-                <label className="custom-label">
-                  <strong>Unit Price</strong> <span className="required">*</span>
-                </label>
-                <CFormInput
-                  type="number"
-                  name="unitPrice"
-                  placeholder="Enter Unit Price"
-                  value={form.unitPrice}
-                  className={errors.unitPrice ? 'error-input' : ''}
-                  onChange={handleChange}
-                />
-                {errors.unitPrice && <small className="text-danger">{errors.unitPrice}</small>}
-              </CCol>
-
-              <CCol md={4}>
-                <label className="custom-label">
-                  <strong>Customer / Supplier</strong> <span className="required">*</span>
-                </label>
-                <div className={errors.customerOrSupplier ? 'react-select-error' : ''}>
-                  <Select
-                    classNamePrefix="react-select"
-                    placeholder="Select Customer / Supplier"
-                    options={[
-                      { value: 'Customer', label: 'Customer' },
-                      { value: 'Supplier', label: 'Supplier' },
-                    ]}
-                    value={
-                      form.customerOrSupplier
-                        ? {
-                            value: form.customerOrSupplier,
-                            label: form.customerOrSupplier,
-                          }
-                        : null
-                    }
-                    onChange={(selected) => {
-                      setForm((prev) => ({
-                        ...prev,
-                        customerOrSupplier: selected?.value || '',
-                      }))
-                      clearError('customerOrSupplier')
-                    }}
-                    isClearable
-                  />
-                </div>
-                {errors.customerOrSupplier && (
-                  <small className="text-danger">{errors.customerOrSupplier}</small>
-                )}
-              </CCol>
-
-              <CCol md={4}>
-                <label className="custom-label">
-                  <strong>Effective Date</strong> <span className="required">*</span>
-                </label>
-                <CFormInput
-                  type="date"
-                  name="effectiveDate"
-                  min={getTodayDate()}
-                  value={form.effectiveDate}
-                  className={errors.effectiveDate ? 'error-input' : ''}
-                  onChange={handleChange}
-                />
-                {errors.effectiveDate && (
-                  <small className="text-danger">{errors.effectiveDate}</small>
-                )}
-              </CCol>
-
-              <CCol md={4}>
+              <CCol md={3}>
                 <label className="custom-label">
                   <strong>UOM</strong> <span className="required">*</span>
                 </label>
@@ -745,10 +679,10 @@ const ItemMaster = () => {
                         ...(selectedUom === 'PCS'
                           ? {}
                           : {
-                              length: '',
-                              width: '',
-                              height: '',
-                            }),
+                            length: '',
+                            width: '',
+                            height: '',
+                          }),
                       }))
 
                       setUomInputValue('')
@@ -782,8 +716,41 @@ const ItemMaster = () => {
 
                 {errors.uom && <small className="text-danger">{errors.uom}</small>}
               </CCol>
-
-              <CCol md={4}>
+              <CCol md={3}>
+                <label className="custom-label">
+                  <strong>Customer / Supplier</strong> <span className="required">*</span>
+                </label>
+                <div className={errors.customerOrSupplier ? 'react-select-error' : ''}>
+                  <Select
+                    classNamePrefix="react-select"
+                    placeholder="Select Customer / Supplier"
+                    options={[
+                      { value: 'Customer', label: 'Customer' },
+                      { value: 'Supplier', label: 'Supplier' },
+                    ]}
+                    value={
+                      form.customerOrSupplier
+                        ? {
+                          value: form.customerOrSupplier,
+                          label: form.customerOrSupplier,
+                        }
+                        : null
+                    }
+                    onChange={(selected) => {
+                      setForm((prev) => ({
+                        ...prev,
+                        customerOrSupplier: selected?.value || '',
+                      }))
+                      clearError('customerOrSupplier')
+                    }}
+                    isClearable
+                  />
+                </div>
+                {errors.customerOrSupplier && (
+                  <small className="text-danger">{errors.customerOrSupplier}</small>
+                )}
+              </CCol>
+              <CCol md={3}>
                 <label className="custom-label"><strong>Weight (per Unit)</strong></label>
                 <div className="input-with-suffix">
                   <CFormInput
@@ -796,8 +763,7 @@ const ItemMaster = () => {
                   <span className="input-suffix">KG</span>
                 </div>
               </CCol>
-
-              <CCol md={4}>
+              <CCol md={3}>
                 <label className="custom-label"><strong>Stuff Quantity</strong></label>
                 <CFormInput
                   type="number"
@@ -807,8 +773,7 @@ const ItemMaster = () => {
                   onChange={handleChange}
                 />
               </CCol>
-
-              <CCol md={4}>
+              <CCol md={3}>
                 <label className="custom-label"><strong>Item Model</strong></label>
                 <CFormInput
                   name="itemModel"
@@ -817,8 +782,7 @@ const ItemMaster = () => {
                   onChange={handleChange}
                 />
               </CCol>
-
-              <CCol md={4}>
+              <CCol md={3}>
                 <label className="custom-label">
                   <strong>Usage</strong>
                 </label>
@@ -879,6 +843,63 @@ const ItemMaster = () => {
                   onChange={handleChange}
                 />
               </CCol>
+
+              <div className="section-title price-section-title">
+                Price Information
+              </div>
+
+              <CRow className="g-3">
+                <CCol md={4}>
+                  <label className="custom-label">
+                    <strong>Unit Price</strong>{' '}
+                    <span className="required">*</span>
+                  </label>
+
+                  <CFormInput
+                    type="number"
+                    name="unitPrice"
+                    placeholder="Enter Unit Price"
+                    value={form.unitPrice}
+                    className={errors.unitPrice ? 'error-input' : ''}
+                    onChange={handleChange}
+                  />
+
+                  {errors.unitPrice && (
+                    <small className="text-danger">
+                      {errors.unitPrice}
+                    </small>
+                  )}
+                </CCol>
+
+                <CCol md={4}>
+                  <label className="custom-label">
+                    <strong>Effective Date</strong>{' '}
+                    <span className="required">*</span>
+                  </label>
+
+                  <CFormInput
+                    ref={effectiveDateRef}
+                    type="date"
+                    name="effectiveDate"
+                    min={getTodayDate()}
+                    value={form.effectiveDate}
+                    className={errors.effectiveDate ? 'error-input' : ''}
+                    onClick={(e) => {
+                      if (e.currentTarget.showPicker) {
+                        e.currentTarget.showPicker()
+                      }
+                    }}
+                    onChange={handleChange}
+                  />
+
+                  {errors.effectiveDate && (
+                    <small className="text-danger">
+                      {errors.effectiveDate}
+                    </small>
+                  )}
+                </CCol>
+              </CRow>
+
             </CRow>
 
             <div className="section-title stock-section-title">Stock Level Information</div>
@@ -898,7 +919,6 @@ const ItemMaster = () => {
                 />
                 {errors.safetyLevel && <small className="text-danger">{errors.safetyLevel}</small>}
               </CCol>
-
               <CCol md={4}>
                 <label className="custom-label">
                   <strong>Reorder Level</strong> <span className="required">*</span>
@@ -913,7 +933,6 @@ const ItemMaster = () => {
                 />
                 {errors.reorderLevel && <small className="text-danger">{errors.reorderLevel}</small>}
               </CCol>
-
               <CCol md={4}>
                 <label className="custom-label">
                   <strong>Danger Level</strong> <span className="required">*</span>
@@ -939,7 +958,6 @@ const ItemMaster = () => {
                 {errors.dangerLevel && <small className="text-danger">{errors.dangerLevel}</small>}
               </CCol>
             </CRow>
-
             <div className="form-button-area">
               <CButton className={editId ? 'update-btn' : 'save-btn'} onClick={handleSubmit}>
                 {editId ? 'Update' : 'Save'}
@@ -965,11 +983,19 @@ const ItemMaster = () => {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-
           <DataTable
             columns={columns}
             data={filteredItems}
             pagination
+            paginationPerPage={rowsPerPage}
+            paginationRowsPerPageOptions={[10, 20, 30, 50, 100]}
+            onChangePage={(page) => {
+              setCurrentPage(page)
+            }}
+            onChangeRowsPerPage={(newPerPage, page) => {
+              setRowsPerPage(newPerPage)
+              setCurrentPage(page)
+            }}
             striped
             responsive
             highlightOnHover
@@ -982,7 +1008,6 @@ const ItemMaster = () => {
         <CModalHeader className="border-0">
           <CModalTitle className="w-100 text-center text-danger fw-bold">⚠ Confirm Delete</CModalTitle>
         </CModalHeader>
-
         <CModalBody className="text-center">
           <p>Are you sure you want to delete this Part?</p>
 
@@ -993,7 +1018,6 @@ const ItemMaster = () => {
             </div>
           </div>
         </CModalBody>
-
         <CModalFooter className="border-0 d-flex justify-content-center">
           <CButton color="secondary" onClick={() => setShowDeleteModal(false)}>Cancel</CButton>
           <CButton color="danger" onClick={confirmDelete}>Delete</CButton>

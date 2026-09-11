@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import DataTable from 'react-data-table-component'
 import { CButton, CFormInput } from '@coreui/react'
-import { FaEye, FaTrash, FaWarehouse, FaCheckCircle, FaArrowLeft, FaTimes } from 'react-icons/fa'
+import { FaEye, FaTrash, FaWarehouse, FaCheckCircle, FaArrowLeft, FaTimes, FaSearch, FaSave } from 'react-icons/fa'
 import { toast } from 'react-toastify'
 import API from '../../api.js'
 import '../../assets/CSS/storeMovement.css'
@@ -33,10 +33,11 @@ const StoreMovement = () => {
   const [activeGrn, setActiveGrn] = useState(null)
   const [pallets, setPallets] = useState([])
   const [rackStores, setRackStores] = useState([]) // real Store -> Rack -> Column -> Row -> Slots
+  const [locationSearch, setLocationSearch] = useState('')
 
   const [activePallet, setActivePallet] = useState(null)
   const [side, setSide] = useState('Front')
-  const [selectedSlot, setSelectedSlot] = useState(null) // { rackRowId, slotNumber }
+  const [selectedSlot, setSelectedSlot] = useState(null) // { rackRowId, slotNumber, side, locationCode }
   const { privileges: userPrivileges = [] } = usePrivilege()
   const uPrivilege = userPrivileges.find((p) => p.menuName === 'Store Movement') || {}
 
@@ -54,14 +55,44 @@ const StoreMovement = () => {
     loadGrns()
   }, [])
 
-  const loadGrns = async () => {
-    try {
-      const res = await API.get('/GrnEntry?posted=true')
-      setGrns(res.data || [])
-    } catch {
-      toast.error('Failed to load GRN list')
-    }
+ const loadGrns = async () => {
+  try {
+    const res = await API.get('/GrnEntry?posted=true')
+    const postedGrns = res.data || []
+
+    // Show only GRNs which still have at least one pallet
+    // with remaining quantity for Store Movement.
+    const availableGrns = await Promise.all(
+      postedGrns.map(async (grn) => {
+        try {
+          const palletRes = await API.get(
+            `/StoreMovement/grn/${grn.id}/pallets`
+          )
+
+          const pallets = palletRes.data || []
+
+          // GRN is available if at least one pallet
+          // still has quantity to be stuffed.
+          const hasRemainingPallet = pallets.some(
+            (pallet) =>
+              Number(pallet.quantity || 0) >
+              Number(pallet.stuffedQty || 0)
+          )
+
+          return hasRemainingPallet ? grn : null
+        } catch {
+          // If pallet status cannot be checked,
+          // keep the GRN visible instead of hiding it.
+          return grn
+        }
+      })
+    )
+
+    setGrns(availableGrns.filter(Boolean))
+  } catch {
+    toast.error('Failed to load GRN list')
   }
+}
 
   const handleView = async (row) => {
     try {
@@ -119,12 +150,15 @@ const StoreMovement = () => {
   const openStore = async (grn) => {
     setActiveGrn(grn)
     setSelectedSlot(null)
+    setLocationSearch('')
     await loadPallets(grn.id)
   }
 
   // NEW: re-filter Select Location whenever the chosen pallet changes,
   // since each pallet's Part Number may be configured to a different store.
   useEffect(() => {
+    setSelectedSlot(null)
+
     if (activePallet) {
       loadRackSlots(activePallet.itemId)
     }
@@ -134,6 +168,8 @@ const StoreMovement = () => {
     setActiveGrn(null)
     setPallets([])
     setActivePallet(null)
+    setSelectedSlot(null)
+    setLocationSearch('')
   }
 
   const filteredGrns = grns.filter(
@@ -160,7 +196,55 @@ const StoreMovement = () => {
     return match?.palletNo || null
   }
 
-  const handleSelectSlot = async (rackRowId, slotNumber) => {
+  // Search the complete location hierarchy. A matching parent keeps all of
+  // its children visible; otherwise only matching racks/columns/rows/slots
+  // are shown.
+  const normalizedLocationSearch = locationSearch.trim().toLowerCase()
+
+  const filteredRackStores = rackStores
+    .map((store) => {
+      if (!normalizedLocationSearch) return store
+
+      const storeMatches = [store.storeLocation, store.storeCode]
+        .some((value) => String(value || '').toLowerCase().includes(normalizedLocationSearch))
+
+      const racks = (store.racks || [])
+        .map((rack) => {
+          const rackMatches = String(rack.rackNo || '').toLowerCase().includes(normalizedLocationSearch)
+
+          const columns = (rack.columns || [])
+            .map((col) => {
+              const columnMatches = String(col.columnNo || '').toLowerCase().includes(normalizedLocationSearch)
+
+              const rows = (col.rows || [])
+                .map((row) => {
+                  const rowMatches = String(row.rowNo || '').toLowerCase().includes(normalizedLocationSearch)
+                  const slotNumbers = buildSlotNumbers(row.fixture, side)
+                  const slotMatches = slotNumbers.some((slotNumber) =>
+                    `${col.columnNo}-${row.rowNo}-${slotNumber}${side === 'Front' ? 'F' : 'R'}`
+                      .toLowerCase()
+                      .includes(normalizedLocationSearch),
+                  )
+
+                  return rowMatches || slotMatches || columnMatches || rackMatches || storeMatches
+                    ? row
+                    : null
+                })
+                .filter(Boolean)
+
+              return columnMatches || rows.length > 0 ? { ...col, rows } : null
+            })
+            .filter(Boolean)
+
+          return rackMatches || columns.length > 0 ? { ...rack, columns } : null
+        })
+        .filter(Boolean)
+
+      return storeMatches || racks.length > 0 ? { ...store, racks } : null
+    })
+    .filter(Boolean)
+
+  const handleSelectSlot = (rackRowId, slotNumber, columnNo, rowNo) => {
     if (!activePallet) {
       toast.error('Pick a pallet from the left first')
       return
@@ -171,30 +255,55 @@ const StoreMovement = () => {
       return
     }
 
-    // Each pallet (GRN line) is already a whole, pre-split unit from GRN
-    // Entry's Quantity / Pallet Quantity split — so stuffing always moves
-    // the pallet's full remaining quantity into the slot, no manual
-    // amount to type in.
-    setSelectedSlot({ rackRowId, slotNumber })
+    // Selection is local only. Nothing is saved until the user clicks SAVE.
+    setSelectedSlot({
+      rackRowId,
+      slotNumber,
+      side,
+      locationCode: `${columnNo}-${rowNo}-${slotNumber}${side === 'Front' ? 'F' : 'R'}`,
+    })
+  }
+
+  const handleSaveSlot = async () => {
+    if (!activePallet) {
+      toast.error('Pick a pallet from the left first')
+      return
+    }
+
+    if (!selectedSlot) {
+      toast.error('Select a location first')
+      return
+    }
+
+    const qtyToSave = activePallet.quantity - activePallet.stuffedQty
+
+    if (qtyToSave <= 0) {
+      toast.error('This pallet has already been fully stuffed')
+      setSelectedSlot(null)
+      return
+    }
 
     try {
       await API.post('/StoreMovement/stuff-rack-slot', {
         grnPalletId: activePallet.id,
-        rackRowId,
-        slotNumber,
-        side,
-        quantity: remainingQty,
+        rackRowId: selectedSlot.rackRowId,
+        slotNumber: selectedSlot.slotNumber,
+        side: selectedSlot.side,
+        quantity: qtyToSave,
         createdBy: getCurrentUsername(),
       })
 
       toast.success(`Pallet ${activePallet.palletNo} stuffed successfully`)
       setSelectedSlot(null)
       await loadPallets(activeGrn.id)
-      await loadRackSlots()
+      await loadRackSlots(activePallet.itemId)
     } catch (err) {
       toast.error(getErrorMessage(err, 'Stuff Failed'))
-      setSelectedSlot(null)
     }
+  }
+
+  const handleClearSlot = () => {
+    setSelectedSlot(null)
   }
 
   const handleUndo = async (movementId) => {
@@ -530,18 +639,51 @@ const StoreMovement = () => {
             </div>
 
             <div className="sm-side-toggle">
-              <button className={side === 'Front' ? 'active' : ''} onClick={() => setSide('Front')}>Front</button>
-              <button className={side === 'Rear' ? 'active' : ''} onClick={() => setSide('Rear')}>Rear</button>
+              <button className={side === 'Front' ? 'active' : ''} onClick={() => { setSide('Front'); setSelectedSlot(null) }}>Front</button>
+              <button className={side === 'Rear' ? 'active' : ''} onClick={() => { setSide('Rear'); setSelectedSlot(null) }}>Rear</button>
             </div>
           </div>
 
-          <div className="sm-card-title">SELECT LOCATION</div>
+          <div className="sm-location-toolbar">
+            <div className="sm-location-search">
+              <FaSearch size={12} />
+              <CFormInput
+                placeholder="Search store / rack / column / row / slot..."
+                value={locationSearch}
+                onChange={(e) => setLocationSearch(e.target.value)}
+              />
+            </div>
+
+            <div className="sm-location-actions">
+              <CButton
+                className="sm-location-save-btn"
+                onClick={handleSaveSlot}
+                disabled={!selectedSlot || !activePallet || remainingQty <= 0}
+              >
+                <FaSave size={12} /> Save
+              </CButton>
+              <CButton
+                className="sm-location-clear-btn"
+                onClick={handleClearSlot}
+                disabled={!selectedSlot}
+              >
+                <FaTimes size={12} /> Clear
+              </CButton>
+            </div>
+          </div>
+
+          {selectedSlot && (
+            <div className="sm-selected-location">
+              Selected Location: <strong>{selectedSlot.locationCode}</strong>
+              <span> — Click Save to confirm</span>
+            </div>
+          )}
 
           {rackStores.length === 0 ? (
             <div className="sm-empty-slots">No stores/racks configured yet in Location Master.</div>
           ) : (
             <div className="sm-rack-store-grid">
-              {rackStores.map((store) => (
+              {filteredRackStores.map((store) => (
                 <div key={store.id} className="sm-rack-store-block">
                   <div className="sm-store-block-header">
                     <span><FaWarehouse size={12} /> {store.storeLocation} ({store.storeCode})</span>
@@ -573,7 +715,9 @@ const StoreMovement = () => {
                                         const occupied = isSlotOccupied(row, slotNumber)
                                         const occupiedPalletNo = occupied ? getOccupiedPalletNo(row, slotNumber) : null
                                         const isSelected =
-                                          selectedSlot?.rackRowId === row.id && selectedSlot?.slotNumber === slotNumber
+                                          selectedSlot?.rackRowId === row.id &&
+                                          selectedSlot?.slotNumber === slotNumber &&
+                                          selectedSlot?.side === side
 
                                         const tooltipText = occupied
                                           ? `Occupied — ${occupiedPalletNo || 'Unknown Pallet'}`
@@ -587,7 +731,7 @@ const StoreMovement = () => {
                                             disabled={occupied}
                                             data-tooltip={tooltipText}
                                             data-tooltip-type={occupied ? 'occupied' : 'available'}
-                                            onClick={() => handleSelectSlot(row.id, slotNumber)}
+                                            onClick={() => handleSelectSlot(row.id, slotNumber, col.columnNo, row.rowNo)}
                                           >
                                             {isSelected && <FaCheckCircle size={10} />} {col.columnNo}-{row.rowNo}-{slotNumber}
                                             {side === 'Front' ? 'F' : 'R'}
@@ -610,10 +754,14 @@ const StoreMovement = () => {
           )}
 
           {!activePallet ? (
-            <div className="sm-stuff-hint">Pick a pallet from the left, then click any available slot to place it there.</div>
+            <div className="sm-stuff-hint">Pick a pallet from the left, select an available slot, then click Save.</div>
+          ) : selectedSlot ? (
+            <div className="sm-stuff-hint">
+              <strong>{activePallet.palletNo}</strong> ({remainingQty} units) is selected for <strong>{selectedSlot.locationCode}</strong>. Click Save to confirm or Clear to cancel.
+            </div>
           ) : (
             <div className="sm-stuff-hint">
-              Click an available slot to place <strong>{activePallet.palletNo}</strong> ({remainingQty} units) there.
+              Select an available slot for <strong>{activePallet.palletNo}</strong> ({remainingQty} units). It will not be saved until you click Save.
             </div>
           )}
         </div>

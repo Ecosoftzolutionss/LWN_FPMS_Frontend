@@ -56,6 +56,8 @@ const UserMaster = () => {
 
   const [users, setUsers] = useState([])
   const [showForm, setShowForm] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [rowsPerPage, setRowsPerPage] = useState(10)
 
   const [form, setForm] = useState({
     userId: '',
@@ -78,10 +80,11 @@ const UserMaster = () => {
   const [editId, setEditId] = useState(null)
   const [search, setSearch] = useState('')
   const [deleteId, setDeleteId] = useState(null)
-  const [showDeleteModal, setShowDeleteModal] = useState(false)
-  const [showPrivilegeModal, setShowPrivilegeModal] = useState(false)
-  const [selectedUser, setSelectedUser] = useState(null)
-  const [privileges, setPrivileges] = useState([])
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showPrivilegeModal, setShowPrivilegeModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [privileges, setPrivileges] = useState([]);
+  const [grnEditOwner, setGrnEditOwner] = useState(null);
   const [departments, setDepartments] = useState([])
   const [deleteUser, setDeleteUser] = useState(null)
   const [departmentInput, setDepartmentInput] = useState('')
@@ -268,10 +271,57 @@ const UserMaster = () => {
 
   const openPrivilege = async (user) => {
     setSelectedUser(user)
+    setGrnEditOwner(null)
 
     try {
+      // ---------------------------------------------------------
+      // 1. Load the selected user's privileges
+      // ---------------------------------------------------------
       const res = await API.get(`/users/privileges/${user.id}`)
 
+      // ---------------------------------------------------------
+      // 2. Check all users to find who currently owns
+      //    GRN Entry -> Edit privilege
+      // ---------------------------------------------------------
+      let currentGrnEditOwner = null
+
+      const otherUsers = users.filter((u) => u.id !== user.id)
+
+      if (otherUsers.length > 0) {
+        const privilegeResults = await Promise.all(
+          otherUsers.map(async (u) => {
+            try {
+              const privilegeRes = await API.get(`/users/privileges/${u.id}`)
+
+              const grnPrivilege = privilegeRes.data?.find(
+                (p) => p.menuName === 'GRN Entry'
+              )
+
+              return {
+                user: u,
+                canEdit: grnPrivilege?.canEdit === true,
+              }
+            } catch {
+              return {
+                user: u,
+                canEdit: false,
+              }
+            }
+          })
+        )
+
+        const owner = privilegeResults.find((x) => x.canEdit)
+
+        if (owner) {
+          currentGrnEditOwner = owner.user
+        }
+      }
+
+      setGrnEditOwner(currentGrnEditOwner)
+
+      // ---------------------------------------------------------
+      // 3. Map privileges for the selected user
+      // ---------------------------------------------------------
       const mapped = MENU_CONFIG.flatMap((menu) => {
         const menus = []
 
@@ -282,14 +332,22 @@ const UserMaster = () => {
         }
 
         return menus.map((m) => {
-          const existing = res.data.find((x) => x.menuName === m.name)
+          const existing = res.data.find(
+            (x) => x.menuName === m.name
+          )
 
           return {
             menuName: m.name,
             icon: m.icon,
             canView: existing?.canView || false,
-            canEdit: m.name === 'Reports' ? false : (existing?.canEdit || false),
-            canDelete: m.name === 'Reports' ? false : (existing?.canDelete || false),
+            canEdit:
+              m.name === 'Reports'
+                ? false
+                : existing?.canEdit || false,
+            canDelete:
+              m.name === 'Reports'
+                ? false
+                : existing?.canDelete || false,
           }
         })
       })
@@ -297,7 +355,9 @@ const UserMaster = () => {
       setPrivileges(mapped)
       setShowPrivilegeModal(true)
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Failed to load privileges'))
+      toast.error(
+        getErrorMessage(err, 'Failed to load privileges')
+      )
     }
   }
 
@@ -326,37 +386,97 @@ const UserMaster = () => {
         password: '',
         confirmPassword: '',
       })
-       // Open the form
-    setShowForm(true)
+      // Open the form
+      setShowForm(true)
 
-    // Scroll to top and focus Part Number
-    setTimeout(() => {
-      window.scrollTo({
-        top: 0,
-        behavior: 'smooth',
-      })
+      // Scroll to top and focus Part Number
+      setTimeout(() => {
+        window.scrollTo({
+          top: 0,
+          behavior: 'smooth',
+        })
 
-      itemNumberRef.current?.focus()
-    }, 250)
+        itemNumberRef.current?.focus()
+      }, 250)
 
     } catch {
       toast.error('Failed to load user')
     }
   }
 
+  // ---------------------------------------------------------
+  // GRN Entry -> Edit is exclusive to one user
+  // ---------------------------------------------------------
+  const isGrnEditLocked = (privilege) => {
+    if (!privilege) return false
+
+    return (
+      privilege.menuName === 'GRN Entry' &&
+      grnEditOwner &&
+      grnEditOwner.id !== selectedUser?.id &&
+      privilege.canEdit !== true
+    )
+  }
+
+  const getGrnEditLockMessage = () => {
+    if (!grnEditOwner) return ''
+
+    return `GRN Entry Edit access is already assigned to ${grnEditOwner.userName || grnEditOwner.userId || 'another user'}`
+  }
+
   const handlePrivilegeChange = (index, field) => {
     if (index === -1) return
 
     const updated = [...privileges]
+    const privilege = updated[index]
 
-    // Reports should have View access only
-    if (updated[index]?.menuName === 'Reports' && field !== 'canView') {
+    if (!privilege) return
+
+    // ---------------------------------------------------------
+    // Reports -> View only
+    // ---------------------------------------------------------
+    if (
+      privilege.menuName === 'Reports' &&
+      field !== 'canView'
+    ) {
       return
     }
 
+    // ---------------------------------------------------------
+    // GRN Entry -> Edit is exclusive
+    // ---------------------------------------------------------
+    const isGrnEntry = privilege.menuName === 'GRN Entry'
+
+    const anotherUserHasGrnEdit =
+      isGrnEntry &&
+      grnEditOwner &&
+      grnEditOwner.id !== selectedUser?.id
+
+    // ---------------------------------------------------------
+    // ALL
+    // ---------------------------------------------------------
     if (field === 'all') {
-      const val =
-        !(updated[index].canView && updated[index].canEdit && updated[index].canDelete)
+      const val = !(
+        updated[index].canView &&
+        updated[index].canEdit &&
+        updated[index].canDelete
+      )
+
+      // Another user already owns GRN Edit.
+      // Do not allow "All" to give this user GRN Edit.
+      if (anotherUserHasGrnEdit && val) {
+        toast.info(getGrnEditLockMessage())
+
+        updated[index] = {
+          ...updated[index],
+          canView: true,
+          canEdit: false,
+          canDelete: true,
+        }
+
+        setPrivileges(updated)
+        return
+      }
 
       updated[index] = {
         ...updated[index],
@@ -364,13 +484,36 @@ const UserMaster = () => {
         canEdit: val,
         canDelete: val,
       }
-    } else if (field === 'canView') {
+    }
+
+    // ---------------------------------------------------------
+    // VIEW
+    // ---------------------------------------------------------
+    else if (field === 'canView') {
       updated[index].canView = !updated[index].canView
+
+      // Existing application behavior
       updated[index].canEdit = false
       updated[index].canDelete = false
-    } else if (field === 'canEdit') {
+    }
+
+    // ---------------------------------------------------------
+    // EDIT
+    // ---------------------------------------------------------
+    else if (field === 'canEdit') {
+      // Only GRN Entry Edit is exclusive
+      if (anotherUserHasGrnEdit) {
+        toast.info(getGrnEditLockMessage())
+        return
+      }
+
       updated[index].canEdit = !updated[index].canEdit
-    } else if (field === 'canDelete') {
+    }
+
+    // ---------------------------------------------------------
+    // DELETE
+    // ---------------------------------------------------------
+    else if (field === 'canDelete') {
       updated[index].canDelete = !updated[index].canDelete
     }
 
@@ -379,7 +522,9 @@ const UserMaster = () => {
 
   const handleHeaderChange = (field, value) => {
     const updated = privileges.map((p) => {
-      // Reports has View access only
+      // -------------------------------------------------------
+      // Reports -> View only
+      // -------------------------------------------------------
       if (p.menuName === 'Reports') {
         return {
           ...p,
@@ -389,8 +534,25 @@ const UserMaster = () => {
         }
       }
 
-      // All → select/deselect all available privileges
+      // -------------------------------------------------------
+      // ALL
+      // -------------------------------------------------------
       if (field === 'all') {
+        // GRN Entry Edit is already assigned to another user
+        if (
+          p.menuName === 'GRN Entry' &&
+          value &&
+          grnEditOwner &&
+          grnEditOwner.id !== selectedUser?.id
+        ) {
+          return {
+            ...p,
+            canView: true,
+            canEdit: false,
+            canDelete: true,
+          }
+        }
+
         return {
           ...p,
           canView: value,
@@ -399,11 +561,56 @@ const UserMaster = () => {
         }
       }
 
+      // -------------------------------------------------------
+      // EDIT
+      // -------------------------------------------------------
+      if (field === 'canEdit') {
+        // Do not assign GRN Entry Edit to another user
+        if (
+          p.menuName === 'GRN Entry' &&
+          value &&
+          grnEditOwner &&
+          grnEditOwner.id !== selectedUser?.id
+        ) {
+          return {
+            ...p,
+            canEdit: false,
+          }
+        }
+
+        return {
+          ...p,
+          canEdit: value,
+        }
+      }
+
+      // -------------------------------------------------------
+      // VIEW / DELETE
+      // -------------------------------------------------------
       return {
         ...p,
         [field]: value,
       }
     })
+
+    // Tell Admin why GRN Entry Edit was not selected
+    if (
+      field === 'canEdit' &&
+      value &&
+      grnEditOwner &&
+      grnEditOwner.id !== selectedUser?.id
+    ) {
+      toast.info(getGrnEditLockMessage())
+    }
+
+    if (
+      field === 'all' &&
+      value &&
+      grnEditOwner &&
+      grnEditOwner.id !== selectedUser?.id
+    ) {
+      toast.info(getGrnEditLockMessage())
+    }
 
     setPrivileges(updated)
   }
@@ -496,7 +703,10 @@ const UserMaster = () => {
   const columns = [
     {
       name: 'S.NO',
-      selector: (row, index) => index + 1,
+      width: '80px',
+      center: true,
+      cell: (row, index) =>
+        (currentPage - 1) * rowsPerPage + index + 1,
     },
     {
       name: 'USER ID',
@@ -795,6 +1005,13 @@ const UserMaster = () => {
             columns={columns}
             data={filteredUsers}
             pagination
+            paginationPerPage={rowsPerPage}
+            paginationRowsPerPageOptions={[10, 20, 30, 50, 100]}
+            onChangePage={(page) => setCurrentPage(page)}
+            onChangeRowsPerPage={(newPerPage, page) => {
+              setRowsPerPage(newPerPage)
+              setCurrentPage(page)
+            }}
             striped
             responsive
             highlightOnHover
@@ -915,9 +1132,13 @@ const UserMaster = () => {
 
             <tbody>
               {MENU_CONFIG.map((menu) => {
+                // ============================================================
+                // PARENT MENU WITH CHILD MENUS
+                // ============================================================
                 if (menu.items) {
                   return (
                     <React.Fragment key={menu.name}>
+                      {/* Parent heading */}
                       <tr>
                         <td
                           colSpan="5"
@@ -931,16 +1152,24 @@ const UserMaster = () => {
                         </td>
                       </tr>
 
+                      {/* Child menus */}
                       {menu.items.map((child) => {
                         const childIndex = privileges.findIndex(
-                          (x) => x.menuName === child.name,
+                          (x) => x.menuName === child.name
                         )
 
                         const cp = privileges[childIndex] || {}
                         const isReports = child.name === 'Reports'
 
+                        // GRN Entry Edit can belong to only one user
+                        const grnEditLocked =
+                          child.name === 'GRN Entry' &&
+                          grnEditOwner &&
+                          grnEditOwner.id !== selectedUser?.id
+
                         return (
                           <tr key={child.name}>
+                            {/* MENU */}
                             <td
                               className="menu-cell"
                               style={{ paddingLeft: '35px' }}
@@ -951,47 +1180,73 @@ const UserMaster = () => {
                               </div>
                             </td>
 
+                            {/* ALL */}
                             <td>
                               {!isReports && (
                                 <input
                                   type="checkbox"
-                                  checked={cp.canView && cp.canEdit && cp.canDelete}
+                                  checked={
+                                    cp.canView &&
+                                    cp.canEdit &&
+                                    cp.canDelete
+                                  }
                                   onChange={() =>
-                                    handlePrivilegeChange(childIndex, 'all')
+                                    handlePrivilegeChange(
+                                      childIndex,
+                                      'all'
+                                    )
                                   }
                                 />
                               )}
                             </td>
 
+                            {/* VIEW */}
                             <td>
                               <input
                                 type="checkbox"
                                 checked={cp.canView || false}
                                 onChange={() =>
-                                  handlePrivilegeChange(childIndex, 'canView')
+                                  handlePrivilegeChange(
+                                    childIndex,
+                                    'canView'
+                                  )
                                 }
                               />
                             </td>
 
+                            {/* EDIT */}
                             <td>
                               {!isReports && (
                                 <input
                                   type="checkbox"
                                   checked={cp.canEdit || false}
+                                  disabled={grnEditLocked}
+                                  title={
+                                    grnEditLocked
+                                      ? getGrnEditLockMessage()
+                                      : 'Edit access'
+                                  }
                                   onChange={() =>
-                                    handlePrivilegeChange(childIndex, 'canEdit')
+                                    handlePrivilegeChange(
+                                      childIndex,
+                                      'canEdit'
+                                    )
                                   }
                                 />
                               )}
                             </td>
 
+                            {/* DELETE */}
                             <td>
                               {!isReports && (
                                 <input
                                   type="checkbox"
                                   checked={cp.canDelete || false}
                                   onChange={() =>
-                                    handlePrivilegeChange(childIndex, 'canDelete')
+                                    handlePrivilegeChange(
+                                      childIndex,
+                                      'canDelete'
+                                    )
                                   }
                                 />
                               )}
@@ -1002,12 +1257,20 @@ const UserMaster = () => {
                     </React.Fragment>
                   )
                 }
-                const index = privileges.findIndex((x) => x.menuName === menu.name)
+
+                // ============================================================
+                // SINGLE / TOP-LEVEL MENU
+                // ============================================================
+                const index = privileges.findIndex(
+                  (x) => x.menuName === menu.name
+                )
+
                 const p = privileges[index] || {}
                 const isReports = menu.name === 'Reports'
 
                 return (
                   <tr key={menu.name}>
+                    {/* MENU */}
                     <td className="menu-cell">
                       <div className="d-flex align-items-center gap-2">
                         <CIcon icon={menu.icon} size="sm" />
@@ -1015,40 +1278,68 @@ const UserMaster = () => {
                       </div>
                     </td>
 
+                    {/* ALL */}
                     <td>
                       {!isReports && (
                         <input
                           type="checkbox"
-                          checked={p.canView && p.canEdit && p.canDelete}
-                          onChange={() => handlePrivilegeChange(index, 'all')}
+                          checked={
+                            p.canView &&
+                            p.canEdit &&
+                            p.canDelete
+                          }
+                          onChange={() =>
+                            handlePrivilegeChange(
+                              index,
+                              'all'
+                            )
+                          }
                         />
                       )}
                     </td>
 
+                    {/* VIEW */}
                     <td>
                       <input
                         type="checkbox"
                         checked={p.canView || false}
-                        onChange={() => handlePrivilegeChange(index, 'canView')}
+                        onChange={() =>
+                          handlePrivilegeChange(
+                            index,
+                            'canView'
+                          )
+                        }
                       />
                     </td>
 
+                    {/* EDIT */}
                     <td>
                       {!isReports && (
                         <input
                           type="checkbox"
                           checked={p.canEdit || false}
-                          onChange={() => handlePrivilegeChange(index, 'canEdit')}
+                          onChange={() =>
+                            handlePrivilegeChange(
+                              index,
+                              'canEdit'
+                            )
+                          }
                         />
                       )}
                     </td>
 
+                    {/* DELETE */}
                     <td>
                       {!isReports && (
                         <input
                           type="checkbox"
                           checked={p.canDelete || false}
-                          onChange={() => handlePrivilegeChange(index, 'canDelete')}
+                          onChange={() =>
+                            handlePrivilegeChange(
+                              index,
+                              'canDelete'
+                            )
+                          }
                         />
                       )}
                     </td>
