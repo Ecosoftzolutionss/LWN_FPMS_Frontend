@@ -89,6 +89,7 @@ const statusOptions = [
 // ==========================================================
 
 const selectStyles = {
+
     control: (base, state) => ({
         ...base,
 
@@ -116,23 +117,26 @@ const selectStyles = {
         cursor: 'pointer',
     }),
 
+
     valueContainer: (base) => ({
         ...base,
 
         height: '40px',
+        minHeight: '40px',
 
         padding: '0 12px',
     }),
+
 
     input: (base) => ({
         ...base,
 
         margin: 0,
-
         padding: 0,
 
         fontSize: '13px',
     }),
+
 
     singleValue: (base) => ({
         ...base,
@@ -142,6 +146,7 @@ const selectStyles = {
         fontSize: '13px',
     }),
 
+
     placeholder: (base) => ({
         ...base,
 
@@ -150,11 +155,42 @@ const selectStyles = {
         fontSize: '13px',
     }),
 
+
     indicatorsContainer: (base) => ({
         ...base,
 
         height: '40px',
     }),
+
+
+    indicatorSeparator: (base) => ({
+        ...base,
+
+        backgroundColor: '#dfe4ee',
+    }),
+
+
+    dropdownIndicator: (base) => ({
+        ...base,
+
+        color: '#64748b',
+
+        padding: '8px',
+    }),
+
+
+    clearIndicator: (base) => ({
+        ...base,
+
+        color: '#94a3b8',
+
+        padding: '8px',
+
+        '&:hover': {
+            color: '#dc2626',
+        },
+    }),
+
 
     menu: (base) => ({
         ...base,
@@ -162,6 +198,52 @@ const selectStyles = {
         zIndex: 9999,
 
         fontSize: '13px',
+
+        borderRadius: '8px',
+
+        boxShadow:
+            '0 8px 24px rgba(16, 24, 40, 0.12)',
+
+        overflow: 'hidden',
+    }),
+
+
+    menuList: (base) => ({
+        ...base,
+
+        padding: '4px',
+
+        maxHeight: '220px',
+    }),
+
+
+    option: (base, state) => ({
+        ...base,
+
+        padding: '10px 12px',
+
+        borderRadius: '5px',
+
+        cursor: 'pointer',
+
+        fontSize: '13px',
+
+        color:
+            state.isSelected
+                ? '#ffffff'
+                : '#1e293b',
+
+        backgroundColor:
+            state.isSelected
+                ? '#2f5fdd'
+                : state.isFocused
+                    ? '#f1f5f9'
+                    : '#ffffff',
+
+        ':active': {
+            backgroundColor: '#2650bd',
+            color: '#ffffff',
+        },
     }),
 }
 
@@ -173,75 +255,131 @@ const selectStyles = {
 const StockReport = () => {
 
     // ========================================================
-    // Filter values
+    // FILTER INPUT VALUES
+    // Values selected before clicking Search
     // ========================================================
 
-    const [itemGroupIdInput, setItemGroupIdInput] =
-        useState('')
-
-    const [statusInput, setStatusInput] =
-        useState('')
-
-
-    const [itemGroupId, setItemGroupId] =
-        useState('')
-
-    const [status, setStatus] =
-        useState('')
+    const [
+        itemGroupIdInput,
+        setItemGroupIdInput,
+    ] = useState('')
 
 
-    // ========================================================
-    // Table search
-    // ========================================================
+    const [
+        partNumberInput,
+        setPartNumberInput,
+    ] = useState('')
 
-    const [search, setSearch] =
-        useState('')
+
+    const [
+        statusInput,
+        setStatusInput,
+    ] = useState('')
 
 
     // ========================================================
-    // Item groups
+    // APPLIED FILTER VALUES
+    // Values actually used for API request
     // ========================================================
 
-    const [itemGroups, setItemGroups] =
-        useState([])
+    const [
+        itemGroupId,
+        setItemGroupId,
+    ] = useState('')
 
 
-    // ========================================================
-    // Table data
-    // ========================================================
-
-    const [rows, setRows] =
-        useState([])
-
-    const [totalRows, setTotalRows] =
-        useState(0)
+    const [
+        partNumber,
+        setPartNumber,
+    ] = useState('')
 
 
-    // ========================================================
-    // Pagination
-    // Same pattern as Store Report
-    // ========================================================
-
-    const [currentPage, setCurrentPage] =
-        useState(1)
-
-    const [rowsPerPage, setRowsPerPage] =
-        useState(10)
+    const [
+        status,
+        setStatus,
+    ] = useState('')
 
 
     // ========================================================
-    // Loading
+    // TABLE SEARCH
     // ========================================================
 
-    const [loading, setLoading] =
-        useState(false)
-
-    const [exporting, setExporting] =
-        useState(false)
+    const [
+        search,
+        setSearch,
+    ] = useState('')
 
 
     // ========================================================
-    // Search debounce
+    // ITEM GROUPS
+    // ========================================================
+
+    const [
+        itemGroups,
+        setItemGroups,
+    ] = useState([])
+
+
+    // ========================================================
+    // PART NUMBERS
+    // ========================================================
+
+    const [
+        partNumbers,
+        setPartNumbers,
+    ] = useState([])
+
+
+    // ========================================================
+    // TABLE DATA
+    // ========================================================
+
+    const [
+        rows,
+        setRows,
+    ] = useState([])
+
+
+    const [
+        totalRows,
+        setTotalRows,
+    ] = useState(0)
+
+
+    // ========================================================
+    // PAGINATION
+    // ========================================================
+
+    const [
+        currentPage,
+        setCurrentPage,
+    ] = useState(1)
+
+
+    const [
+        rowsPerPage,
+        setRowsPerPage,
+    ] = useState(10)
+
+
+    // ========================================================
+    // LOADING
+    // ========================================================
+
+    const [
+        loading,
+        setLoading,
+    ] = useState(false)
+
+
+    const [
+        exporting,
+        setExporting,
+    ] = useState(false)
+
+
+    // ========================================================
+    // SEARCH TIMER
     // ========================================================
 
     const searchTimerRef =
@@ -249,173 +387,449 @@ const StockReport = () => {
 
 
     // ========================================================
-    // Item Group React Select options
+    // ITEM GROUP OPTIONS
     // ========================================================
 
-    const itemGroupOptions = useMemo(() => {
+    const itemGroupOptions =
+        useMemo(() => {
 
-        return itemGroups.map((group) => ({
-            value: group.id,
-            label: group.groupName,
-        }))
+            return itemGroups
+                .filter(
+                    (group) =>
+                        group != null
+                )
+                .map(
+                    (group) => ({
+                        value:
+                            group.id,
 
-    }, [itemGroups])
+                        label:
+                            group.groupName,
+                    })
+                )
+
+        }, [itemGroups])
 
 
     // ========================================================
-    // Load Stock Report
+    // PART NUMBER OPTIONS
     // ========================================================
 
-    const loadReport = useCallback(
-        async ({
-            page = currentPage,
-            pageSize = rowsPerPage,
-            itemGroup = itemGroupId,
-            statusValue = status,
-            searchText = search,
-            exportAll = false,
-        } = {}) => {
+    const partNumberOptions =
+        useMemo(() => {
 
-            setLoading(true)
+            const options = []
 
-            try {
 
-                const params = {
-                    page,
-                    pageSize,
+            partNumbers.forEach(
+                (part) => {
+
+                    if (!part) {
+                        return
+                    }
+
+
+                    // ----------------------------------------
+                    // Backend returns string
+                    // ----------------------------------------
+
+                    if (
+                        typeof part ===
+                        'string'
+                    ) {
+
+                        options.push({
+                            value: part,
+                            label: part,
+                        })
+
+                        return
+                    }
+
+
+                    // ----------------------------------------
+                    // Backend returns object
+                    // ----------------------------------------
+
+                    const value =
+                        part.partNumber ??
+                        part.PartNumber ??
+                        part.value ??
+                        ''
+
+
+                    if (value) {
+
+                        options.push({
+                            value,
+
+                            label:
+                                part.partNumber ??
+                                part.PartNumber ??
+                                part.label ??
+                                value,
+                        })
+
+                    }
+
                 }
+            )
 
 
-                // --------------------------------------------
-                // Filters
-                // --------------------------------------------
+            // --------------------------------------------
+            // Remove duplicates
+            // --------------------------------------------
 
-                if (itemGroup) {
-                    params.itemGroupId =
+            const uniqueOptions = []
+
+            const seen =
+                new Set()
+
+
+            options.forEach(
+                (option) => {
+
+                    const key =
+                        String(
+                            option.value
+                        ).toLowerCase()
+
+
+                    if (
+                        !seen.has(key)
+                    ) {
+
+                        seen.add(key)
+
+                        uniqueOptions.push(
+                            option
+                        )
+
+                    }
+
+                }
+            )
+
+
+            return uniqueOptions
+
+        }, [partNumbers])
+
+
+    // ========================================================
+    // LOAD STOCK REPORT
+    // ========================================================
+
+    const loadReport =
+        useCallback(
+            async ({
+                page = currentPage,
+                pageSize = rowsPerPage,
+
+                itemGroup =
+                    itemGroupId,
+
+                partNumberValue =
+                    partNumber,
+
+                statusValue =
+                    status,
+
+                searchText =
+                    search,
+
+                exportAll = false,
+
+            } = {}) => {
+
+                setLoading(true)
+
+
+                try {
+
+                    // ========================================
+                    // API PARAMS
+                    // ========================================
+
+                    const params = {
+                        page,
+                        pageSize,
+                    }
+
+
+                    // ========================================
+                    // ITEM GROUP FILTER
+                    // ========================================
+
+                    if (
                         itemGroup
-                }
+                    ) {
+
+                        params.itemGroupId =
+                            itemGroup
+
+                    }
 
 
-                if (statusValue) {
-                    params.status =
+                    // ========================================
+                    // STATUS FILTER
+                    // ========================================
+
+                    if (
                         statusValue
-                }
+                    ) {
+
+                        params.status =
+                            statusValue
+
+                    }
 
 
-                if (searchText?.trim()) {
-                    params.search =
-                        searchText.trim()
-                }
+                    // ========================================
+                    // SEARCH / PART NUMBER
+                    //
+                    // IMPORTANT:
+                    //
+                    // Part Number uses the existing
+                    // backend "search" parameter.
+                    //
+                    // If table search has a value,
+                    // table search gets priority.
+                    //
+                    // Otherwise selected Part Number
+                    // is sent through "search".
+                    // ========================================
+
+                    const finalSearch =
+                        searchText?.trim()
+                            ? searchText.trim()
+                            : partNumberValue?.trim()
+                                ? partNumberValue.trim()
+                                : ''
 
 
-                if (exportAll) {
-                    params.exportAll = true
-                }
+                    if (
+                        finalSearch
+                    ) {
+
+                        params.search =
+                            finalSearch
+
+                    }
 
 
-                // --------------------------------------------
-                // API
-                // --------------------------------------------
+                    // ========================================
+                    // EXPORT
+                    // ========================================
 
-                const res = await API.get(
-                    '/Reports/stock',
-                    { params }
-                )
+                    if (
+                        exportAll
+                    ) {
+
+                        params.exportAll =
+                            true
+
+                    }
 
 
-                // --------------------------------------------
-                // Export response
-                // --------------------------------------------
+                    // ========================================
+                    // DEBUG
+                    // ========================================
 
-                if (exportAll) {
-
-                    return Array.isArray(
-                        res.data?.data
+                    console.log(
+                        'Stock Report API Params:',
+                        params
                     )
-                        ? res.data.data
-                        : []
+
+
+                    // ========================================
+                    // API CALL
+                    // ========================================
+
+                    const res =
+                        await API.get(
+                            '/Reports/stock',
+                            {
+                                params,
+                            }
+                        )
+
+
+                    // ========================================
+                    // EXPORT RESPONSE
+                    // ========================================
+
+                    if (
+                        exportAll
+                    ) {
+
+                        return Array.isArray(
+                            res.data?.data
+                        )
+                            ? res.data.data
+                            : []
+
+                    }
+
+
+                    // ========================================
+                    // NORMAL RESPONSE
+                    // ========================================
+
+                    const result =
+                        res.data || {}
+
+
+                    // ========================================
+                    // TABLE ROWS
+                    // ========================================
+
+                    setRows(
+                        Array.isArray(
+                            result.data
+                        )
+                            ? result.data
+                            : []
+                    )
+
+
+                    // ========================================
+                    // TOTAL ROWS
+                    // ========================================
+
+                    setTotalRows(
+                        Number(
+                            result.totalRows
+                        ) || 0
+                    )
+
+
+                    // ========================================
+                    // ITEM GROUPS
+                    // ========================================
+
+                    if (
+                        Array.isArray(
+                            result.itemGroups
+                        )
+                    ) {
+
+                        setItemGroups(
+                            result.itemGroups
+                        )
+
+                    }
+
+
+                    // ========================================
+                    // PART NUMBERS
+                    // ========================================
+
+                    if (
+                        Array.isArray(
+                            result.partNumbers
+                        )
+                    ) {
+
+                        setPartNumbers(
+                            result.partNumbers
+                        )
+
+                    }
+                    else {
+
+                        // ====================================
+                        // FALLBACK
+                        // Build part number list
+                        // from returned rows
+                        // ====================================
+
+                        const fallbackParts =
+                            Array.isArray(
+                                result.data
+                            )
+                                ? result.data
+                                    .map(
+                                        (row) =>
+                                            row.partNumber
+                                    )
+                                    .filter(Boolean)
+                                : []
+
+
+                        if (
+                            fallbackParts.length
+                        ) {
+
+                            setPartNumbers(
+                                (previous) => {
+
+                                    const combined = [
+                                        ...previous,
+                                        ...fallbackParts,
+                                    ]
+
+
+                                    return [
+                                        ...new Set(
+                                            combined
+                                        ),
+                                    ]
+
+                                }
+                            )
+
+                        }
+
+                    }
+
+                }
+                catch (err) {
+
+                    console.error(
+                        'Stock Report Error:',
+                        err
+                    )
+
+
+                    toast.error(
+                        err?.response?.data?.message ||
+                        err?.response?.data?.error ||
+                        'Failed to load Stock Report'
+                    )
+
+
+                    if (
+                        !exportAll
+                    ) {
+
+                        setRows([])
+
+                        setTotalRows(0)
+
+                    }
+
+                }
+                finally {
+
+                    setLoading(false)
+
                 }
 
-
-                // --------------------------------------------
-                // Normal response
-                // --------------------------------------------
-
-                const result =
-                    res.data || {}
-
-
-                setRows(
-                    Array.isArray(
-                        result.data
-                    )
-                        ? result.data
-                        : []
-                )
-
-
-                setTotalRows(
-                    Number(
-                        result.totalRows
-                    ) || 0
-                )
-
-
-                // --------------------------------------------
-                // Item Groups
-                // --------------------------------------------
-
-                if (
-                    Array.isArray(
-                        result.itemGroups
-                    )
-                ) {
-
-                    setItemGroups(
-                        result.itemGroups
-                    )
-                }
-
-            } catch (err) {
-
-                console.error(
-                    'Stock Report Error:',
-                    err
-                )
-
-
-                toast.error(
-                    err?.response?.data?.message ||
-                    err?.response?.data?.error ||
-                    'Failed to load Stock Report'
-                )
-
-
-                if (!exportAll) {
-
-                    setRows([])
-
-                    setTotalRows(0)
-                }
-
-            } finally {
-
-                setLoading(false)
-            }
-
-        },
-        [
-            currentPage,
-            rowsPerPage,
-            itemGroupId,
-            status,
-            search,
-        ]
-    )
+            },
+            [
+                currentPage,
+                rowsPerPage,
+                itemGroupId,
+                partNumber,
+                status,
+                search,
+            ]
+        )
 
 
     // ========================================================
-    // Initial Load
+    // INITIAL LOAD
     // ========================================================
 
     useEffect(() => {
@@ -431,131 +845,249 @@ const StockReport = () => {
 
 
     // ========================================================
-    // Filter Search
+    // SEARCH BUTTON
     // ========================================================
 
-    const handleSearch = async () => {
+    const handleSearch =
+        async () => {
 
-        setCurrentPage(1)
+            // --------------------------------------------
+            // Reset page
+            // --------------------------------------------
 
-
-        setItemGroupId(
-            itemGroupIdInput
-        )
-
-
-        setStatus(
-            statusInput
-        )
+            setCurrentPage(1)
 
 
-        await loadReport({
-            page: 1,
+            // --------------------------------------------
+            // Apply Item Group
+            // --------------------------------------------
 
-            pageSize:
-                rowsPerPage,
-
-            itemGroup:
-                itemGroupIdInput,
-
-            statusValue:
-                statusInput,
-
-            searchText:
-                search,
-        })
-    }
-
-
-    // ========================================================
-    // Clear
-    // ========================================================
-
-    const handleClear = async () => {
-
-        if (searchTimerRef.current) {
-
-            clearTimeout(
-                searchTimerRef.current
+            setItemGroupId(
+                itemGroupIdInput
             )
+
+
+            // --------------------------------------------
+            // Apply Part Number
+            // --------------------------------------------
+
+            setPartNumber(
+                partNumberInput
+            )
+
+
+            // --------------------------------------------
+            // Apply Status
+            // --------------------------------------------
+
+            setStatus(
+                statusInput
+            )
+
+
+            // --------------------------------------------
+            // Load filtered data
+            // --------------------------------------------
+
+            await loadReport({
+
+                page: 1,
+
+                pageSize:
+                    rowsPerPage,
+
+                itemGroup:
+                    itemGroupIdInput,
+
+                partNumberValue:
+                    partNumberInput,
+
+                statusValue:
+                    statusInput,
+
+                searchText:
+                    search,
+
+            })
+
         }
 
 
-        setItemGroupIdInput('')
-
-        setStatusInput('')
-
-
-        setItemGroupId('')
-
-        setStatus('')
-
-
-        setSearch('')
-
-
-        setCurrentPage(1)
-
-
-        await loadReport({
-            page: 1,
-
-            pageSize:
-                rowsPerPage,
-
-            itemGroup: '',
-
-            statusValue: '',
-
-            searchText: '',
-        })
-    }
-
-
     // ========================================================
-    // Table Search
-    // Same behavior as Store Report
+    // CLEAR
     // ========================================================
 
-    const handleSearchChange = (e) => {
+    const handleClear =
+        async () => {
 
-        const value =
-            e.target.value
+            // --------------------------------------------
+            // Clear debounce timer
+            // --------------------------------------------
 
-
-        setSearch(value)
-
-
-        if (searchTimerRef.current) {
-
-            clearTimeout(
+            if (
                 searchTimerRef.current
-            )
+            ) {
+
+                clearTimeout(
+                    searchTimerRef.current
+                )
+
+            }
+
+
+            // --------------------------------------------
+            // Clear filter inputs
+            // --------------------------------------------
+
+            setItemGroupIdInput('')
+
+            setPartNumberInput('')
+
+            setStatusInput('')
+
+
+            // --------------------------------------------
+            // Clear applied filters
+            // --------------------------------------------
+
+            setItemGroupId('')
+
+            setPartNumber('')
+
+            setStatus('')
+
+
+            // --------------------------------------------
+            // Clear table search
+            // --------------------------------------------
+
+            setSearch('')
+
+
+            // --------------------------------------------
+            // Reset page
+            // --------------------------------------------
+
+            setCurrentPage(1)
+
+
+            // --------------------------------------------
+            // Reload all data
+            // --------------------------------------------
+
+            await loadReport({
+
+                page: 1,
+
+                pageSize:
+                    rowsPerPage,
+
+                itemGroup: '',
+
+                partNumberValue: '',
+
+                statusValue: '',
+
+                searchText: '',
+
+            })
+
         }
 
 
-        searchTimerRef.current =
-            setTimeout(() => {
+    // ========================================================
+    // TABLE SEARCH
+    // ========================================================
 
-                setCurrentPage(1)
+    const handleSearchChange =
+        (e) => {
+
+            const value =
+                e.target.value
 
 
-                loadReport({
-                    page: 1,
+            setSearch(value)
 
-                    pageSize:
-                        rowsPerPage,
 
-                    searchText:
-                        value,
-                })
+            // --------------------------------------------
+            // Clear old timer
+            // --------------------------------------------
 
-            }, 400)
-    }
+            if (
+                searchTimerRef.current
+            ) {
+
+                clearTimeout(
+                    searchTimerRef.current
+                )
+
+            }
+
+
+            // --------------------------------------------
+            // Debounce
+            // --------------------------------------------
+
+            searchTimerRef.current =
+                setTimeout(
+                    () => {
+
+                        setCurrentPage(1)
+
+
+                        loadReport({
+
+                            page: 1,
+
+                            pageSize:
+                                rowsPerPage,
+
+                            itemGroup:
+                                itemGroupId,
+
+                            partNumberValue:
+                                partNumber,
+
+                            statusValue:
+                                status,
+
+                            searchText:
+                                value,
+
+                        })
+
+                    },
+                    400
+                )
+
+        }
 
 
     // ========================================================
-    // Server Pagination
+    // CLEANUP SEARCH TIMER
+    // ========================================================
+
+    useEffect(() => {
+
+        return () => {
+
+            if (
+                searchTimerRef.current
+            ) {
+
+                clearTimeout(
+                    searchTimerRef.current
+                )
+
+            }
+
+        }
+
+    }, [])
+
+
+    // ========================================================
+    // SERVER PAGINATION
     // ========================================================
 
     const handlePageChange =
@@ -565,16 +1097,31 @@ const StockReport = () => {
 
 
             await loadReport({
+
                 page,
 
                 pageSize:
                     rowsPerPage,
+
+                itemGroup:
+                    itemGroupId,
+
+                partNumberValue:
+                    partNumber,
+
+                statusValue:
+                    status,
+
+                searchText:
+                    search,
+
             })
+
         }
 
 
     // ========================================================
-    // Rows Per Page
+    // ROWS PER PAGE
     // ========================================================
 
     const handleRowsPerPageChange =
@@ -587,34 +1134,53 @@ const StockReport = () => {
                 newPerPage
             )
 
+
             setCurrentPage(
                 page
             )
 
 
             await loadReport({
+
                 page,
 
                 pageSize:
                     newPerPage,
+
+                itemGroup:
+                    itemGroupId,
+
+                partNumberValue:
+                    partNumber,
+
+                statusValue:
+                    status,
+
+                searchText:
+                    search,
+
             })
+
         }
 
 
     // ========================================================
-    // Export Excel
+    // EXPORT EXCEL
     // ========================================================
 
     const handleExportExcel =
         async () => {
 
-            if (totalRows === 0) {
+            if (
+                totalRows === 0
+            ) {
 
                 toast.error(
                     'Nothing to export — run a search first'
                 )
 
                 return
+
             }
 
 
@@ -622,6 +1188,10 @@ const StockReport = () => {
 
 
             try {
+
+                // ========================================
+                // Get ALL filtered records
+                // ========================================
 
                 const exportRows =
                     await loadReport({
@@ -634,6 +1204,9 @@ const StockReport = () => {
                         itemGroup:
                             itemGroupId,
 
+                        partNumberValue:
+                            partNumber,
+
                         statusValue:
                             status,
 
@@ -642,8 +1215,13 @@ const StockReport = () => {
 
                         exportAll:
                             true,
+
                     })
 
+
+                // ========================================
+                // No records
+                // ========================================
 
                 if (
                     !exportRows.length
@@ -654,12 +1232,13 @@ const StockReport = () => {
                     )
 
                     return
+
                 }
 
 
-                // --------------------------------------------
+                // ========================================
                 // Excel data
-                // --------------------------------------------
+                // ========================================
 
                 const exportData =
                     exportRows.map(
@@ -705,11 +1284,19 @@ const StockReport = () => {
                     )
 
 
+                // ========================================
+                // Worksheet
+                // ========================================
+
                 const worksheet =
                     XLSX.utils.json_to_sheet(
                         exportData
                     )
 
+
+                // ========================================
+                // Workbook
+                // ========================================
 
                 const workbook =
                     XLSX.utils.book_new()
@@ -721,6 +1308,10 @@ const StockReport = () => {
                     'Stock Report'
                 )
 
+
+                // ========================================
+                // Download
+                // ========================================
 
                 XLSX.writeFile(
                     workbook,
@@ -734,7 +1325,8 @@ const StockReport = () => {
                     'Stock Report exported successfully'
                 )
 
-            } catch (err) {
+            }
+            catch (err) {
 
                 console.error(
                     'Export Error:',
@@ -746,225 +1338,272 @@ const StockReport = () => {
                     'Failed to export Stock Report'
                 )
 
-            } finally {
+            }
+            finally {
 
                 setExporting(false)
+
             }
+
         }
 
 
     // ========================================================
-    // Table Columns
+    // TABLE COLUMNS
     // ========================================================
 
-    const columns = useMemo(
-        () => [
+    const columns =
+        useMemo(
+            () => [
 
-            {
-                name: 'S.NO',
+                // =========================================
+                // S.NO
+                // =========================================
 
-                width: '70px',
+                {
+                    name: 'S.NO',
 
-                center: true,
+                    width: '70px',
 
-                cell: (
-                    row,
-                    index
-                ) => (
+                    center: true,
 
-                    <span>
+                    cell: (
+                        row,
+                        index
+                    ) => (
 
-                        {
-                            (currentPage - 1) *
+                        <span>
+                            {
+                                (currentPage - 1) *
                                 rowsPerPage +
-                            index +
-                            1
-                        }
-
-                    </span>
-                ),
-            },
-
-
-            {
-                name: 'PART NUMBER',
-
-                selector:
-                    (row) =>
-                        row.partNumber ??
-                        '—',
-
-                sortable: true,
-
-                width:
-                    '140px',
-            },
-
-
-            {
-                name: 'PART NAME',
-
-                selector:
-                    (row) =>
-                        row.partName ??
-                        '—',
-
-                sortable: true,
-
-                minWidth:
-                    '180px',
-            },
-
-
-            {
-                name: 'ITEM GROUP',
-
-                selector:
-                    (row) =>
-                        row.itemGroupName ??
-                        '—',
-
-                sortable: true,
-
-                minWidth:
-                    '140px',
-            },
-
-
-            {
-                name: 'RECEIVED',
-
-                selector:
-                    (row) =>
-                        row.receivedQty ??
-                        0,
-
-                sortable: true,
-
-                center: true,
-
-                width:
-                    '110px',
-
-                cell:
-                    (row) => (
-                        <span>
-                            {num(
-                                row.receivedQty
-                            )}
-                        </span>
-                    ),
-            },
-
-
-            {
-                name: 'ISSUED',
-
-                selector:
-                    (row) =>
-                        row.issuedQty ??
-                        0,
-
-                sortable: true,
-
-                center: true,
-
-                width:
-                    '100px',
-
-                cell:
-                    (row) => (
-                        <span>
-                            {num(
-                                row.issuedQty
-                            )}
-                        </span>
-                    ),
-            },
-
-
-            {
-                name: 'ON HAND',
-
-                selector:
-                    (row) =>
-                        row.onHandQty ??
-                        0,
-
-                sortable: true,
-
-                center: true,
-
-                width:
-                    '110px',
-
-                cell:
-                    (row) => (
-                        <span>
-                            {num(
-                                row.onHandQty
-                            )}
-                        </span>
-                    ),
-            },
-
-
-            {
-                name: 'STOCK VALUE',
-
-                selector:
-                    (row) =>
-                        row.stockValue ??
-                        0,
-
-                sortable: true,
-
-                right: true,
-
-                width:
-                    '140px',
-
-                cell:
-                    (row) => (
-                        <span>
-                            {money(
-                                row.stockValue
-                            )}
-                        </span>
-                    ),
-            },
-
-
-            {
-                name: 'STATUS',
-
-                width:
-                    '120px',
-
-                center: true,
-
-                cell:
-                    (row) => (
-
-                        <StatusBadge
-                            status={
-                                row.status
+                                index +
+                                1
                             }
-                        />
+                        </span>
 
                     ),
-            },
+                },
 
-        ],
-        [
-            currentPage,
-            rowsPerPage,
-        ]
-    )
+
+                // =========================================
+                // PART NUMBER
+                // =========================================
+
+                {
+                    name: 'PART NUMBER',
+
+                    selector:
+                        (row) =>
+                            row.partNumber ??
+                            '—',
+
+                    sortable: true,
+
+                    width: '140px',
+                },
+
+
+                // =========================================
+                // PART NAME
+                // =========================================
+
+                {
+                    name: 'PART NAME',
+
+                    selector:
+                        (row) =>
+                            row.partName ??
+                            '—',
+
+                    sortable: true,
+
+                    minWidth: '180px',
+                },
+
+
+                // =========================================
+                // ITEM GROUP
+                // =========================================
+
+                {
+                    name: 'ITEM GROUP',
+
+                    selector:
+                        (row) =>
+                            row.itemGroupName ??
+                            '—',
+
+                    sortable: true,
+
+                    minWidth: '140px',
+                },
+
+
+                // =========================================
+                // RECEIVED
+                // =========================================
+
+                {
+                    name: 'RECEIVED',
+
+                    selector:
+                        (row) =>
+                            row.receivedQty ??
+                            0,
+
+                    sortable: true,
+
+                    center: true,
+
+                    width: '110px',
+
+                    cell:
+                        (row) => (
+
+                            <span>
+                                {
+                                    num(
+                                        row.receivedQty
+                                    )
+                                }
+                            </span>
+
+                        ),
+                },
+
+
+                // =========================================
+                // ISSUED
+                // =========================================
+
+                {
+                    name: 'ISSUED',
+
+                    selector:
+                        (row) =>
+                            row.issuedQty ??
+                            0,
+
+                    sortable: true,
+
+                    center: true,
+
+                    width: '100px',
+
+                    cell:
+                        (row) => (
+
+                            <span>
+                                {
+                                    num(
+                                        row.issuedQty
+                                    )
+                                }
+                            </span>
+
+                        ),
+                },
+
+
+                // =========================================
+                // ON HAND
+                // =========================================
+
+                {
+                    name: 'ON HAND',
+
+                    selector:
+                        (row) =>
+                            row.onHandQty ??
+                            0,
+
+                    sortable: true,
+
+                    center: true,
+
+                    width: '110px',
+
+                    cell:
+                        (row) => (
+
+                            <span>
+                                {
+                                    num(
+                                        row.onHandQty
+                                    )
+                                }
+                            </span>
+
+                        ),
+                },
+
+
+                // =========================================
+                // STOCK VALUE
+                // =========================================
+
+                {
+                    name: 'STOCK VALUE',
+
+                    selector:
+                        (row) =>
+                            row.stockValue ??
+                            0,
+
+                    sortable: true,
+
+                    right: true,
+
+                    width: '140px',
+
+                    cell:
+                        (row) => (
+
+                            <span>
+                                {
+                                    money(
+                                        row.stockValue
+                                    )
+                                }
+                            </span>
+
+                        ),
+                },
+
+
+                // =========================================
+                // STATUS
+                // =========================================
+
+                {
+                    name: 'STATUS',
+
+                    width: '120px',
+
+                    center: true,
+
+                    cell:
+                        (row) => (
+
+                            <StatusBadge
+                                status={
+                                    row.status
+                                }
+                            />
+
+                        ),
+                },
+
+            ],
+            [
+                currentPage,
+                rowsPerPage,
+            ]
+        )
 
 
     // ========================================================
-    // Custom DataTable Styles
+    // CUSTOM DATATABLE STYLES
     // ========================================================
 
     const customStyles = {
@@ -972,20 +1611,18 @@ const StockReport = () => {
         table: {
 
             style: {
-
-                width:
-                    '100%',
+                width: '100%',
             },
+
         },
 
 
         rows: {
 
             style: {
-
-                minHeight:
-                    '44px',
+                minHeight: '44px',
             },
+
         },
 
 
@@ -993,15 +1630,16 @@ const StockReport = () => {
 
             style: {
 
-                minHeight:
-                    '46px',
+                minHeight: '46px',
 
                 backgroundColor:
                     '#f1f4fa',
 
                 borderBottom:
                     '1px solid #d8deea',
+
             },
+
         },
 
 
@@ -1029,7 +1667,9 @@ const StockReport = () => {
 
                 backgroundColor:
                     '#f1f4fa',
+
             },
+
         },
 
 
@@ -1048,7 +1688,9 @@ const StockReport = () => {
 
                 color:
                     '#1f2937',
+
             },
+
         },
 
 
@@ -1064,26 +1706,31 @@ const StockReport = () => {
 
                 paddingRight:
                     '10px',
+
             },
+
         },
+
     }
 
 
     // ========================================================
-    // Render
+    // RENDER
     // ========================================================
 
     return (
 
         <div className="sr-page">
 
-
             {/* ==================================================
                 FILTER CARD
-                ================================================== */}
+            ================================================== */}
 
             <div className="sr-filter-card">
 
+                {/* ==============================================
+                    TITLE
+                ============================================== */}
 
                 <div className="sr-filter-title">
 
@@ -1092,29 +1739,36 @@ const StockReport = () => {
                 </div>
 
 
+                {/* ==============================================
+                    FILTER GRID
+                    ITEM GROUP | PART NUMBER | STATUS
+                ============================================== */}
+
                 <div className="sr-filter-grid">
 
 
-                    {/* ITEM GROUP */}
+                    {/* ==========================================
+                        ITEM GROUP
+                    ========================================== */}
 
                     <div className="sr-field">
 
                         <label>
-                            ITEM GROUP
+                            PART GROUP
                         </label>
 
 
                         <Select
 
-                            classNamePrefix=
-                                "store-select"
+                            className="sr-react-select"
+
+                            classNamePrefix="sr-select"
 
                             styles={
                                 selectStyles
                             }
 
-                            placeholder=
-                                "Select Item Group"
+                            placeholder="Select Item Group"
 
                             options={
                                 itemGroupOptions
@@ -1134,16 +1788,16 @@ const StockReport = () => {
 
                             }
 
-                            onChange={(
-                                selected
-                            ) => {
+                            onChange={
+                                (selected) => {
 
-                                setItemGroupIdInput(
-                                    selected?.value ||
-                                    ''
-                                )
+                                    setItemGroupIdInput(
+                                        selected?.value ||
+                                        ''
+                                    )
 
-                            }}
+                                }
+                            }
 
                             isClearable
 
@@ -1154,7 +1808,74 @@ const StockReport = () => {
                     </div>
 
 
-                    {/* STATUS */}
+                    {/* ==========================================
+                        PART NUMBER
+                    ========================================== */}
+
+                    <div className="sr-field">
+
+                        <label>
+                            PART NUMBER
+                        </label>
+
+
+                        <Select
+
+                            className="sr-react-select"
+
+                            classNamePrefix="sr-select"
+
+                            styles={
+                                selectStyles
+                            }
+
+                            placeholder="Select Part Number"
+
+                            options={
+                                partNumberOptions
+                            }
+
+                            value={
+
+                                partNumberOptions.find(
+                                    (option) =>
+                                        String(
+                                            option.value
+                                        ) ===
+                                        String(
+                                            partNumberInput
+                                        )
+                                ) || null
+
+                            }
+
+                            onChange={
+                                (selected) => {
+
+                                    setPartNumberInput(
+                                        selected?.value ||
+                                        ''
+                                    )
+
+                                }
+                            }
+
+                            isClearable
+
+                            isSearchable
+
+                            noOptionsMessage={() =>
+                                'No Part Number found'
+                            }
+
+                        />
+
+                    </div>
+
+
+                    {/* ==========================================
+                        STATUS
+                    ========================================== */}
 
                     <div className="sr-field">
 
@@ -1165,15 +1886,15 @@ const StockReport = () => {
 
                         <Select
 
-                            classNamePrefix=
-                                "store-select"
+                            className="sr-react-select"
+
+                            classNamePrefix="sr-select"
 
                             styles={
                                 selectStyles
                             }
 
-                            placeholder=
-                                "All Statuses"
+                            placeholder="All Statuses"
 
                             options={
                                 statusOptions
@@ -1189,16 +1910,16 @@ const StockReport = () => {
 
                             }
 
-                            onChange={(
-                                selected
-                            ) => {
+                            onChange={
+                                (selected) => {
 
-                                setStatusInput(
-                                    selected?.value ||
-                                    ''
-                                )
+                                    setStatusInput(
+                                        selected?.value ||
+                                        ''
+                                    )
 
-                            }}
+                                }
+                            }
 
                             isClearable
 
@@ -1206,21 +1927,26 @@ const StockReport = () => {
 
                     </div>
 
-
                 </div>
 
 
-                {/* FILTER BUTTONS */}
+                {/* ==============================================
+                    FILTER BUTTONS
+                ============================================== */}
 
                 <div className="sr-filter-actions">
 
+
+                    {/* SEARCH */}
 
                     <button
 
                         type="button"
 
-                        className=
-                            "sr-btn sr-btn-search"
+                        className="
+                            sr-btn
+                            sr-btn-search
+                        "
 
                         onClick={
                             handleSearch
@@ -1241,12 +1967,16 @@ const StockReport = () => {
                     </button>
 
 
+                    {/* CLEAR */}
+
                     <button
 
                         type="button"
 
-                        className=
-                            "sr-btn sr-btn-clear"
+                        className="
+                            sr-btn
+                            sr-btn-clear
+                        "
 
                         onClick={
                             handleClear
@@ -1266,23 +1996,21 @@ const StockReport = () => {
 
                     </button>
 
-
                 </div>
-
 
             </div>
 
 
             {/* ==================================================
                 RESULT CARD
-                ================================================== */}
+            ================================================== */}
 
             <div className="sr-table-card">
 
 
                 {/* ==================================================
                     TOOLBAR
-                    ================================================== */}
+                ================================================== */}
 
                 <div className="sr-table-toolbar">
 
@@ -1293,17 +2021,18 @@ const StockReport = () => {
 
                         type="button"
 
-                        className=
-                            "sr-btn sr-btn-export"
+                        className="
+                            sr-btn
+                            sr-btn-export
+                        "
 
                         onClick={
                             handleExportExcel
                         }
 
                         disabled={
-                            loading ||
                             exporting ||
-                            totalRows === 0
+                            loading
                         }
 
                     >
@@ -1321,10 +2050,9 @@ const StockReport = () => {
                     </button>
 
 
-                    {/* SEARCH INPUT */}
+                    {/* TABLE SEARCH */}
 
                     <div className="sr-search-box">
-
 
                         <FaSearch />
 
@@ -1341,24 +2069,18 @@ const StockReport = () => {
                                 handleSearchChange
                             }
 
-                            placeholder=
-                                "Search by Part No, Part Name..."
+                            placeholder="Search by Part No, Part Name..."
 
                         />
 
-
                     </div>
-
 
                 </div>
 
 
                 {/* ==================================================
                     DATA TABLE
-
-                    IMPORTANT:
-                    Same pagination pattern as Store Report
-                    ================================================== */}
+                ================================================== */}
 
                 <DataTable
 
@@ -1370,6 +2092,9 @@ const StockReport = () => {
                         rows
                     }
 
+                    customStyles={
+                        customStyles
+                    }
 
                     pagination
 
@@ -1390,7 +2115,6 @@ const StockReport = () => {
                         100,
                     ]}
 
-
                     onChangePage={
                         handlePageChange
                     }
@@ -1399,11 +2123,9 @@ const StockReport = () => {
                         handleRowsPerPageChange
                     }
 
-
                     progressPending={
                         loading
                     }
-
 
                     persistTableHead
 
@@ -1412,7 +2134,6 @@ const StockReport = () => {
                     responsive
 
                     highlightOnHover
-
 
                     noDataComponent={
 
@@ -1424,16 +2145,9 @@ const StockReport = () => {
 
                     }
 
-
-                    customStyles={
-                        customStyles
-                    }
-
                 />
 
-
             </div>
-
 
         </div>
 

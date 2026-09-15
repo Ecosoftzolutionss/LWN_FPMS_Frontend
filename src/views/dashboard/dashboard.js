@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import DataTable from 'react-data-table-component'
 import { CCard, CCardBody, CTooltip } from '@coreui/react'
 import {FaArrowDown,FaArrowUp,FaBox,FaExchangeAlt,FaChartBar,FaDolly,FaExclamationTriangle,} from 'react-icons/fa'
@@ -59,6 +60,7 @@ const BarChart = ({
   valueKeyOutward,
   formatter,
   isValueMode,
+  onBarClick,
 }) => {
   const width = 900
   const height = 260
@@ -179,6 +181,25 @@ const BarChart = ({
                 rx={3}
                 ry={3}
                 fill="#2563eb"
+                style={{ cursor: "pointer" }}
+                onClick={() => onBarClick?.({
+                  type: "inward",
+                  month: m.label,
+                  value: inwardValue,
+                })}
+                role="button"
+                tabIndex={0}
+                aria-label={`Open GRN Report for inward ${m.label}`}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault()
+                    onBarClick?.({
+                      type: "inward",
+                      month: m.label,
+                      value: inwardValue,
+                    })
+                  }
+                }}
               />
               {inwardValue > 0 && (
                 <text
@@ -201,6 +222,25 @@ const BarChart = ({
                 rx={3}
                 ry={3}
                 fill="#14b8a6"
+                style={{ cursor: "pointer" }}
+                onClick={() => onBarClick?.({
+                  type: "outward",
+                  month: m.label,
+                  value: outwardValue,
+                })}
+                role="button"
+                tabIndex={0}
+                aria-label={`Open Material Issue Report for outward ${m.label}`}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault()
+                    onBarClick?.({
+                      type: "outward",
+                      month: m.label,
+                      value: outwardValue,
+                    })
+                  }
+                }}
               />
               {outwardValue > 0 && (
                 <text
@@ -312,6 +352,7 @@ const TooltipCell = ({ value }) => {
 }
 
 const Dashboard = () => {
+  const navigate = useNavigate()
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [mode, setMode] = useState('qty') // 'qty' | 'value'
@@ -539,6 +580,15 @@ const Dashboard = () => {
               valueKeyOutward={isValueMode ? 'outwardValue' : 'outwardQty'}
               formatter={isValueMode ? money : num}
               isValueMode={isValueMode}
+              onBarClick={({ type }) => {
+                // Inward -> GRN Report
+                // Outward -> Material Issue Report
+                if (type === "inward") {
+                  navigate("/report/Grnreport")
+                } else if (type === "outward") {
+                  navigate("/report/MaterialIssueReport")
+                }
+              }}
             />
           </CCardBody>
         </CCard>
@@ -548,12 +598,29 @@ const Dashboard = () => {
             <div className="section-title">Stock Status</div>
 
             <div className="dashboard-donut-row">
-              <StockStatusDonut
-                safetyPct={stock.safety?.pct || 0}
-                reorderPct={stock.reorder?.pct || 0}
-                dangerPct={stock.danger?.pct || 0}
-                total={stock.totalItems}
-              />
+              <div
+                role="button"
+                tabIndex={0}
+                title="Open Stock Report"
+                onClick={() => navigate('/report/StockReport')}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    navigate('/report/StockReport')
+                  }
+                }}
+                style={{
+                  cursor: 'pointer',
+                  outline: 'none',
+                }}
+              >
+                <StockStatusDonut
+                  safetyPct={stock.safety?.pct || 0}
+                  reorderPct={stock.reorder?.pct || 0}
+                  dangerPct={stock.danger?.pct || 0}
+                  total={stock.totalItems}
+                />
+              </div>
 
               <div className="dashboard-donut-legend">
                 <div className="dashboard-legend-item">

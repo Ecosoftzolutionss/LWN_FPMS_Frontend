@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getDeviceId } from './deviceId';
 import DataTable from 'react-data-table-component';
 import { toast } from 'react-toastify';
 import {
@@ -20,15 +21,14 @@ import {
   FaQrcode,
   FaThLarge,
   FaBox,
-  FaEye,
   FaEdit,
-  FaTrash,
-  FaPlus,
   FaCube,
   FaClipboardCheck,
   FaSyncAlt,
+  FaTimes,
 } from 'react-icons/fa';
 import Select from 'react-select';
+import { Tooltip } from 'react-tooltip';
 
 import '../../assets/CSS/materialIssue.css';
 import {
@@ -49,15 +49,15 @@ import {
 const SUMMARY_CONFIG = [
   { key: 'REGULAR', label: 'REGULAR', icon: FaThLarge, tone: 'blue' },
   { key: 'SAMPLE', label: 'SAMPLE', icon: FaBox, tone: 'green' },
-  { key: 'CHANGE_PART', label: 'CHANGE PART', icon: FaSyncAlt, tone: 'orange' },
+  // { key: 'CHANGE_PART', label: 'CHANGE PART', icon: FaSyncAlt, tone: 'purple' },
 ];
 
 const GRN_TYPE_OPTIONS = ['REGULAR', 'SAMPLE'];
 
+// Quantity is used only as the requested issue quantity for FIFO
+// highlighting. The actual pallet quantity always comes from synced data.
 const EMPTY_FORM = {
   itemId: '',
-  storeLocation: '',
-  palletNo: '',
   quantity: '',
   remarks: '',
   grnNo: '',
@@ -76,20 +76,57 @@ const tableCustomStyles = {
   rows: { style: { minHeight: '42px', fontSize: '12px', color: '#1f2937' } },
 };
 
-// Rows that have been edited (via the pencil icon / Update) render
-// with a distinct highlight so they're easy to spot in the grid.
+
 const conditionalRowStyles = [
   {
     when: (row) => !!row.edited,
     style: {
-      backgroundColor: '#fff7e6',
-      borderLeft: '3px solid #f59e0b',
+      backgroundColor: '#f3e8ff',
+      color: '#5b21b6',
+      borderLeft: '4px solid #8b5cf6',
+      fontWeight: 600,
     },
   },
 ];
 
+const searchConditionalRowStyles = [
+  // Updated row — use the SAME purple visual language as the
+  // CHANGE PART summary card. This rule comes first so an edited
+  // row stays purple instead of being overridden by FIFO green.
+  {
+    when: (row) => !!row.edited,
+    style: {
+      backgroundColor: '#f3e8ff',
+      color: '#6d28d9',
+      fontWeight: 600,
+      borderLeft: '4px solid #8b5cf6',
+    },
+  },
+  {
+    when: (row) => row.fifoMatched === true && !row.edited,
+    style: {
+      backgroundColor: '#dcfce7',
+      color: '#166534',
+      fontWeight: 600,
+      borderLeft: '4px solid #22c55e',
+    },
+  },
+];
 // The MaterialIssue backend model requires IssuedBy. Pull it from
 // the logged-in session rather than re-typing it every time.
+// The Item No / Item Name grid columns need to show the human part
+// code (e.g. "PKG-005") and its description (e.g. "Self Adhesive
+// Packaging") separately — but the only field we get per pallet is
+// partLabel, which comes through as "PKG-005 - Self Adhesive
+// Packaging". Split on the first " - " to recover both; itemId is
+// the internal DB key and was never meant to be shown as "Item No."
+const splitPartLabel = (label) => {
+  if (!label) return { itemNo: '', itemName: '' };
+  const idx = label.indexOf(' - ');
+  if (idx === -1) return { itemNo: label, itemName: label };
+  return { itemNo: label.slice(0, idx).trim(), itemName: label.slice(idx + 3).trim() };
+};
+
 const getSessionUser = () => {
   try {
     return JSON.parse(sessionStorage.getItem('user') || '{}');
@@ -102,16 +139,18 @@ const getSessionUser = () => {
 // Material Issue
 // ==========================================
 //
-// Flow (exactly as requested):
-//   1. Scan a label -> row appears in SCANNED ITEMS (pending review,
-//      not yet saved anywhere).
-//   2. Click "Add Scanned Pallet" -> every row currently sitting in
-//      Scanned Items moves into CONFIRMED ITEMS. Nothing is saved
-//      to the device yet — still just in memory.
-//   3. Click "Issue Material" -> every row in Confirmed Items is
-//      saved to the LOCAL offline DB (queuePendingIssue). On
-//      success: toast + Confirmed Items grid clears (data itself
-//      stays safe in local storage, ready for the next Data Sync).
+// Flow:
+//   1. Select a Part + Quantity -> all unused pallets for that part
+//      currently in Store appear in Search Parts, ordered FIFO by
+//      Store Movement date. The FIFO pallets needed to satisfy the
+//      requested quantity are highlighted green.
+//   2. Click a Search Parts row -> it is validated and goes directly
+//      to Confirmed Parts.
+//      -- OR --
+//      Scan a valid label -> it is validated and goes directly to
+//      Confirmed Parts.
+//   3. Click "Issue Material" -> Confirmed Parts are saved to the
+//      local offline queue.
 // ==========================================
 
 const MaterialIssue = () => {
@@ -126,9 +165,13 @@ const MaterialIssue = () => {
 
   const [form, setForm] = useState(EMPTY_FORM);
 
-  // Step 1: scan lands here.
-  const [scannedRows, setScannedRows] = useState([]);
-  // Step 2: "Add Scanned Pallet" moves rows here.
+  // Results of the manual "Select Part" + "Search" flow — populated
+  // by handleSearchParts, cleared by handleClearSearch or once a
+  // part is changed.
+  const [searchResults, setSearchResults] = useState([]);
+  const [gridFilter, setGridFilter] = useState('');
+
+  // Validated scans and Search-row clicks go directly to Confirmed Parts.
   const [confirmedRows, setConfirmedRows] = useState([]);
 
   // Running tally for the "CHANGE PART" summary card — incremented
@@ -156,63 +199,110 @@ const MaterialIssue = () => {
   // pallets entirely. Only the DB id is safe to key on.
   const [issuedPalletIds, setIssuedPalletIds] = useState(new Set());
 
+  // Quantity already queued for issue on this device, keyed by
+  // the real GrnPalletId. A pallet remains available until its
+  // remaining stock reaches zero.
+  const [pendingIssueQtyByPallet, setPendingIssueQtyByPallet] = useState(new Map());
+
   // Required by the backend model — collected once per issuing
   // session, not per pallet row.
   const sessionUser = useMemo(() => getSessionUser(), []);
   const [issuedTo, setIssuedTo] = useState('');
   const issuedBy = sessionUser?.name || sessionUser?.username || sessionUser?.userName || 'Unknown';
 
+  // Search-row Issue Quantity modal.
+  // It lets the user issue only the quantity required from the
+  // selected pallet, instead of automatically taking the full pallet.
+  const [issueQtyModalOpen, setIssueQtyModalOpen] = useState(false);
+  const [issueQtyTarget, setIssueQtyTarget] = useState(null);
+  const [issueQty, setIssueQty] = useState('');
+
+  // Edit-only details modal for Confirmed Parts.
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState(null);
-  const [deleteTargetType, setDeleteTargetType] = useState(null);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [detailsMode, setDetailsMode] = useState('view');
   const [detailsRow, setDetailsRow] = useState(null);
-  // Which grid the row being viewed/edited came from — needed so
-  // Update knows whether to patch scannedRows or confirmedRows.
-  const [detailsRowSource, setDetailsRowSource] = useState(null); // 'SCANNED' | 'CONFIRMED'
-  const [grnType, setGrnType] = useState('GRN Entry');
+  const [grnType, setGrnType] = useState('REGULAR');
   const [editForm, setEditForm] = useState(EMPTY_EDIT_FORM);
+  const [editSource, setEditSource] = useState('confirmed'); // 'confirmed' | 'search'
 
   const [saving, setSaving] = useState(false);
 
   const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
 
-const handleLogout = () => {
-  sessionStorage.removeItem('user');
-  sessionStorage.removeItem('token');
-  window.dispatchEvent(new Event('authChange'));
-  navigate('/login', { replace: true });
-};
+  const handleLogout = () => {
+    sessionStorage.removeItem('user');
+    sessionStorage.removeItem('token');
+    window.dispatchEvent(new Event('authChange'));
+    navigate('/login', { replace: true });
+  };
 
   const scanInputRef = useRef(null);
 
   useEffect(() => {
-
     const load = async () => {
       try {
-        const cached = await getAllPallets();
-        setPallets(cached);
+        const [cached, pending] = await Promise.all([
+          getAllPallets(),
+          getAllPendingIssues(),
+        ]);
+
+        const pendingMap = new Map();
+
+        (pending || []).forEach((p) => {
+          const palletId = p.palletId ?? p.grnPalletId;
+          const qty = Number(p.quantity || 0);
+
+          if (
+            palletId !== undefined &&
+            palletId !== null &&
+            Number.isFinite(qty) &&
+            qty > 0
+          ) {
+            pendingMap.set(
+              palletId,
+              (pendingMap.get(palletId) || 0) + qty
+            );
+          }
+        });
+
+        setPendingIssueQtyByPallet(pendingMap);
+
+        // Cached quantity minus pending offline issues = current
+        // quantity available on this device.
+        const adjusted = (cached || [])
+          .map((p) => {
+            const originalQty = Number(p.quantity || 0);
+            const pendingQty = Number(pendingMap.get(p.id) || 0);
+
+            return {
+              ...p,
+              originalQuantity: originalQty,
+              quantity: Math.max(originalQty - pendingQty, 0),
+            };
+          })
+          .filter((p) => Number(p.quantity || 0) > 0);
+
+        setPallets(adjusted);
+
+        // Only fully exhausted pallets are locked.
+        setIssuedPalletIds(
+          new Set(
+            (cached || [])
+              .filter((p) => {
+                const originalQty = Number(p.quantity || 0);
+                const pendingQty = Number(pendingMap.get(p.id) || 0);
+                return originalQty > 0 && pendingQty >= originalQty;
+              })
+              .map((p) => p.id)
+          )
+        );
       } catch (err) {
-        console.error('Failed to load cached pallets:', err);
+        console.error('Failed to load material issue stock:', err);
       } finally {
         setPalletsLoaded(true);
       }
     };
 
     load();
-
-    const loadAlreadyIssued = async () => {
-      try {
-        const pending = await getAllPendingIssues();
-        setIssuedPalletIds(new Set(pending.map((p) => p.palletId).filter((id) => id !== undefined && id !== null)));
-      } catch (err) {
-        console.error('Failed to load already-issued pallets:', err);
-      }
-    };
-
-    loadAlreadyIssued();
-
   }, []);
 
   useEffect(() => {
@@ -223,14 +313,20 @@ const handleLogout = () => {
     setTimeout(() => scanInputRef.current?.focus(), 50);
   };
 
- 
+
   const usedPalletIds = useMemo(() => {
     const used = new Set();
-    scannedRows.forEach((r) => { if (r.palletId !== undefined && r.palletId !== null) used.add(r.palletId); });
     confirmedRows.forEach((r) => { if (r.palletId !== undefined && r.palletId !== null) used.add(r.palletId); });
     issuedPalletIds.forEach((id) => used.add(id));
     return used;
-  }, [scannedRows, confirmedRows, issuedPalletIds]);
+  }, [confirmedRows, issuedPalletIds]);
+
+  // Drop any search result that has since been used (scanned,
+  // confirmed, or issued) so the grid never offers a pallet the
+  // user can't actually add anymore.
+  useEffect(() => {
+    setSearchResults((rows) => rows.filter((r) => !usedPalletIds.has(r.id)));
+  }, [usedPalletIds]);
 
   const summaryCounts = useMemo(() => {
 
@@ -246,85 +342,49 @@ const handleLogout = () => {
     return totals;
 
   }, [pallets]);
-const handleSummaryCardClick = (typeKey) => {
-  if (typeKey === 'CHANGE_PART') return;
+  const handleSummaryCardClick = (typeKey) => {
+    if (typeKey === 'CHANGE_PART') return;
 
-  const matches = pallets.filter(
-    (p) =>
-      (p.type || 'REGULAR').toUpperCase() === typeKey &&
-      !usedPalletIds.has(p.id)
-  );
+    const matches = pallets.filter(
+      (p) =>
+        (p.type || 'REGULAR').toUpperCase() === typeKey &&
+        !usedPalletIds.has(p.id)
+    );
 
-  const ordered =
-    typeKey === 'REGULAR'
-      ? [...matches].sort(
+    const ordered =
+      typeKey === 'REGULAR'
+        ? [...matches].sort(
           (a, b) =>
             new Date(a.movementDate) - new Date(b.movementDate)
         )
-      : matches;
+        : matches;
 
-  setActiveType(typeKey);
-  setQueue(ordered);
-  setQueueIndex(0);
+    setActiveType(typeKey);
+    setQueue(ordered);
+    setQueueIndex(0);
 
-  // Do NOT auto-select the first part.
-  // User must manually select the Part.
-  setForm((f) => ({
-    ...f,
-    itemId: '',
-    storeLocation: '',
-    palletNo: '',
-    quantity: '',
-  }));
-};
-
-  const applyPalletToForm = (pallet) => {
-    setForm((f) => ({
-      ...f,
-      itemId: pallet.itemId,
-      storeLocation: pallet.storeLocation || '',
-      palletNo: pallet.palletNo || '',
-      quantity: pallet.quantity ? String(pallet.quantity) : '',
-    }));
+    // Do NOT auto-select the first part.
+    // User must manually select the Part.
+    setForm((f) => ({ ...f, itemId: '', quantity: '' }));
+    setSearchResults([]);
   };
 
-  // "Select Part" now respects whichever summary card is active:
-  //   - REGULAR active -> only REGULAR-type parts listed
-  //   - SAMPLE active  -> only SAMPLE-type parts listed
-  //   - nothing active -> every synced part listed (old behavior)
+  // "Select Part" now always lists every synced part — no REGULAR /
+  // SAMPLE scoping. Which physical pallet gets attached to a part
+  // is decided by Search (below) or by scanning a label directly.
   const partOptions = useMemo(() => {
     const seen = new Map();
 
-    const scoped = (activeType === 'REGULAR' || activeType === 'SAMPLE')
-      ? pallets.filter((p) => (p.type || 'REGULAR').toUpperCase() === activeType)
-      : pallets;
-
-    scoped.forEach((p) => {
+    pallets.forEach((p) => {
       if (!seen.has(p.itemId)) seen.set(p.itemId, p.partLabel || p.itemId);
     });
 
     return Array.from(seen.entries()).map(([itemId, partLabel]) => ({ itemId, partLabel }));
-  }, [pallets, activeType]);
+  }, [pallets]);
 
   const handlePartSelect = (itemId) => {
-
-    const matches = pallets.filter(
-      (p) => String(p.itemId) === String(itemId) && !usedPalletIds.has(p.id)
-    );
-
-    if (matches.length === 0) {
-      setForm((f) => ({ ...f, itemId, storeLocation: '', palletNo: '', quantity: '' }));
-      return;
-    }
-
-    const isRegular = matches[0].type === 'REGULAR';
-
-    const chosen = isRegular
-      ? [...matches].sort((a, b) => new Date(a.movementDate) - new Date(b.movementDate))[0]
-      : matches[0];
-
-    applyPalletToForm({ ...chosen, itemId });
-
+    setForm((f) => ({ ...f, itemId }));
+    setSearchResults([]);
   };
 
   // ------------------------------------------
@@ -332,25 +392,173 @@ const handleSummaryCardClick = (typeKey) => {
   // the oldest unused pallet is allowed in.
   // ------------------------------------------
 
-  const getNextRegularPallet = () => {
-    const unusedRegular = pallets.filter(
-      (p) => (p.type || 'REGULAR').toUpperCase() === 'REGULAR' && !usedPalletIds.has(p.id)
-    );
+  const getNextRegularPallet = (itemId = null) => {
+    const unusedRegular = pallets.filter((p) => {
+      if ((p.type || 'REGULAR').toUpperCase() !== 'REGULAR') return false;
+      if (usedPalletIds.has(p.id)) return false;
+
+      // FIFO is PART-WISE. Another part must never block this part.
+      if (itemId !== null && itemId !== undefined && itemId !== '') {
+        if (String(p.itemId) !== String(itemId)) return false;
+      }
+
+      return true;
+    });
+
     if (unusedRegular.length === 0) return null;
+
+    // Use the Store Movement date supplied by the current API.
     return [...unusedRegular].sort(
-      (a, b) => new Date(a.movementDate) - new Date(b.movementDate)
+      (a, b) =>
+        new Date(a.movementDate || 0) -
+        new Date(b.movementDate || 0)
     )[0];
   };
 
   // ------------------------------------------
-  // STEP 1 — a validated scan lands in
-  // Scanned Items (not Confirmed yet).
+  // SEARCH — "Select Part" + Quantity + "Search"
+  // button. Lists every unused synced pallet for
+  // the chosen part whose available Max Qty can
+  // cover the requested Quantity (oldest first)
+  // in the Search Parts grid below. Quantity is
+  // a FILTER only — nothing is added to Scanned
+  // Items until the user clicks Add on a
+  // specific row, and that row's real Qty always
+  // comes from the matched pallet's own synced
+  // value, never from this typed-in number.
   // ------------------------------------------
 
-  const addScannedRow = ({ palletId, itemId, partLabel, palletNo, storeLocation, quantity, grnNo, remarks, type }) => {
+  const handleSearchParts = () => {
+    if (!form.itemId) {
+      toast.error('Select a part first.');
+      return;
+    }
+
+    const requestedQty = Number(form.quantity);
+
+    if (!Number.isFinite(requestedQty) || requestedQty <= 0) {
+      toast.error('Please enter the Issue Qty for this part.');
+      return;
+    }
+
+    // ---------------------------------------------------------
+    // Get ALL unused pallets for the selected PART.
+    // Do NOT filter pallet quantity against requested quantity.
+    // We need all pallets displayed so the user can see the
+    // complete FIFO/store-movement sequence.
+    // ---------------------------------------------------------
+    const matches = pallets.filter((p) => {
+      if (String(p.itemId) !== String(form.itemId)) {
+        return false;
+      }
+
+      if (usedPalletIds.has(p.id)) {
+        return false;
+      }
+
+      // Edited Regular pallets are skipped from FIFO
+      if (
+        (p.type || 'REGULAR').toUpperCase() === 'REGULAR' &&
+        p.fifoSkipped === true
+      ) {
+        return false;
+      }
+
+      return true;
+    });
+
+    if (matches.length === 0) {
+      toast.error('No available pallets found for this part.');
+      setSearchResults([]);
+      return;
+    }
+
+    // ---------------------------------------------------------
+    // FIFO order = oldest Store Movement date first.
+    // All pallets for the selected PART are shown.
+    // ---------------------------------------------------------
+    const ordered = [...matches].sort(
+      (a, b) =>
+        new Date(a.movementDate || 0) -
+        new Date(b.movementDate || 0)
+    );
+
+    // ---------------------------------------------------------
+    // Calculate cumulative quantity.
+    //
+    // Example:
+    // Requested Qty = 100
+    //
+    // Pallet 1 = 40  -> GREEN
+    // Pallet 2 = 35  -> GREEN
+    // Pallet 3 = 25  -> GREEN
+    // Pallet 4 = 50  -> NORMAL
+    //
+    // Once cumulative quantity reaches requested quantity,
+    // remaining pallets stay normal.
+    // ---------------------------------------------------------
+    let cumulativeQty = 0;
+    let quantitySatisfied = false;
+
+    const highlightedRows = ordered.map((p) => {
+      const palletQty = Number(p.quantity || 0);
+
+      let fifoMatch = false;
+
+      if (!quantitySatisfied && palletQty > 0) {
+        fifoMatch = true;
+
+        cumulativeQty += palletQty;
+
+        if (cumulativeQty >= requestedQty) {
+          quantitySatisfied = true;
+        }
+      }
+
+      return {
+        ...p,
+
+        // UI-only values
+        fifoMatched: fifoMatch,
+        cumulativeQty,
+        requestedQty,
+      };
+    });
+
+    setSearchResults(highlightedRows);
+  };
+
+  const handleClearSearch = () => {
+    // Clear both Search Parts and Confirmed Parts.
+    setForm(EMPTY_FORM);
+    setSearchResults([]);
+    setConfirmedRows([]);
+
+    // Close any open modal and reset its state.
+    setIssueQtyModalOpen(false);
+    setIssueQtyTarget(null);
+    setIssueQty('');
+    setDetailsOpen(false);
+    setDetailsRow(null);
+    setEditForm(EMPTY_EDIT_FORM);
+
+    setActiveType(null);
+    setQueue([]);
+    setQueueIndex(0);
+
+    toast.info('Search and Confirmed Parts cleared.');
+    refocusScanInput();
+  };
+
+  // ------------------------------------------
+  // VALIDATED PALLET — a scan or Search-row click
+  // goes directly into Confirmed Parts.
+  // ------------------------------------------
+
+  const addConfirmedRow = ({ palletId, itemId, partLabel, palletNo, storeLocation, quantity, grnNo, remarks, type, movementDate }) => {
 
     if (!itemId || !quantity || !palletNo) {
-      toast.error('Scanned label is missing required fields (part, quantity or pallet number).');
+      toast.error('This pallet is missing required fields (part, quantity or pallet number).');
       return false;
     }
 
@@ -364,70 +572,184 @@ const handleSummaryCardClick = (typeKey) => {
       return false;
     }
 
-    if (!issuedTo.trim()) {
-      toast.error('Enter "Issued To" before scanning — required to save.');
-      return false;
-    }
-
     // Identity checks use the unique palletId, NOT the palletNo
     // label — palletNo/fifoPalletNo get recycled across different
     // GRNs, so checking by label alone could either wrongly block a
     // different, legitimate pallet that shares an old label, or
     // fail to catch a real duplicate.
     if (issuedPalletIds.has(palletId)) {
-      toast.error(`Pallet ${palletNo} (GRN ${grnNo || '—'}) was already Issued and saved to this device. It cannot be scanned again until it's synced and re-stocked.`);
+      toast.error(`Pallet ${palletNo} (GRN ${grnNo || '—'}) was already Issued and saved to this device. It cannot be added again until it's synced and re-stocked.`);
       return false;
     }
 
     if (usedPalletIds.has(palletId)) {
-      toast.error(`Pallet ${palletNo} (GRN ${grnNo || '—'}) has already been scanned this session.`);
+      toast.error(`Pallet ${palletNo} (GRN ${grnNo || '—'}) has already been added this session.`);
       return false;
     }
 
-    // FIFO enforcement — a Regular pallet can only be scanned if it's
+    // FIFO enforcement — a Regular pallet can only be added if it's
     // the oldest unused one. Compared by id, since two different
     // pallets can share the same displayed palletNo.
     if ((type || 'REGULAR').toUpperCase() === 'REGULAR') {
-      const nextAllowed = getNextRegularPallet();
+      const nextAllowed = getNextRegularPallet(itemId);
       if (nextAllowed && nextAllowed.id !== palletId) {
-        toast.error(`FIFO order required — scan pallet ${nextAllowed.palletNo} (GRN ${nextAllowed.grnNo || '—'}) first (oldest in store).`);
+        toast.error(`FIFO order required — add pallet ${nextAllowed.palletNo} (GRN ${nextAllowed.grnNo || '—'}) first (oldest in store).`);
         return false;
       }
     }
 
     const row = {
-      id: `${Date.now()}`,
+      id: `${Date.now()}-${palletId}`,
       palletId,
       itemId,
       partLabel: partLabel || itemId,
       grnNo: grnNo || '—',
+      movementDate: movementDate || null,
       palletNo,
+      storeLocation: storeLocation || '',
       location: storeLocation || '',
+      quantity: Number(quantity),
       qty: Number(quantity),
       remarks: remarks || '',
       type: (type || 'REGULAR').toUpperCase(),
       edited: false,
     };
 
-    setScannedRows((rows) => [...rows, row]);
-    toast.success(`Pallet ${palletNo} (GRN ${grnNo || '—'}) scanned.`);
+    // Validated scan/search row goes directly to Confirmed Parts.
+    setConfirmedRows((rows) => [...rows, row]);
+    toast.success(`Pallet ${palletNo} (GRN ${grnNo || '—'}) confirmed.`);
 
     if (activeType && queue.length > 0) {
       const remaining = queue.filter((p) => p.id !== palletId);
       setQueue(remaining);
-      if (remaining.length > 0) {
-        applyPalletToForm(remaining[0]);
-        setQueueIndex(0);
-      } else {
-        setForm(EMPTY_FORM);
+      if (remaining.length === 0) {
         setActiveType(null);
       }
-    } else {
-      setForm(EMPTY_FORM);
+      setQueueIndex(0);
     }
 
     return true;
 
+  };
+
+  // ------------------------------------------
+  // SEARCH ROW -> ISSUE QUANTITY MODAL
+  // ------------------------------------------
+  // Clicking a Search Parts row does NOT immediately add the
+  // complete pallet quantity. First open the Issue Quantity modal.
+  //
+  // Example:
+  // Requested = 21
+  // Pallet 1 available = 20 -> modal defaults Issue Qty = 20
+  // Pallet 2 available = 6  -> modal defaults Issue Qty = 1
+  // ------------------------------------------
+
+  const getRemainingRequestedQty = (itemId) => {
+    const requested = Number(form.quantity);
+
+    if (!Number.isFinite(requested) || requested <= 0) {
+      return 0;
+    }
+
+    const alreadyConfirmed = confirmedRows
+      .filter((r) => String(r.itemId) === String(itemId))
+      .reduce((sum, r) => sum + Number(r.qty || 0), 0);
+
+    return Math.max(requested - alreadyConfirmed, 0);
+  };
+
+  const openIssueQtyModal = (row) => {
+    if (!row) return;
+
+    // Prevent manual Search Parts clicks from bypassing FIFO.
+    // Only the current FIFO pallet for the part may open the modal.
+    if (
+      (row.type || 'REGULAR').toUpperCase() === 'REGULAR' &&
+      row.fifoMatched !== true
+    ) {
+      const nextAllowed = getNextRegularPallet(row.itemId);
+
+      if (nextAllowed && nextAllowed.id !== row.id) {
+        toast.error(
+          `FIFO order required — select pallet ${nextAllowed.palletNo} ` +
+          `(GRN ${nextAllowed.grnNo || '—'}) first.`
+        );
+        return;
+      }
+    }
+
+    const remainingQty = getRemainingRequestedQty(row.itemId);
+    const availableQty = Number(row.quantity || 0);
+
+    if (remainingQty <= 0) {
+      toast.info('The requested quantity has already been satisfied.');
+      return;
+    }
+
+    if (!Number.isFinite(availableQty) || availableQty <= 0) {
+      toast.error('This pallet has no available quantity.');
+      return;
+    }
+
+    // Never allow the default Issue Qty to exceed either:
+    // 1. the pallet's available quantity, or
+    // 2. the user's remaining requested quantity.
+    const defaultIssueQty = Math.min(availableQty, remainingQty);
+
+    setIssueQtyTarget(row);
+    setIssueQty(String(defaultIssueQty));
+    setIssueQtyModalOpen(true);
+  };
+
+  const closeIssueQtyModal = () => {
+    setIssueQtyModalOpen(false);
+    setIssueQtyTarget(null);
+    setIssueQty('');
+  };
+
+  const handleAddFromIssueQtyModal = () => {
+    if (!issueQtyTarget) return;
+
+    const requestedQty = Number(form.quantity);
+    const availableQty = Number(issueQtyTarget.quantity || 0);
+    const enteredQty = Number(issueQty);
+    const remainingQty = getRemainingRequestedQty(issueQtyTarget.itemId);
+
+    if (!Number.isFinite(enteredQty) || enteredQty <= 0) {
+      toast.error('Enter a valid Issue Qty.');
+      return;
+    }
+
+    if (enteredQty > availableQty) {
+      toast.error(`Issue Qty cannot exceed available quantity ${availableQty}.`);
+      return;
+    }
+
+    if (enteredQty > remainingQty) {
+      toast.error(`Issue Qty cannot exceed the remaining requested quantity ${remainingQty}.`);
+      return;
+    }
+
+    // Keep the original FIFO / duplicate / validation rules.
+    const added = addConfirmedRow({
+      palletId: issueQtyTarget.id,
+      itemId: issueQtyTarget.itemId,
+      partLabel: issueQtyTarget.partLabel,
+      palletNo: issueQtyTarget.palletNo,
+      storeLocation: issueQtyTarget.storeLocation,
+      quantity: enteredQty,
+      grnNo: issueQtyTarget.grnNo,
+      remarks: form.remarks,
+      type: issueQtyTarget.type,
+      movementDate: issueQtyTarget.movementDate,
+    });
+
+    if (added) {
+      setSearchResults((rows) =>
+        rows.filter((r) => r.id !== issueQtyTarget.id)
+      );
+      closeIssueQtyModal();
+    }
   };
 
   // ------------------------------------------
@@ -583,6 +905,27 @@ const handleSummaryCardClick = (typeKey) => {
 
     if (match) {
 
+      // FIFO CHECK MUST HAPPEN IMMEDIATELY AFTER SCAN.
+      // For REGULAR stock FIFO is PART-WISE: only the oldest
+      // available pallet for the scanned part may be scanned next.
+      // This check runs before opening the Issue Qty modal.
+      const matchType = (match.type || 'REGULAR').toUpperCase();
+
+      if (matchType === 'REGULAR') {
+        const nextAllowed = getNextRegularPallet(match.itemId);
+
+        if (nextAllowed && nextAllowed.id !== match.id) {
+          toast.error(
+            `FIFO order required — scan pallet ${nextAllowed.palletNo} ` +
+            `(GRN ${nextAllowed.grnNo || '—'}) first. ` +
+            `It is the oldest available pallet for part ` +
+            `${splitPartLabel(match.partLabel).itemNo || match.itemId}.`
+          );
+          resetScanInput();
+          return;
+        }
+      }
+
       // Extra check: if the label carries a GRN number, and the
       // matched pallet's own GRN is known, they must agree. This
       // catches a label that happens to reuse a real pallet number
@@ -598,18 +941,12 @@ const handleSummaryCardClick = (typeKey) => {
         return;
       }
 
-      addScannedRow({
-        palletId: match.id,
-        itemId: match.itemId,
-        partLabel: match.partLabel,
-        palletNo: match.palletNo,
+      // Scan identifies the verified pallet only.
+      // Do not add the complete pallet quantity automatically.
+      openIssueQtyModal({
+        ...match,
         storeLocation: scannedLocation || match.storeLocation,
-        // Quantity always comes from synced data, never trusted
-        // from the raw scan — a label can't be used to inflate or
-        // shrink what's actually on record for this pallet.
-        quantity: match.quantity,
         grnNo: match.grnNo || scannedGrn,
-        type: match.type,
       });
 
       setActiveType(match.type || activeType);
@@ -658,61 +995,13 @@ const handleSummaryCardClick = (typeKey) => {
   };
 
   // ------------------------------------------
-  // STEP 2 — "Add Scanned Pallet" moves every
-  // row currently in Scanned Items into
-  // Confirmed Items. Still no local save yet.
+  // CONFIRMED ITEMS — direct result of a valid
+  // scan or Search Parts row click.
   // ------------------------------------------
-
-  const handleMoveToConfirmed = () => {
-
-    if (scannedRows.length === 0) {
-      toast.error('Scan at least one pallet first.');
-      return;
-    }
-
-    setConfirmedRows((rows) => [...rows, ...scannedRows]);
-    setScannedRows([]);
-    toast.success(`${scannedRows.length} pallet(s) moved to Confirmed Items.`);
-
-  };
-
-  const handleDeleteScanned = (row) => {
-    setDeleteTarget(row);
-    setDeleteTargetType('SCANNED');
-    setShowDeleteModal(true);
-  };
-
-  const handleDeleteConfirmed = (row) => {
-    setDeleteTarget(row);
-    setDeleteTargetType('CONFIRMED');
-    setShowDeleteModal(true);
-  };
-
-  const confirmDelete = () => {
-    if (!deleteTarget) return;
-
-    if (deleteTargetType === 'SCANNED') {
-      setScannedRows((rows) =>
-        rows.filter((r) => r.id !== deleteTarget.id)
-      );
-    }
-
-    if (deleteTargetType === 'CONFIRMED') {
-      setConfirmedRows((rows) =>
-        rows.filter((r) => r.id !== deleteTarget.id)
-      );
-    }
-
-    setShowDeleteModal(false);
-    setDeleteTarget(null);
-    setDeleteTargetType(null);
-
-    toast.success('Deleted Successfully');
-  };
 
   // ------------------------------------------
   // STEP 3 — Issue Material saves every row in
-  // Confirmed Items to the LOCAL offline DB.
+  // Confirmed Parts to the LOCAL offline DB.
   // Field names match the backend MaterialIssue
   // model exactly: ItemId, Quantity, IssuedTo,
   // IssuedBy, StoreLocation, PalletNo,
@@ -722,90 +1011,86 @@ const handleSummaryCardClick = (typeKey) => {
   const handleIssueMaterial = async () => {
 
     if (confirmedRows.length === 0) {
-      toast.error('Move at least one pallet to Confirmed Items before issuing.');
+      toast.error('Please add the required quantity to Confirmed Parts before issuing.');
       return;
     }
 
-    if (!issuedTo.trim()) {
-      toast.error('Enter "Issued To" before issuing.');
+    // ---------------------------------------------------------
+    // ISSUE QUANTITY VALIDATION
+    // The quantity entered in the main Quantity field is the
+    // quantity the user requested for the selected part.
+    // Do not allow Issue Material when the confirmed quantity
+    // is less than or greater than the requested quantity.
+    //
+    // Example:
+    // Requested = 21
+    // Confirmed = 10
+    // Result = block issue and clearly tell the user that
+    // 21 units were requested but only 10 were selected.
+    // ---------------------------------------------------------
+    const requestedIssueQty = Number(form.quantity);
+
+    if (
+      !Number.isFinite(requestedIssueQty) ||
+      requestedIssueQty <= 0
+    ) {
+      toast.error('Please enter a valid Issue Qty before issuing material.');
       return;
     }
 
-    setSaving(true);
+    const confirmedQtyForSelectedPart = confirmedRows
+      .filter((row) => String(row.itemId) === String(form.itemId))
+      .reduce((sum, row) => sum + Number(row.qty || row.quantity || 0), 0);
 
-    try {
+    if (confirmedQtyForSelectedPart < requestedIssueQty) {
+      const shortage = requestedIssueQty - confirmedQtyForSelectedPart;
 
-      for (const row of confirmedRows) {
-        await queuePendingIssue({
-          palletId: row.palletId,
-          grnPalletId: row.palletId,
-          itemId: row.itemId,
-          quantity: row.qty,
-          issuedTo: issuedTo.trim(),
-          issuedBy,
-          storeLocation: row.location,
-          palletNo: row.palletNo,
-          grnNumber: row.grnNo === '—' ? null : row.grnNo,
-          remarks: row.remarks,
-          createdAt: new Date().toISOString(),
-        });
-      }
-
-      toast.success(`Material Issued Successfully — ${confirmedRows.length} pallet(s) saved to this device.`);
-
-      // Lock these pallets against being scanned/issued again — this
-      // set is NOT cleared, unlike confirmedRows below. Locked by
-      // the unique palletId, not the palletNo label (which can be
-      // recycled onto a different, legitimate pallet later).
-      setIssuedPalletIds((prev) => {
-        const next = new Set(prev);
-        confirmedRows.forEach((row) => {
-          if (row.palletId !== undefined && row.palletId !== null) next.add(row.palletId);
-        });
-        return next;
-      });
-
-      // Clear the grid — the data itself is safe in the local DB,
-      // waiting for the next Data Sync.
-      setConfirmedRows([]);
-
-    } catch (err) {
-      console.error('Failed to save offline:', err);
-      toast.error('Failed to save locally. Nothing was cleared — please try again.');
-    } finally {
-      setSaving(false);
+      toast.warning(
+        `You requested ${requestedIssueQty} ${requestedIssueQty === 1 ? 'unit' : 'units'}, ` +
+        `but only ${confirmedQtyForSelectedPart} ${confirmedQtyForSelectedPart === 1 ? 'unit is' : 'units are'} selected. ` +
+        `Please select ${shortage} more ${shortage === 1 ? 'unit' : 'units'} to complete the issue.`
+      );
+      return;
     }
+
+    if (confirmedQtyForSelectedPart > requestedIssueQty) {
+      toast.warning(
+        `You requested ${requestedIssueQty} ${requestedIssueQty === 1 ? 'unit' : 'units'}, ` +
+        `but ${confirmedQtyForSelectedPart} ${confirmedQtyForSelectedPart === 1 ? 'unit is' : 'units are'} selected. ` +
+        `Please adjust the selected quantity to exactly ${requestedIssueQty}.`
+      );
+      return;
+    }
+
+    // Issued To is validated ONLY when the user clicks Issue Material.
+    // It is not required while adding/searching/confirming pallets.
+    if (!issuedTo || !issuedTo.trim()) {
+      toast.error('Please enter Issued To before clicking Issue Material.');
+      return;
+    }
+
+
 
   };
 
   const totalPallets = confirmedRows.length;
   const totalQuantity = confirmedRows.reduce((sum, r) => sum + Number(r.qty || 0), 0);
 
-  const openView = (row) => {
+  const openEdit = (row, source = 'confirmed') => {
     setDetailsRow(row);
-    setDetailsMode('view');
+    setEditSource(source);
 
     setGrnType(
       (row?.type || 'REGULAR').toUpperCase()
     );
 
-    setDetailsOpen(true);
-  };
-
-  const openEdit = (row, source) => {
-    setDetailsRow(row);
-    setDetailsRowSource(source);
-    setDetailsMode('edit');
-
-    setGrnType(
-      (row?.type || 'REGULAR').toUpperCase()
-    );
-
+    // Location can arrive as either location or storeLocation depending
+    // on whether the row came from the confirmed/search grid.
     setEditForm({
       palletNo: row?.palletNo || '',
       partLabel: row?.partLabel || '',
-      location: row?.location || '',
-      qty: row?.qty ?? '',
+      location: row?.location || row?.storeLocation || row?.store_location || '',
+      qty: row?.qty ?? row?.quantity ?? '',
     });
 
     setDetailsOpen(true);
@@ -813,123 +1098,248 @@ const handleSummaryCardClick = (typeKey) => {
 
   const closeDetails = () => {
     setDetailsOpen(false);
-    setDetailsRowSource(null);
+    setDetailsRow(null);
+    setEditSource('confirmed');
     setEditForm(EMPTY_EDIT_FORM);
   };
 
-  // Saves the Edit modal's fields back onto the row it came from,
-  // flags the row as edited (drives the row highlight color), and
-  // bumps the CHANGE PART counter. This previously did nothing —
-  // "Update" just closed the modal without saving.
+  // Saves only the Confirmed Parts row being edited.
   const handleUpdateEdit = () => {
-
     if (!detailsRow) {
       closeDetails();
       return;
     }
 
+    const enteredQty =
+      editForm.qty === ''
+        ? Number(detailsRow.qty ?? detailsRow.quantity)
+        : Number(editForm.qty);
+
+    if (!Number.isFinite(enteredQty) || enteredQty <= 0) {
+      toast.error('Enter a valid quantity greater than 0.');
+      return;
+    }
     const updatedFields = {
       palletNo: (editForm.palletNo || '').trim() || detailsRow.palletNo,
       partLabel: (editForm.partLabel || '').trim() || detailsRow.partLabel,
       location: (editForm.location || '').trim(),
-      qty: editForm.qty === '' ? detailsRow.qty : Number(editForm.qty),
+      storeLocation: (editForm.location || '').trim(),
+      quantity: enteredQty,
+      qty: enteredQty,
       type: grnType,
       edited: true,
     };
 
-    const patchRows = (rows) =>
-      rows.map((r) => (r.id === detailsRow.id ? { ...r, ...updatedFields } : r));
-
-    if (detailsRowSource === 'SCANNED') {
-      setScannedRows(patchRows);
-    } else if (detailsRowSource === 'CONFIRMED') {
-      setConfirmedRows(patchRows);
+    // Update the grid from which the edit modal was opened.
+    // Search Parts and Confirmed Parts are separate state arrays, so
+    // updating only confirmedRows would make Search Parts look unchanged.
+    if (editSource === 'search') {
+      setSearchResults((rows) =>
+        rows.map((r) =>
+          r.id === detailsRow.id
+            ? { ...r, ...updatedFields }
+            : r
+        )
+      );
+    } else {
+      setConfirmedRows((rows) =>
+        rows.map((r) =>
+          r.id === detailsRow.id
+            ? { ...r, ...updatedFields }
+            : r
+        )
+      );
     }
 
     setChangePartCount((c) => c + 1);
-    toast.success('Pallet details updated.');
+    toast.success('Pallet details updated successfully.');
     closeDetails();
+  };
+  // ---------------------------------------------------------
+  // GRID TOOLTIP
+  // ---------------------------------------------------------
+  // Shows the complete cell value when the mouse is placed over a
+  // grid cell. The displayed text stays compact so long values do
+  // not make the table unnecessarily wide.
+  const GridTooltipCell = ({ value, id }) => {
+    const displayValue =
+      value === undefined || value === null || value === ''
+        ? '—'
+        : String(value);
 
+    return (
+      <>
+        <div
+          data-tooltip-id={id}
+          data-tooltip-content={displayValue}
+          style={{
+            width: '100%',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            cursor: 'help',
+          }}
+        >
+          {displayValue}
+        </div>
+      </>
+    );
   };
 
-  const scannedColumns = [
-    { name: 'GRN No.', selector: (row) => row.grnNo, sortable: true },
-    { name: 'Pallet No.', selector: (row) => row.palletNo, sortable: true },
-    { name: 'Location', selector: (row) => row.location, sortable: true },
-    { name: 'Qty', selector: (row) => row.qty, sortable: true, width: '70px' },
+  const partGridColumns = [
     {
-      name: 'Action',
+      name: 'GRN No',
+      selector: (row) => row.grnNo || '—',
       cell: (row) => (
-        <div className="mi-row-actions">
-          <button
-            type="button"
-            className="mi-action-btn mi-action-view"
-            onClick={() => openView(row)}
-          >
-            <FaEye />
-          </button>
-
-          <button
-            type="button"
-            className="mi-action-btn mi-action-edit"
-            onClick={() => openEdit(row, 'SCANNED')}
-          >
-            <FaEdit />
-          </button>
-
-          <button
-            type="button"
-            className="mi-action-btn mi-action-delete"
-            onClick={() => handleDeleteScanned(row)}
-          >
-            <FaTrash />
-          </button>
-        </div>
+        <GridTooltipCell
+          id="material-issue-grid-tooltip"
+          value={row.grnNo}
+        />
       ),
-      width: '110px',
+      sortable: true,
+    },
+    {
+      name: 'GR Date',
+      selector: (row) =>
+        row.movementDate
+          ? new Date(row.movementDate).toLocaleDateString()
+          : '—',
+      cell: (row) => (
+        <GridTooltipCell
+          id="material-issue-grid-tooltip"
+          value={
+            row.movementDate
+              ? new Date(row.movementDate).toLocaleDateString()
+              : '—'
+          }
+        />
+      ),
+      sortable: true,
+    },
+    {
+      name: 'Pallet No',
+      selector: (row) => row.palletNo || '—',
+      cell: (row) => (
+        <GridTooltipCell
+          id="material-issue-grid-tooltip"
+          value={row.palletNo}
+        />
+      ),
+      sortable: true,
+    },
+    {
+      name: 'Part No',
+      selector: (row) =>
+        splitPartLabel(row.partLabel).itemNo || row.itemId,
+      cell: (row) => (
+        <GridTooltipCell
+          id="material-issue-grid-tooltip"
+          value={splitPartLabel(row.partLabel).itemNo || row.itemId}
+        />
+      ),
+      sortable: true,
+    },
+    {
+      name: 'Part Name',
+      selector: (row) =>
+        splitPartLabel(row.partLabel).itemName,
+      cell: (row) => (
+        <GridTooltipCell
+          id="material-issue-grid-tooltip"
+          value={splitPartLabel(row.partLabel).itemName}
+        />
+      ),
+      sortable: true,
+    },
+    {
+      name: 'Location',
+      selector: (row) =>
+        row.storeLocation ?? row.location ?? '—',
+      cell: (row) => (
+        <GridTooltipCell
+          id="material-issue-grid-tooltip"
+          value={row.storeLocation ?? row.location ?? '—'}
+        />
+      ),
+      sortable: true,
+    },
+    {
+      name: 'Qty',
+      selector: (row) =>
+        row.quantity ?? row.qty ?? 0,
+      cell: (row) => (
+        <GridTooltipCell
+          id="material-issue-grid-tooltip"
+          value={row.quantity ?? row.qty ?? 0}
+        />
+      ),
+      sortable: true,
+      width: '90px',
     },
   ];
 
-  const confirmedColumns = [
-    { name: 'GRN No.', selector: (row) => row.grnNo, sortable: true },
-    { name: 'Pallet No.', selector: (row) => row.palletNo, sortable: true },
-    { name: 'Location', selector: (row) => row.location, sortable: true },
-    { name: 'Qty', selector: (row) => row.qty, sortable: true, width: '70px' },
-    {
-      name: 'Action',
-      cell: (row) => (
-        <div className="mi-row-actions">
-          <button
-            type="button"
-            className="mi-action-btn mi-action-view"
-            onClick={() => openView(row)}
-          >
-            <FaEye />
-          </button>
-
-          <button
-            type="button"
-            className="mi-action-btn mi-action-edit"
-            onClick={() => openEdit(row, 'CONFIRMED')}
-          >
-            <FaEdit />
-          </button>
-
-          <button
-            type="button"
-            className="mi-action-btn mi-action-delete"
-            onClick={() => handleDeleteConfirmed(row)}
-          >
-            <FaTrash />
-          </button>
-        </div>
-      ),
-      width: '110px',
-    },
+  const searchColumns = [
+    ...partGridColumns,
+    // {
+    //   name: 'Action',
+    //   cell: (row) => (
+    //     <div className="mi-row-actions">
+    //       <button
+    //         type="button"
+    //         className="mi-action-btn mi-action-edit"
+    //         onClick={(e) => {
+    //           e.stopPropagation();
+    //           openEdit(row, 'search');
+    //         }}
+    //         title="Edit"
+    //         aria-label="Edit pallet"
+    //       >
+    //         <FaEdit />
+    //       </button>
+    //     </div>
+    //   ),
+    //   width: '90px',
+    // },
   ];
 
+  const filteredSearchResults = useMemo(() => {
+    const search = gridFilter.trim().toLowerCase();
+
+    if (!search) return searchResults;
+
+    return searchResults.filter((row) => {
+      const values = [
+        row.grnNo,
+        row.movementDate,
+        row.palletNo,
+        row.fifoPalletNo,
+        row.itemId,
+        row.partLabel,
+        row.storeLocation,
+        row.location,
+      ];
+
+      return values.some((value) =>
+        String(value ?? '').toLowerCase().includes(search)
+      );
+    });
+  }, [searchResults, gridFilter]);
+
+  const confirmedColumns = partGridColumns;
   return (
     <div className="mi-page">
+      <Tooltip
+        id="material-issue-grid-tooltip"
+        place="top"
+        delayShow={250}
+        style={{
+          zIndex: 9999,
+          maxWidth: '420px',
+          whiteSpace: 'normal',
+          wordBreak: 'break-word',
+        }}
+      />
+
 
       {/* ======================================
           HEADER (fixed)
@@ -973,7 +1383,10 @@ const handleSummaryCardClick = (typeKey) => {
 
         {/* SUMMARY CARDS — REGULAR / SAMPLE / CHANGE PART */}
 
-        <div className="mi-summary-row mi-summary-row-3">
+        <div
+          className={`mi-summary-row ${SUMMARY_CONFIG.length === 3 ? 'mi-summary-row-3' : 'mi-summary-row-2'
+            }`}
+        >
           {SUMMARY_CONFIG.map((card) => {
             const Icon = card.icon;
             const isChangePart = card.key === 'CHANGE_PART';
@@ -984,8 +1397,8 @@ const handleSummaryCardClick = (typeKey) => {
               : (palletsLoaded ? summaryCounts[card.key] : '—');
 
             const sub = isChangePart
-              ? 'Edited pallets'
-              : (isActive ? `${queue.length} remaining` : 'Pallets');
+              ? 'Edited Parts'
+              : (isActive ? `${queue.length} remaining` : 'Parts');
 
             return (
               <button
@@ -994,10 +1407,14 @@ const handleSummaryCardClick = (typeKey) => {
                 className={`mi-summary-card mi-tone-${card.tone} ${isActive ? 'mi-summary-active' : ''} ${isChangePart ? 'mi-summary-static' : ''}`}
                 onClick={() => handleSummaryCardClick(card.key)}
               >
-                <div className="mi-summary-icon"><Icon /></div>
-                <div className="mi-summary-label">{card.label}</div>
-                <div className="mi-summary-value">{value}</div>
-                <div className="mi-summary-unit">{sub}</div>
+                <div className="mi-summary-top">
+                  <span className="mi-summary-icon"><Icon /></span>
+                  <span className="mi-summary-label">{card.label}</span>
+                </div>
+                <div className="mi-summary-bottom">
+                  <span className="mi-summary-value">{value}</span>
+                  <span className="mi-summary-unit">{sub}</span>
+                </div>
               </button>
             );
           })}
@@ -1009,122 +1426,159 @@ const handleSummaryCardClick = (typeKey) => {
           </div>
         )}
 
-        {/* ISSUED TO / ISSUED BY — required by backend, collected once */}
+        {/* SELECT PART + QUANTITY — always lists every synced part.
+            Quantity is a search filter (only pallets whose Max Qty
+            covers it will show up) — it does NOT get saved onto a
+            row; the row's real Qty always comes from the matched
+            pallet's own synced value. Search fills the Search Parts
+            grid below; nothing is added until the user clicks Add
+            on a row. */}
 
         <div className="mi-grid-2">
           <div className="mi-field">
-            <label className="mi-label">Issued To <span className="mi-req">*</span></label>
-            <input
-              className="mi-input-real"
-              placeholder="Department or person receiving"
-              value={issuedTo}
-              onChange={(e) => setIssuedTo(e.target.value)}
+            <label className="mi-label">
+              Select Part <span className="mi-req">*</span>
+            </label>
+
+            <Select
+              classNamePrefix="react-select"
+              placeholder={
+                palletsLoaded
+                  ? 'Select part number'
+                  : 'Loading synced parts…'
+              }
+              options={partOptions.map((p) => ({
+                value: p.itemId,
+                label: p.partLabel,
+              }))}
+              value={
+                partOptions
+                  .map((p) => ({
+                    value: p.itemId,
+                    label: p.partLabel,
+                  }))
+                  .find(
+                    (option) =>
+                      String(option.value) === String(form.itemId)
+                  ) || null
+              }
+              onChange={(selected) =>
+                handlePartSelect(selected?.value || '')
+              }
+              isClearable
+              isDisabled={!palletsLoaded}
             />
           </div>
 
-          <div className="mi-field">
-            <label className="mi-label">Issued By</label>
-            <input
-              className="mi-input-real"
-              value={issuedBy}
-              readOnly
-            />
-          </div>
-        </div>
-
-        {/* SELECT PART + SEARCH — browse/reference only. Does NOT add
-            a row by itself; only a scanned label adds to the grid.
-            Options are scoped to the active summary card (REGULAR /
-            SAMPLE) when one is selected. */}
-
-        <div className="mi-field">
-          <label className="mi-label">
-            Select Part <span className="mi-req">*</span>
-            {(activeType === 'REGULAR' || activeType === 'SAMPLE') && (
-              <span className="mi-scope-hint"> ({activeType})</span>
-            )}
-          </label>
-
-          <Select
-            classNamePrefix="react-select"
-            placeholder={
-              palletsLoaded
-                ? 'Select part number'
-                : 'Loading synced parts…'
-            }
-            options={partOptions.map((p) => ({
-              value: p.itemId,
-              label: p.partLabel,
-            }))}
-            value={
-              partOptions
-                .map((p) => ({
-                  value: p.itemId,
-                  label: p.partLabel,
-                }))
-                .find(
-                  (option) =>
-                    String(option.value) === String(form.itemId)
-                ) || null
-            }
-            onChange={(selected) =>
-              handlePartSelect(selected?.value || '')
-            }
-            isClearable
-            isDisabled={!palletsLoaded}
-          />
-        </div>
-
-        {/* STORE LOCATION + PALLET NUMBER (auto-filled) */}
-
-        <div className="mi-grid-2">
-          <div className="mi-field">
-            <label className="mi-label">Store Location <span className="mi-req">*</span></label>
-            <input
-              className="mi-input-real"
-              placeholder="Store location"
-              value={form.storeLocation}
-              readOnly
-            />
-          </div>
-
-          <div className="mi-field">
-            <label className="mi-label">Pallet Number <span className="mi-req">*</span></label>
-            <input
-              className="mi-input-real"
-              placeholder="Pallet number"
-              value={form.palletNo}
-              readOnly
-            />
-          </div>
-        </div>
-
-        {/* QUANTITY + REMARKS */}
-
-        <div className="mi-grid-2">
           <div className="mi-field">
             <label className="mi-label">Quantity <span className="mi-req">*</span></label>
             <input
               type="number"
               className="mi-input-real"
               placeholder="Enter quantity"
+              min="0.001"
+              step="0.001"
               value={form.quantity}
-              onChange={(e) => setForm({ ...form, quantity: e.target.value })}
-            />
-          </div>
+              onChange={(e) => {
+                const value = e.target.value;
 
-          <div className="mi-field">
-            <label className="mi-label">Remarks</label>
-            <input
-              className="mi-input-real"
-              placeholder="Enter remarks"
-              value={form.remarks}
-              onChange={(e) => setForm({ ...form, remarks: e.target.value })}
+                if (/^\d*\.?\d*$/.test(value)) {
+                  setForm((f) => ({ ...f, quantity: value }));
+                }
+              }}
+              onKeyDown={(e) => {
+                if (['e', 'E', '+', '-'].includes(e.key)) {
+                  e.preventDefault();
+                }
+              }}
             />
           </div>
         </div>
 
-        {/* SCAN PALLET / GRN — step 1: lands in Scanned Items */}
+        <div className="mi-search-actions">
+          <button
+            type="button"
+            className="mi-search-btn"
+            onClick={handleSearchParts}
+            disabled={!form.itemId}
+          >
+            <FaSearch /> Search
+          </button>
+
+          <button
+            type="button"
+            className="mi-clear-btn"
+            onClick={handleClearSearch}
+          >
+            <FaTimes /> Clear All
+          </button>
+        </div>
+
+        {/* REMARKS — free-text, applies to whatever gets added next
+            (scan or Search-result Add). */}
+
+
+
+        {/* SEARCH PARTS GRID — result of Select Part + Search */}
+
+        <div className="mi-grid-header">
+
+          <div>
+            <div className="mi-section-title">Search Parts</div>
+
+            {searchResults.length > 0 && (
+              <div className="mi-search-hint">
+                Tap a pallet row to enter or update the Issue Qty
+              </div>
+            )}
+          </div>
+
+          {/* GRID FILTER */}
+          <div className="mi-grid-filter">
+            <FaSearch className="mi-grid-filter-icon" />
+
+            <input
+              type="text"
+              value={gridFilter}
+              onChange={(e) => setGridFilter(e.target.value)}
+              placeholder="Search by GRN, Pallet, Part..."
+              className="mi-grid-filter-input"
+            />
+
+            {gridFilter && (
+              <button
+                type="button"
+                className="mi-grid-filter-clear"
+                onClick={() => setGridFilter('')}
+                aria-label="Clear filter"
+              >
+                <FaTimes />
+              </button>
+            )}
+          </div>
+
+        </div>
+        <div className="mi-table-wrap">
+          <DataTable
+
+            columns={searchColumns}
+            data={filteredSearchResults}
+            customStyles={tableCustomStyles}
+            conditionalRowStyles={searchConditionalRowStyles}
+            onRowClicked={(row) => openIssueQtyModal(row)}
+            pointerOnHover
+            highlightOnHover
+            noHeader
+            dense
+            noDataComponent={
+              <div className="mi-empty-grid">
+                Select a part and enter quantity, then click Search
+              </div>
+            }
+          />
+        </div>
+
+        {/* SCAN PALLET / GRN — scan identifies pallet and opens Issue Qty modal */}
 
         <div className="mi-field">
           <label className="mi-label">Scan Pallet / GRN Label</label>
@@ -1132,7 +1586,7 @@ const handleSummaryCardClick = (typeKey) => {
             <input
               ref={scanInputRef}
               className="mi-scan-input-inner"
-              placeholder="Scan a label — adds automatically"
+              placeholder="Scan a label — enter Issue Qty"
               value={form.grnNo}
               onChange={handleScanInputChange}
               onKeyDown={handleScanInputKeyDown}
@@ -1142,36 +1596,12 @@ const handleSummaryCardClick = (typeKey) => {
           </div>
         </div>
 
-        {/* SCANNED ITEMS GRID — step 1 result */}
 
-        <div className="mi-section-title">Scanned Items</div>
 
-        <div className="mi-table-wrap">
-          <DataTable
-            columns={scannedColumns}
-            data={scannedRows}
-            customStyles={tableCustomStyles}
-            conditionalRowStyles={conditionalRowStyles}
-            noHeader
-            dense
-            noDataComponent={<div className="mi-empty-grid">No items scanned yet</div>}
-          />
-        </div>
 
-        {/* STEP 2: move Scanned Items -> Confirmed Items */}
+        {/* CONFIRMED ITEMS GRID — valid scan/search rows, saved on Issue Material */}
 
-        <button
-          type="button"
-          className="mi-add-btn"
-          onClick={handleMoveToConfirmed}
-          disabled={scannedRows.length === 0}
-        >
-          <FaPlus /> Add Scanned Pallet{scannedRows.length > 0 ? ` (${scannedRows.length})` : ''}
-        </button>
-
-        {/* CONFIRMED ITEMS GRID — step 2 result, saved on Issue Material */}
-
-        <div className="mi-section-title">Confirmed Items</div>
+        <div className="mi-section-title">Confirmed Parts</div>
 
         <div className="mi-table-wrap">
           <DataTable
@@ -1186,6 +1616,35 @@ const handleSummaryCardClick = (typeKey) => {
         </div>
 
         {/* TOTALS */}
+
+        <div className="mi-grid-2">
+          <div className="mi-field">
+            <label className="mi-label">Issued To <span className="mi-req">*</span></label>
+            <input
+              className="mi-input-real"
+              placeholder="Department or person receiving"
+              value={issuedTo}
+              onChange={(e) => setIssuedTo(e.target.value)}
+            />
+          </div>
+          <div className="mi-field">
+            <label className="mi-label">Issued By</label>
+            <input
+              className="mi-input-real"
+              value={issuedBy}
+              readOnly
+            />
+          </div>
+          <div className="mi-field">
+            <label className="mi-label">Remarks</label>
+            <input
+              className="mi-input-real"
+              placeholder="Enter remarks"
+              value={form.remarks}
+              onChange={(e) => setForm({ ...form, remarks: e.target.value })}
+            />
+          </div>
+        </div>
 
         <div className="mi-totals-row">
           <div className="mi-total-card mi-total-blue">
@@ -1212,7 +1671,7 @@ const handleSummaryCardClick = (typeKey) => {
 
       {/* ======================================
           FIXED FOOTER — STEP 3: ISSUE MATERIAL
-          saves Confirmed Items to local DB
+          saves Confirmed Parts to local DB
       ====================================== */}
 
       <div className="mi-footer">
@@ -1228,16 +1687,110 @@ const handleSummaryCardClick = (typeKey) => {
 
 
       {/* ======================================
-          PALLET DETAILS MODAL (CoreUI)
+          ISSUE QUANTITY MODAL
+          Opens when a Search Parts row is clicked.
       ====================================== */}
 
-      <CModal visible={detailsOpen} onClose={closeDetails} alignment="center">
-
+      <CModal
+        visible={issueQtyModalOpen}
+        onClose={closeIssueQtyModal}
+        alignment="center"
+        backdrop="static"
+      >
         <CModalHeader>
           <CModalTitle>
-            Pallet Details
+            Part Details
             <div className="mi-modal-subtitle">
-              {detailsMode === 'view' ? 'View' : 'Edit'}
+              Enter the quantity to issue from this pallet
+            </div>
+          </CModalTitle>
+        </CModalHeader>
+
+        <CModalBody>
+          <div className="mi-issue-modal-field">
+            <label>GRN No</label>
+            <CFormInput
+              value={issueQtyTarget?.grnNo || ''}
+              readOnly
+              disabled
+            />
+          </div>
+
+          <div className="mi-issue-modal-field">
+            <label>Part No</label>
+            <CFormInput
+              value={splitPartLabel(issueQtyTarget?.partLabel).itemNo || issueQtyTarget?.itemId || ''}
+              readOnly
+              disabled
+            />
+          </div>
+
+          <div className="mi-issue-modal-field">
+            <label>Available Qty</label>
+            <CFormInput
+              value={issueQtyTarget?.quantity ?? ''}
+              readOnly
+              disabled
+            />
+          </div>
+
+          <div className="mi-issue-modal-field">
+            <label>
+              Issue Qty <span className="mi-req">*</span>
+            </label>
+            <CFormInput
+              type="number"
+              min="0.001"
+              step="0.001"
+              value={issueQty}
+              onChange={(e) => setIssueQty(e.target.value)}
+              autoFocus
+            />
+            <div className="mi-issue-modal-help">
+              Maximum: {Math.min(
+                Number(issueQtyTarget?.quantity || 0),
+                getRemainingRequestedQty(issueQtyTarget?.itemId)
+              )}
+            </div>
+          </div>
+        </CModalBody>
+
+        <CModalFooter className="mi-issue-modal-footer">
+          <CButton
+            type="button"
+            className="mi-issue-close-btn"
+            onClick={closeIssueQtyModal}
+          >
+            Close
+          </CButton>
+
+          <CButton
+            type="button"
+            className="mi-issue-add-btn"
+            onClick={handleAddFromIssueQtyModal}
+          >
+            Add to Grid
+          </CButton>
+        </CModalFooter>
+      </CModal>
+
+      {/* ======================================
+          EDIT CONFIRMED PALLET
+          Only EDIT is available for Confirmed Parts.
+          View/Delete have been intentionally removed.
+      ====================================== */}
+
+      <CModal
+        visible={detailsOpen}
+        onClose={closeDetails}
+        alignment="center"
+        backdrop="static"
+      >
+        <CModalHeader>
+          <CModalTitle>
+            Edit Part Details
+            <div className="mi-modal-subtitle">
+              Update Confirmed Parts row
             </div>
           </CModalTitle>
         </CModalHeader>
@@ -1246,174 +1799,104 @@ const handleSummaryCardClick = (typeKey) => {
 
           <div className="mi-modal-field">
             <div className="mi-modal-label">GRN No.</div>
-            {detailsMode === 'view' ? (
-              <div className="mi-modal-value">{detailsRow?.grnNo}</div>
-            ) : (
-              <CFormInput value={detailsRow?.grnNo || ''} disabled readOnly />
-            )}
+            <CFormInput
+              value={detailsRow?.grnNo || ''}
+              disabled
+              readOnly
+            />
           </div>
 
           <div className="mi-modal-field">
             <div className="mi-modal-label">GRN Type</div>
-            {detailsMode === 'view' ? (
-              <span
-                className={`mi-grn-type-badge ${String(grnType).toUpperCase() === 'SAMPLE'
-                  ? 'sample'
-                  : 'regular'
-                  }`}
-              >
-                {String(grnType).toUpperCase()}
-              </span>
-            ) : (
-              <CFormSelect
-                value={grnType}
-                onChange={(e) => setGrnType(e.target.value)}
-              >
-                {GRN_TYPE_OPTIONS.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
-              </CFormSelect>
-            )}
+            <CFormSelect
+              value={grnType}
+              onChange={(e) => setGrnType(e.target.value)}
+            >
+              {GRN_TYPE_OPTIONS.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </CFormSelect>
           </div>
 
           <div className="mi-modal-field">
             <div className="mi-modal-label">Pallet No.</div>
-            {detailsMode === 'view' ? (
-              <div className="mi-modal-value">{detailsRow?.palletNo}</div>
-            ) : (
-              <CFormInput
-                value={editForm.palletNo}
-                onChange={(e) => setEditForm((f) => ({ ...f, palletNo: e.target.value }))}
-              />
-            )}
+            <CFormInput
+              value={editForm.palletNo}
+              onChange={(e) =>
+                setEditForm((f) => ({
+                  ...f,
+                  palletNo: e.target.value,
+                }))
+              }
+            />
           </div>
 
           <div className="mi-modal-field">
             <div className="mi-modal-label">Part Details</div>
-            {detailsMode === 'view' ? (
-              <div className="mi-modal-value">{detailsRow?.partLabel}</div>
-            ) : (
-              <CFormInput
-                value={editForm.partLabel}
-                onChange={(e) => setEditForm((f) => ({ ...f, partLabel: e.target.value }))}
-              />
-            )}
+            <CFormInput
+              value={editForm.partLabel}
+              onChange={(e) =>
+                setEditForm((f) => ({
+                  ...f,
+                  partLabel: e.target.value,
+                }))
+              }
+            />
           </div>
 
           <div className="mi-modal-field">
             <div className="mi-modal-label">Location</div>
-            {detailsMode === 'view' ? (
-              <div className="mi-modal-value">{detailsRow?.location}</div>
-            ) : (
-              <CFormInput
-                value={editForm.location}
-                onChange={(e) => setEditForm((f) => ({ ...f, location: e.target.value }))}
-              />
-            )}
+            <CFormInput
+              value={editForm.location}
+              onChange={(e) =>
+                setEditForm((f) => ({
+                  ...f,
+                  location: e.target.value,
+                }))
+              }
+            />
           </div>
 
           <div className="mi-modal-field">
-            <div className="mi-modal-label">Quantity</div>
-            {detailsMode === 'view' ? (
-              <div className="mi-modal-value">{detailsRow?.qty}</div>
-            ) : (
-              <CFormInput
-                type="number"
-                value={editForm.qty}
-                onChange={(e) => setEditForm((f) => ({ ...f, qty: e.target.value }))}
-              />
-            )}
+            <div className="mi-modal-label">Quantity <span className="mi-req">*</span></div>
+            <CFormInput
+              type="number"
+              min="0.001"
+              step="0.001"
+              required
+              value={editForm.qty}
+              onChange={(e) =>
+                setEditForm((f) => ({
+                  ...f,
+                  qty: e.target.value,
+                }))
+              }
+            />
           </div>
 
         </CModalBody>
 
         <CModalFooter>
-          {detailsMode === 'view' ? (
-            <CButton
-              type="button"
-              className="mi-modal-close-btn"
-              onClick={closeDetails}
-            >
-              Close
-            </CButton>
-          ) : (
-            <>
-              <CButton color="primary" variant="outline" className="flex-fill mi-modal-cancel-btn" onClick={closeDetails}>
-                Cancel
-              </CButton>
-              <CButton color="primary" className="flex-fill mi-modal-update-btn" onClick={handleUpdateEdit}>
-                Update
-              </CButton>
-            </>
-          )}
-        </CModalFooter>
-
-      </CModal>
-
-      <CModal
-        visible={showDeleteModal}
-        onClose={() => {
-          setShowDeleteModal(false);
-          setDeleteTarget(null);
-          setDeleteTargetType(null);
-        }}
-        alignment="center"
-        backdrop="static"
-      >
-        <CModalHeader className="border-0">
-          <CModalTitle className="w-100 text-center text-danger fw-bold">
-            ⚠ Confirm Delete
-          </CModalTitle>
-        </CModalHeader>
-
-        <CModalBody className="text-center">
-          <p>
-            Are you sure you want to delete this pallet?
-          </p>
-
-          <div className="mi-delete-info">
-            <div>
-              <strong>Pallet No. :</strong>{' '}
-              <span>{deleteTarget?.palletNo || '-'}</span>
-            </div>
-
-            <div>
-              <strong>GRN No. :</strong>{' '}
-              <span>{deleteTarget?.grnNo || '-'}</span>
-            </div>
-
-            <div>
-              <strong>GRN Type :</strong>{' '}
-              <span>
-                {(deleteTarget?.type || 'REGULAR').toUpperCase()}
-              </span>
-            </div>
-          </div>
-        </CModalBody>
-
-        <CModalFooter className="border-0 d-flex justify-content-center gap-2">
           <CButton
-            className="mi-delete-cancel-btn"
-            onClick={() => {
-              setShowDeleteModal(false);
-              setDeleteTarget(null);
-              setDeleteTargetType(null);
-            }}
+            color="primary"
+            variant="outline"
+            className="flex-fill mi-modal-cancel-btn"
+            onClick={closeDetails}
           >
             Cancel
           </CButton>
 
           <CButton
-            className="mi-delete-confirm-btn"
-            onClick={confirmDelete}
+            color="primary"
+            className="flex-fill mi-modal-update-btn"
+            onClick={handleUpdateEdit}
           >
-            Delete
+            Update
           </CButton>
         </CModalFooter>
       </CModal>
-
     </div>
   );
 };

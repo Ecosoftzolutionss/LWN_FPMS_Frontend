@@ -82,7 +82,7 @@
   margin: 0 auto;
   background: #ffffff;
   border-radius: 20px 20px 0 0;
-  padding: 22px 16px 24px;
+  padding: 16px 14px 18px;
   box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.06);
   box-sizing: border-box;
 }
@@ -128,37 +128,54 @@
 
 .mi-summary-row {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  margin-bottom: 22px;
+  gap: 6px;
+  margin-bottom: 10px;
+  width: 100%;
 }
 
 .mi-summary-card {
-  border-radius: 14px;
-  padding: 12px 10px;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  border-radius: 8px;
+  padding: 6px 8px;
   display: flex;
   flex-direction: column;
+  gap: 2px;
+}
+
+.mi-summary-top {
+  display: flex;
+  align-items: center;
   gap: 4px;
 }
 
 .mi-summary-icon {
-  font-size: 14px;
-  margin-bottom: 4px;
+  font-size: 10px;
+  line-height: 1;
+  display: inline-flex;
 }
 
 .mi-summary-label {
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 800;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
+}
+
+.mi-summary-bottom {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
 }
 
 .mi-summary-value {
-  font-size: 20px;
+  font-size: 14px;
   font-weight: 800;
+  line-height: 1;
 }
 
 .mi-summary-unit {
-  font-size: 10px;
+  font-size: 8px;
   opacity: 0.75;
 }
 
@@ -172,13 +189,13 @@
   color: #1fa855;
 }
 
-.mi-tone-orange {
+.mi-tone-purple {
   background: #fff2e6;
   color: #e8792b;
 }
 
 .mi-summary-row-2 {
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .mi-summary-row .mi-summary-card {
@@ -199,8 +216,8 @@
   font-size: 12px;
   font-weight: 600;
   border-radius: 10px;
-  padding: 10px 12px;
-  margin-bottom: 18px;
+  padding: 8px 10px;
+  margin-bottom: 10px;
 }
 
 /* =========================================================
@@ -208,7 +225,7 @@
 ========================================================= */
 
 .mi-field {
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 
 .mi-label {
@@ -216,7 +233,7 @@
   font-size: 12px;
   font-weight: 700;
   color: #23395d;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .mi-req {
@@ -226,7 +243,7 @@
 .mi-grid-2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 10px;
 }
 
 .mi-select-fake,
@@ -296,14 +313,14 @@
 
 
 .mi-scan-input {
-  height: 46px;
+  height: 40px;
   border: 1.5px dashed #c7d1e3;
   border-radius: 10px;
   background: #fafbfe;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 14px;
+  padding: 0 12px;
 }
 
 .mi-scan-placeholder {
@@ -323,7 +340,7 @@
   font-size: 13px;
   font-weight: 800;
   color: #1f2937;
-  margin: 22px 0 10px;
+  margin: 12px 0 8px;
 }
 
 /* =========================================================
@@ -403,8 +420,8 @@
 .mi-totals-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin: 20px 0;
+  gap: 10px;
+  margin: 12px 0;
 }
 
 .mi-total-card {
@@ -547,10 +564,10 @@
 .mi-input-real,
 .mi-scan-input-real {
   width: 100%;
-  height: 46px;
+  height: 40px;
   border: 1px solid #d8deed;
   border-radius: 10px;
-  padding: 0 14px;
+  padding: 0 12px;
   font-size: 13px;
   color: #1f2937;
   background: #fafbfe;
@@ -704,24 +721,219 @@
   border-color: #bb2d3b !important;
 }
 
-/* 3 cards instead of 2 */
 .mi-summary-row-3 {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px; /* match whatever mi-summary-row-2 used */
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-/* orange tone for the Change Part card */
-.mi-tone-orange {
-  background: #fff3e0;
-  border-color: #f59e0b;
+.mi-tone-purple {
+  background: #f3e8ff;
+  border-color: #8b5cf6;
+  color: #6d28d9;
 }
-.mi-tone-orange .mi-summary-icon,
-.mi-tone-orange .mi-summary-label {
-  color: #b45309;
+.mi-tone-purple .mi-summary-icon,
+.mi-tone-purple .mi-summary-label {
+  color: #6d28d9;
 }
 
-/* Change Part card isn't clickable like the others */
+
 .mi-summary-static {
   cursor: default;
+}
+
+
+.mi-search-hint {
+  font-size: 11px;
+  color: #64748b;
+  margin: -4px 0 8px;
+}
+
+.mi-search-actions { display: flex; justify-content: center; gap: 8px; margin: 2px 0 8px; }
+.mi-search-btn, .mi-clear-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600;
+}
+.mi-search-btn { background: #2563eb; color: #fff; border: none; }
+.mi-search-btn:disabled { opacity: 0.5; }
+.mi-clear-btn { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+.mi-action-add { color: #16a34a; }
+
+/* =========================================================
+   ISSUE QUANTITY MODAL
+   Search Parts row -> enter the exact quantity to issue
+========================================================= */
+
+.mi-issue-modal-field {
+  margin-bottom: 12px;
+}
+
+.mi-issue-modal-field label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  margin-bottom: 5px;
+}
+
+.mi-issue-modal-field .form-control {
+  height: 36px;
+  font-size: 12px;
+  border-radius: 6px;
+}
+
+.mi-issue-modal-help {
+  margin-top: 4px;
+  font-size: 10px;
+  color: #94a3b8;
+}
+
+.mi-issue-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.mi-issue-close-btn,
+.mi-issue-add-btn {
+  min-width: 90px;
+  height: 34px;
+  border-radius: 7px !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+}
+
+.mi-issue-close-btn {
+  background: #ffffff !important;
+  color: #1d5cff !important;
+  border: 1px solid #1d5cff !important;
+}
+
+.mi-issue-close-btn:hover {
+  background: #f5f8ff !important;
+}
+
+.mi-issue-add-btn {
+  background: #1d5cff !important;
+  color: #ffffff !important;
+  border: 1px solid #1d5cff !important;
+}
+
+.mi-issue-add-btn:hover {
+  background: #0c3580 !important;
+  border-color: #0c3580 !important;
+}
+
+/* Updated/edited pallet row — clear but non-alarming visual state */
+.mi-updated-row {
+  background: #f3e8ff;
+  color: #5b21b6;
+  border-left: 4px solid #8b5cf6;
+}
+
+.mi-updated-row:hover {
+  background: #ede9fe;
+}
+
+
+/* =========================================================
+   SEARCH PARTS HEADER + RIGHT GRID FILTER
+========================================================= */
+
+.mi-grid-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  margin: 8px 0 8px;
+}
+
+/* Remove extra margin from title when inside header */
+.mi-grid-header .mi-section-title {
+  margin: 0;
+}
+
+/* =========================================================
+   GRID FILTER INPUT
+========================================================= */
+
+.mi-grid-filter {
+  position: relative;
+  width: 230px;
+  height: 38px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #d8deed;
+  border-radius: 7px;
+  box-sizing: border-box;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.mi-grid-filter:focus-within {
+  border-color: #1d5cff;
+  box-shadow: 0 0 0 2px rgba(29, 92, 255, 0.12);
+}
+
+.mi-grid-filter-icon {
+  position: absolute;
+  left: 11px;
+  font-size: 12px;
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+.mi-grid-filter-input {
+  width: 100%;
+  height: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 0 34px 0 32px;
+  font-size: 12px;
+  color: #1f2937;
+  box-sizing: border-box;
+}
+
+.mi-grid-filter-input::placeholder {
+  color: #94a3b8;
+}
+
+.mi-grid-filter-clear {
+  position: absolute;
+  right: 7px;
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.mi-grid-filter-clear:hover {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 600px) {
+
+  .mi-grid-header {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .mi-grid-filter {
+    width: 100%;
+  }
+
 }

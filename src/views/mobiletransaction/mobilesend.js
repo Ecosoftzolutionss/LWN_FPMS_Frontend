@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-
 import {
   FaSignOutAlt,
   FaChartPie,
@@ -15,7 +14,7 @@ import {
 import '../../assets/CSS/mobility.css';
 
 import API from '../../api';
-import DataSyncModal from './DataSync';
+import DataSyncModal from './datasync.js';
 import {
   replacePalletsCache,
   getAllPendingIssues,

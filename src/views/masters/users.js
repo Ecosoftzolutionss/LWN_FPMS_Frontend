@@ -92,8 +92,10 @@ const UserMaster = () => {
   const { privileges: userPrivileges = [] } = usePrivilege()
   const uPrivilege = userPrivileges.find((p) => p.menuName === 'User Master') || {}
 
-  const sessionUser = JSON.parse(sessionStorage.getItem('user') || 'null')
-  const isAdminDepartment = sessionUser?.departmentName?.toUpperCase() === 'ADMIN'
+ const sessionUser = JSON.parse(sessionStorage.getItem('user') || 'null')
+
+const isAdminDepartment =
+  String(sessionUser?.departmentName || '').trim().toUpperCase() === 'ADMIN'
 
 
   useEffect(() => {
