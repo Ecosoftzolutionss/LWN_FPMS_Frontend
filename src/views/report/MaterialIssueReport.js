@@ -514,7 +514,7 @@ const MaterialIssueReport = () => {
       name: 'PART NUMBER',
       selector: (row) => row.partNumber,
       sortable: true,
-      width: '120px',
+      width: '140px',
 
       cell: (row) => (
         <TooltipCell value={row.partNumber} />

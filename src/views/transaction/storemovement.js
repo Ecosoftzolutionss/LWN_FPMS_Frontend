@@ -37,7 +37,12 @@ const StoreMovement = () => {
 
   const [activePallet, setActivePallet] = useState(null)
   const [side, setSide] = useState('Front')
-  const [selectedSlot, setSelectedSlot] = useState(null) // { rackRowId, slotNumber, side, locationCode }
+  const [selectedSlot, setSelectedSlot] = useState(null) // current draft location
+  const [movementQty, setMovementQty] = useState('')
+  // Draft movements are kept in memory until the single Save button is clicked.
+  // This allows multiple pallets and multiple locations to be prepared together.
+  const [pendingMoves, setPendingMoves] = useState([])
+  const [isSaving, setIsSaving] = useState(false)
   const { privileges: userPrivileges = [] } = usePrivilege()
   const uPrivilege = userPrivileges.find((p) => p.menuName === 'Store Movement') || {}
 
@@ -55,44 +60,48 @@ const StoreMovement = () => {
     loadGrns()
   }, [])
 
- const loadGrns = async () => {
-  try {
-    const res = await API.get('/GrnEntry?posted=true')
-    const postedGrns = res.data || []
+  const loadGrns = async () => {
+    try {
+      const res = await API.get('/GrnEntry?posted=true')
+      const postedGrns = res.data || []
 
-    // Show only GRNs which still have at least one pallet
-    // with remaining quantity for Store Movement.
-    const availableGrns = await Promise.all(
-      postedGrns.map(async (grn) => {
-        try {
-          const palletRes = await API.get(
-            `/StoreMovement/grn/${grn.id}/pallets`
-          )
+      const availableGrns = await Promise.all(
+        postedGrns.map(async (grn) => {
+          try {
+            const palletRes = await API.get(
+              `/StoreMovement/grn/${grn.id}/pallets`
+            )
 
-          const pallets = palletRes.data || []
+            const pallets = palletRes.data || []
 
-          // GRN is available if at least one pallet
-          // still has quantity to be stuffed.
-          const hasRemainingPallet = pallets.some(
-            (pallet) =>
-              Number(pallet.quantity || 0) >
-              Number(pallet.stuffedQty || 0)
-          )
+            // Show GRN only when at least one pallet
+            // still has quantity pending for Store Movement.
+            const hasRemainingPallet = pallets.some(
+              (pallet) =>
+                Number(pallet.quantity || 0) >
+                Number(pallet.stuffedQty || 0)
+            )
 
-          return hasRemainingPallet ? grn : null
-        } catch {
-          // If pallet status cannot be checked,
-          // keep the GRN visible instead of hiding it.
-          return grn
-        }
-      })
-    )
+            return hasRemainingPallet ? grn : null
+          } catch (err) {
+            console.error(
+              `Failed to check Store Movement status for GRN ${grn.id}`,
+              err
+            )
 
-    setGrns(availableGrns.filter(Boolean))
-  } catch {
-    toast.error('Failed to load GRN list')
+            // Do NOT show the GRN when its pallet status
+            // could not be verified.
+            return null
+          }
+        })
+      )
+
+      setGrns(availableGrns.filter(Boolean))
+    } catch (err) {
+      console.error('Failed to load GRN list', err)
+      toast.error('Failed to load GRN list')
+    }
   }
-}
 
   const handleView = async (row) => {
     try {
@@ -150,15 +159,15 @@ const StoreMovement = () => {
   const openStore = async (grn) => {
     setActiveGrn(grn)
     setSelectedSlot(null)
+    setMovementQty('')
+    setPendingMoves([])
     setLocationSearch('')
     await loadPallets(grn.id)
   }
 
-  // NEW: re-filter Select Location whenever the chosen pallet changes,
-  // since each pallet's Part Number may be configured to a different store.
+  // Re-filter locations when the chosen pallet changes. Pending drafts are
+  // intentionally preserved so multiple pallets can be saved together.
   useEffect(() => {
-    setSelectedSlot(null)
-
     if (activePallet) {
       loadRackSlots(activePallet.itemId)
     }
@@ -169,7 +178,12 @@ const StoreMovement = () => {
     setPallets([])
     setActivePallet(null)
     setSelectedSlot(null)
+    setMovementQty('')
+    setPendingMoves([])
     setLocationSearch('')
+
+    // Re-check completed GRNs whenever the workspace is closed.
+    loadGrns()
   }
 
   const filteredGrns = grns.filter(
@@ -179,8 +193,17 @@ const StoreMovement = () => {
       (g.supplierInvoiceNumber || '').toLowerCase().includes(search.toLowerCase()),
   )
 
+  const getPendingQtyForPallet = (palletId) =>
+    pendingMoves
+      .filter((move) => move.grnPalletId === palletId)
+      .reduce((sum, move) => sum + Number(move.quantity || 0), 0)
+
+  // Remaining quantity includes both already-saved quantity and quantities
+  // staged in the current multi-save batch.
   const remainingQty = activePallet
-    ? activePallet.quantity - activePallet.stuffedQty
+    ? Number(activePallet.quantity || 0) -
+      Number(activePallet.stuffedQty || 0) -
+      getPendingQtyForPallet(activePallet.id)
     : 0
 
   // Front slots use odd numbers (1,3,5...), Rear uses even (2,4,6...),
@@ -188,12 +211,24 @@ const StoreMovement = () => {
   const buildSlotNumbers = (fixture, useSide) =>
     Array.from({ length: fixture }, (_, i) => (useSide === 'Front' ? i * 2 + 1 : i * 2 + 2))
 
+  const getPendingMoveForSlot = (rackRowId, slotNumber, slotSide) =>
+    pendingMoves.find(
+      (move) =>
+        move.rackRowId === rackRowId &&
+        move.slotNumber === slotNumber &&
+        move.side === slotSide,
+    )
+
   const isSlotOccupied = (row, slotNumber) =>
-    row.occupiedSlots.some((o) => o.slotNumber === slotNumber && o.side === side)
+    row.occupiedSlots.some((o) => o.slotNumber === slotNumber && o.side === side) ||
+    Boolean(getPendingMoveForSlot(row.id, slotNumber, side))
 
   const getOccupiedPalletNo = (row, slotNumber) => {
     const match = row.occupiedSlots.find((o) => o.slotNumber === slotNumber && o.side === side)
-    return match?.palletNo || null
+    if (match?.palletNo) return match.palletNo
+
+    const pending = getPendingMoveForSlot(row.id, slotNumber, side)
+    return pending ? `${pending.palletNo} (Pending)` : null
   }
 
   // Search the complete location hierarchy. A matching parent keeps all of
@@ -244,6 +279,65 @@ const StoreMovement = () => {
     })
     .filter(Boolean)
 
+  // Add the current location/quantity to the in-memory batch before moving
+  // to another location or another pallet.
+  const stageCurrentSelection = () => {
+    if (!selectedSlot || !activePallet) return true
+
+    const qty = Number(movementQty)
+    if (!Number.isFinite(qty) || qty <= 0) {
+      toast.error('Enter a valid quantity before selecting another pallet/location')
+      return false
+    }
+
+    const savedRemaining =
+      Number(activePallet.quantity || 0) -
+      Number(activePallet.stuffedQty || 0) -
+      getPendingQtyForPallet(activePallet.id)
+
+    if (qty > savedRemaining) {
+      toast.error(`Only ${savedRemaining} remaining on pallet ${activePallet.palletNo}`)
+      return false
+    }
+
+    const alreadyPending = pendingMoves.some(
+      (move) =>
+        move.rackRowId === selectedSlot.rackRowId &&
+        move.slotNumber === selectedSlot.slotNumber &&
+        move.side === selectedSlot.side,
+    )
+
+    if (alreadyPending) {
+      toast.error('This location is already selected in the pending list')
+      return false
+    }
+
+    setPendingMoves((prev) => [
+      ...prev,
+      {
+        id: `${activePallet.id}-${selectedSlot.rackRowId}-${selectedSlot.slotNumber}-${selectedSlot.side}-${Date.now()}`,
+        grnPalletId: activePallet.id,
+        palletNo: activePallet.palletNo,
+        rackRowId: selectedSlot.rackRowId,
+        slotNumber: selectedSlot.slotNumber,
+        side: selectedSlot.side,
+        quantity: qty,
+        locationCode: selectedSlot.locationCode,
+      },
+    ])
+
+    setSelectedSlot(null)
+    setMovementQty('')
+    return true
+  }
+
+  const handlePalletSelect = (row) => {
+    // Preserve the current pallet/location draft when the user changes pallet.
+    if (!stageCurrentSelection()) return
+
+    setActivePallet(row)
+  }
+
   const handleSelectSlot = (rackRowId, slotNumber, columnNo, rowNo) => {
     if (!activePallet) {
       toast.error('Pick a pallet from the left first')
@@ -251,59 +345,194 @@ const StoreMovement = () => {
     }
 
     if (remainingQty <= 0) {
-      toast.error('This pallet has already been fully stuffed')
+      toast.error('No remaining quantity on this pallet')
       return
     }
 
-    // Selection is local only. Nothing is saved until the user clicks SAVE.
+    const pendingAtLocation = getPendingMoveForSlot(rackRowId, slotNumber, side)
+    if (pendingAtLocation) {
+      toast.error(`Location ${columnNo}-${rowNo}-${slotNumber}${side === 'Front' ? 'F' : 'R'} is already pending`)
+      return
+    }
+
+    // If another location is currently being edited, stage it first. This
+    // lets one pallet use multiple locations without pressing Save each time.
+    const hadCurrentDraft = Boolean(selectedSlot)
+    const currentDraftQty = hadCurrentDraft ? Number(movementQty) : 0
+
+    if (selectedSlot) {
+      if (!stageCurrentSelection()) return
+    }
+
     setSelectedSlot({
       rackRowId,
       slotNumber,
       side,
       locationCode: `${columnNo}-${rowNo}-${slotNumber}${side === 'Front' ? 'F' : 'R'}`,
     })
+
+    // Default to the quantity still available after earlier pending drafts
+    // and the location draft that was just staged (if any).
+    const palletRemainingAfterPending =
+      Number(remainingQty) - (hadCurrentDraft ? currentDraftQty : 0)
+    setMovementQty(String(Math.max(0, palletRemainingAfterPending)))
   }
 
   const handleSaveSlot = async () => {
-    if (!activePallet) {
-      toast.error('Pick a pallet from the left first')
+    if (!activeGrn) {
+      toast.error('GRN is not selected')
       return
     }
 
-    if (!selectedSlot) {
-      toast.error('Select a location first')
+    // Build the current draft synchronously before changing React state.
+    const currentQty = selectedSlot ? Number(movementQty) : 0
+    const currentMove = selectedSlot && activePallet
+      ? {
+          id: `${activePallet.id}-${selectedSlot.rackRowId}-${selectedSlot.slotNumber}-${selectedSlot.side}-current`,
+          grnPalletId: activePallet.id,
+          palletNo: activePallet.palletNo,
+          rackRowId: selectedSlot.rackRowId,
+          slotNumber: selectedSlot.slotNumber,
+          side: selectedSlot.side,
+          quantity: currentQty,
+          locationCode: selectedSlot.locationCode,
+        }
+      : null
+
+    if (currentMove) {
+      if (!Number.isFinite(currentQty) || currentQty <= 0) {
+        toast.error('Enter a valid quantity before Save')
+        return
+      }
+
+      const serverRemaining =
+        Number(activePallet.quantity || 0) -
+        Number(activePallet.stuffedQty || 0) -
+        getPendingQtyForPallet(activePallet.id)
+
+      if (currentQty > serverRemaining) {
+        toast.error(`Only ${serverRemaining} remaining on pallet ${activePallet.palletNo}`)
+        return
+      }
+    }
+
+    const movesToSave = currentMove ? [...pendingMoves, currentMove] : [...pendingMoves]
+
+    if (movesToSave.length === 0) {
+      toast.error('Select at least one pallet and location before Save')
       return
     }
 
-    const qtyToSave = activePallet.quantity - activePallet.stuffedQty
+    // Validate quantity totals per pallet one final time.
+    const totals = movesToSave.reduce((map, move) => {
+      map[move.grnPalletId] = (map[move.grnPalletId] || 0) + Number(move.quantity || 0)
+      return map
+    }, {})
 
-    if (qtyToSave <= 0) {
-      toast.error('This pallet has already been fully stuffed')
-      setSelectedSlot(null)
-      return
+    for (const [palletId, totalQty] of Object.entries(totals)) {
+      const pallet = pallets.find((p) => p.id === Number(palletId))
+      if (!pallet) {
+        toast.error(`Pallet ${palletId} is no longer available`)
+        return
+      }
+
+      const serverRemaining =
+        Number(pallet.quantity || 0) - Number(pallet.stuffedQty || 0)
+
+      if (totalQty > serverRemaining) {
+        toast.error(
+          `Pallet ${pallet.palletNo}: only ${serverRemaining} remaining, but ${totalQty} selected`
+        )
+        return
+      }
     }
+
+    setIsSaving(true)
 
     try {
-      await API.post('/StoreMovement/stuff-rack-slot', {
-        grnPalletId: activePallet.id,
-        rackRowId: selectedSlot.rackRowId,
-        slotNumber: selectedSlot.slotNumber,
-        side: selectedSlot.side,
-        quantity: qtyToSave,
-        createdBy: getCurrentUsername(),
-      })
+      // Save every staged pallet/location as a separate StoreMovement record.
+      // Sequential calls avoid two requests racing for the same physical slot.
+      const savedMoves = []
 
-      toast.success(`Pallet ${activePallet.palletNo} stuffed successfully`)
+      for (const move of movesToSave) {
+        await API.post('/StoreMovement/stuff-rack-slot', {
+          grnPalletId: move.grnPalletId,
+          rackRowId: move.rackRowId,
+          slotNumber: move.slotNumber,
+          side: move.side,
+          quantity: Number(move.quantity),
+          createdBy: getCurrentUsername(),
+        })
+        savedMoves.push(move)
+      }
+
+      toast.success(`${savedMoves.length} store movement${savedMoves.length > 1 ? 's' : ''} saved successfully`)
+
+      setPendingMoves([])
       setSelectedSlot(null)
-      await loadPallets(activeGrn.id)
-      await loadRackSlots(activePallet.itemId)
+      setMovementQty('')
+
+      const palletRes = await API.get(`/StoreMovement/grn/${activeGrn.id}/pallets`)
+      const updatedPallets = palletRes.data || []
+      setPallets(updatedPallets)
+
+      const currentPalletId = activePallet?.id
+      const updatedActivePallet =
+        updatedPallets.find((p) => p.id === currentPalletId) ||
+        updatedPallets[0] ||
+        null
+
+      setActivePallet(updatedActivePallet)
+
+      if (updatedActivePallet) {
+        await loadRackSlots(updatedActivePallet.itemId)
+      }
+
+      const hasRemainingPallet = updatedPallets.some(
+        (pallet) =>
+          Number(pallet.quantity || 0) >
+          Number(pallet.stuffedQty || 0)
+      )
+
+      if (!hasRemainingPallet) {
+        setGrns((prev) => prev.filter((grn) => grn.id !== activeGrn.id))
+        toast.success(`${activeGrn.grnNumber} Store Movement completed`)
+        setActiveGrn(null)
+        setPallets([])
+        setActivePallet(null)
+        setSelectedSlot(null)
+        setMovementQty('')
+        setPendingMoves([])
+        setLocationSearch('')
+      } else {
+        await loadGrns()
+      }
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Stuff Failed'))
+      // If one request fails, already-saved requests remain saved on the
+      // server. Reloading here prevents the UI from showing stale slots.
+      toast.error(getErrorMessage(err, 'One or more Store Movements could not be saved'))
+      setPendingMoves([])
+      setSelectedSlot(null)
+      setMovementQty('')
+
+      try {
+        await loadPallets(activeGrn.id)
+        if (activePallet) await loadRackSlots(activePallet.itemId)
+      } catch {
+        // The main error is already shown to the user.
+      }
+    } finally {
+      setIsSaving(false)
     }
   }
 
   const handleClearSlot = () => {
     setSelectedSlot(null)
+    setMovementQty('')
+  }
+
+  const removePendingMove = (moveId) => {
+    setPendingMoves((prev) => prev.filter((move) => move.id !== moveId))
   }
 
   const handleUndo = async (movementId) => {
@@ -590,7 +819,7 @@ const StoreMovement = () => {
               responsive
               highlightOnHover
               pointerOnHover
-              onRowClicked={(row) => setActivePallet(row)}
+              onRowClicked={handlePalletSelect}
               conditionalRowStyles={[
                 {
                   when: (row) => activePallet?.id === row.id,
@@ -639,8 +868,24 @@ const StoreMovement = () => {
             </div>
 
             <div className="sm-side-toggle">
-              <button className={side === 'Front' ? 'active' : ''} onClick={() => { setSide('Front'); setSelectedSlot(null) }}>Front</button>
-              <button className={side === 'Rear' ? 'active' : ''} onClick={() => { setSide('Rear'); setSelectedSlot(null) }}>Rear</button>
+              <button
+                className={side === 'Front' ? 'active' : ''}
+                onClick={() => {
+                  if (!stageCurrentSelection()) return
+                  setSide('Front')
+                }}
+              >
+                Front
+              </button>
+              <button
+                className={side === 'Rear' ? 'active' : ''}
+                onClick={() => {
+                  if (!stageCurrentSelection()) return
+                  setSide('Rear')
+                }}
+              >
+                Rear
+              </button>
             </div>
           </div>
 
@@ -655,12 +900,22 @@ const StoreMovement = () => {
             </div>
 
             <div className="sm-location-actions">
+              <CFormInput
+                type="number"
+                min="1"
+                max={remainingQty > 0 ? remainingQty : undefined}
+                value={movementQty}
+                placeholder="Qty"
+                disabled={!selectedSlot || !activePallet || remainingQty <= 0}
+                onChange={(e) => setMovementQty(e.target.value)}
+                style={{ width: '100px' }}
+              />
               <CButton
                 className="sm-location-save-btn"
                 onClick={handleSaveSlot}
-                disabled={!selectedSlot || !activePallet || remainingQty <= 0}
+                disabled={isSaving || ((!selectedSlot || !movementQty) && pendingMoves.length === 0)}
               >
-                <FaSave size={12} /> Save
+                <FaSave size={12} /> {isSaving ? 'Saving...' : `Save${pendingMoves.length > 0 ? ` (${pendingMoves.length + (selectedSlot ? 1 : 0)})` : ''}`}
               </CButton>
               <CButton
                 className="sm-location-clear-btn"
@@ -672,10 +927,31 @@ const StoreMovement = () => {
             </div>
           </div>
 
+          {pendingMoves.length > 0 && (
+            <div className="sm-selected-location" style={{ marginBottom: '6px' }}>
+              <strong>{pendingMoves.length} pending movement{pendingMoves.length > 1 ? 's' : ''}</strong>
+              <span> — will be saved together</span>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '6px' }}>
+                {pendingMoves.map((move) => (
+                  <span key={move.id} className="sm-assign-chip">
+                    {move.palletNo} → {move.locationCode} ({move.quantity})
+                    <button
+                      type="button"
+                      onClick={() => removePendingMove(move.id)}
+                      title="Remove pending movement"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
           {selectedSlot && (
             <div className="sm-selected-location">
               Selected Location: <strong>{selectedSlot.locationCode}</strong>
-              <span> — Click Save to confirm</span>
+              <span> — Qty {movementQty || 0}. Select another pallet/location or click Save.</span>
             </div>
           )}
 
@@ -754,14 +1030,14 @@ const StoreMovement = () => {
           )}
 
           {!activePallet ? (
-            <div className="sm-stuff-hint">Pick a pallet from the left, select an available slot, then click Save.</div>
+            <div className="sm-stuff-hint">Pick a pallet, select a location and quantity. Select more pallets/locations, then click one Save to save them all.</div>
           ) : selectedSlot ? (
             <div className="sm-stuff-hint">
-              <strong>{activePallet.palletNo}</strong> ({remainingQty} units) is selected for <strong>{selectedSlot.locationCode}</strong>. Click Save to confirm or Clear to cancel.
+              <strong>{activePallet.palletNo}</strong> ({remainingQty} units remaining after pending movements) is selected for <strong>{selectedSlot.locationCode}</strong>. Select another pallet/location to add it to the batch, then click one Save.
             </div>
           ) : (
             <div className="sm-stuff-hint">
-              Select an available slot for <strong>{activePallet.palletNo}</strong> ({remainingQty} units). It will not be saved until you click Save.
+              Select an available slot for <strong>{activePallet.palletNo}</strong> ({remainingQty} units). It will be kept as a pending movement until you click Save.
             </div>
           )}
         </div>

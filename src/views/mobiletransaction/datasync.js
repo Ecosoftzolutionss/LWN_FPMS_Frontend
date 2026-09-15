@@ -22,10 +22,6 @@ const DataSyncModal = ({
 
       <div className="dsm-modal" onClick={(e) => e.stopPropagation()}>
 
-        {/* ==================================
-            SUCCESS ICON
-        ================================== */}
-
         <div className="dsm-icon-wrap">
           <div className={`dsm-icon-ring ${hasFailures ? 'has-warning' : ''}`}>
             <div className={`dsm-icon-circle ${hasFailures ? 'has-warning' : ''}`}>
@@ -33,11 +29,6 @@ const DataSyncModal = ({
             </div>
           </div>
         </div>
-
-
-        {/* ==================================
-            TITLE
-        ================================== */}
 
         <h2 className="dsm-title">
           {hasFailures ? (
@@ -53,38 +44,27 @@ const DataSyncModal = ({
           {hasFailures && ` — ${failedCount} ${uploadLabel} still pending, will retry next sync`}.
         </p>
 
-
-        {/* ==================================
-            STATUS ROWS
-        ================================== */}
-
         <div className="dsm-status-list">
 
           <div className="dsm-status-row">
-
             <div className="dsm-status-icon">
               <FaDatabase />
             </div>
-
             <div className="dsm-status-content">
               <div className="dsm-status-title">Local Cache</div>
               <div className="dsm-status-sub">
                 {downloadedCount} {downloadLabel} saved to this device
               </div>
             </div>
-
             <div className="dsm-status-check">
               <FaCheck />
             </div>
-
           </div>
 
           <div className="dsm-status-row">
-
             <div className="dsm-status-icon">
               <FaServer />
             </div>
-
             <div className="dsm-status-content">
               <div className="dsm-status-title">Server Upload</div>
               <div className="dsm-status-sub">
@@ -94,19 +74,12 @@ const DataSyncModal = ({
                 {hasFailures && ` (${failedCount} failed)`}
               </div>
             </div>
-
             <div className={`dsm-status-check ${hasFailures ? 'has-warning' : ''}`}>
               {hasFailures ? <FaExclamationTriangle /> : <FaCheck />}
             </div>
-
           </div>
 
         </div>
-
-
-        {/* ==================================
-            OK BUTTON
-        ================================== */}
 
         <button
           type="button"

@@ -849,7 +849,7 @@ const ItemMaster = () => {
               </div>
 
               <CRow className="g-3">
-                <CCol md={4}>
+                <CCol md={6}>
                   <label className="custom-label">
                     <strong>Unit Price</strong>{' '}
                     <span className="required">*</span>
@@ -871,7 +871,7 @@ const ItemMaster = () => {
                   )}
                 </CCol>
 
-                <CCol md={4}>
+                <CCol md={6}>
                   <label className="custom-label">
                     <strong>Effective Date</strong>{' '}
                     <span className="required">*</span>

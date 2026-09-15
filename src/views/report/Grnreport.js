@@ -727,7 +727,7 @@ const GrnReport = () => {
       name: 'PART NUMBER',
       selector: (row) => row.partNumber,
       sortable: true,
-      width: '105px',
+      width: '125px',
 
       cell: (row) => (
         <TooltipCell value={row.partNumber} />

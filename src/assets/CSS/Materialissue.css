@@ -128,12 +128,15 @@
 
 .mi-summary-row {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
   gap: 6px;
   margin-bottom: 10px;
+  width: 100%;
 }
 
 .mi-summary-card {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   border-radius: 8px;
   padding: 6px 8px;
   display: flex;
@@ -186,13 +189,13 @@
   color: #1fa855;
 }
 
-.mi-tone-orange {
+.mi-tone-purple {
   background: #fff2e6;
   color: #e8792b;
 }
 
 .mi-summary-row-2 {
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .mi-summary-row .mi-summary-card {
@@ -719,18 +722,17 @@
 }
 
 .mi-summary-row-3 {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.mi-tone-orange {
-  background: #fff3e0;
-  border-color: #f59e0b;
+.mi-tone-purple {
+  background: #f3e8ff;
+  border-color: #8b5cf6;
+  color: #6d28d9;
 }
-.mi-tone-orange .mi-summary-icon,
-.mi-tone-orange .mi-summary-label {
-  color: #b45309;
+.mi-tone-purple .mi-summary-icon,
+.mi-tone-purple .mi-summary-label {
+  color: #6d28d9;
 }
 
 
@@ -818,4 +820,120 @@
 .mi-issue-add-btn:hover {
   background: #0c3580 !important;
   border-color: #0c3580 !important;
+}
+
+/* Updated/edited pallet row — clear but non-alarming visual state */
+.mi-updated-row {
+  background: #f3e8ff;
+  color: #5b21b6;
+  border-left: 4px solid #8b5cf6;
+}
+
+.mi-updated-row:hover {
+  background: #ede9fe;
+}
+
+
+/* =========================================================
+   SEARCH PARTS HEADER + RIGHT GRID FILTER
+========================================================= */
+
+.mi-grid-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  margin: 8px 0 8px;
+}
+
+/* Remove extra margin from title when inside header */
+.mi-grid-header .mi-section-title {
+  margin: 0;
+}
+
+/* =========================================================
+   GRID FILTER INPUT
+========================================================= */
+
+.mi-grid-filter {
+  position: relative;
+  width: 230px;
+  height: 38px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #d8deed;
+  border-radius: 7px;
+  box-sizing: border-box;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.mi-grid-filter:focus-within {
+  border-color: #1d5cff;
+  box-shadow: 0 0 0 2px rgba(29, 92, 255, 0.12);
+}
+
+.mi-grid-filter-icon {
+  position: absolute;
+  left: 11px;
+  font-size: 12px;
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+.mi-grid-filter-input {
+  width: 100%;
+  height: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 0 34px 0 32px;
+  font-size: 12px;
+  color: #1f2937;
+  box-sizing: border-box;
+}
+
+.mi-grid-filter-input::placeholder {
+  color: #94a3b8;
+}
+
+.mi-grid-filter-clear {
+  position: absolute;
+  right: 7px;
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.mi-grid-filter-clear:hover {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 600px) {
+
+  .mi-grid-header {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .mi-grid-filter {
+    width: 100%;
+  }
+
 }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { CButton, CForm, CFormInput } from '@coreui/react';
@@ -16,7 +16,15 @@ import API from '../../../api.js';
 const Login = () => {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
-  const [form, setForm] = useState({username: '', password: '', mobilityWithoutCheck: false});
+  const [form, setForm] = useState({
+    username: '',
+    password: '',
+    mobilityWithoutCheck: false,
+  });
+
+  // Keep references so Enter on Username moves to Password.
+  const usernameRef = useRef(null);
+  const passwordRef = useRef(null);
 
 
   // ==========================================
@@ -46,6 +54,33 @@ const Login = () => {
   // ==========================================
   // Login
   // ==========================================
+
+  // Clear login fields after an unsuccessful login.
+  const clearLoginFields = () => {
+    setForm((prev) => ({
+      ...prev,
+      username: '',
+      password: '',
+    }));
+
+    setShowPassword(false);
+
+    // Put the cursor back in Username.
+    setTimeout(() => {
+      usernameRef.current?.focus();
+    }, 0);
+  };
+
+  // Enter on Username -> move to Password.
+  // Enter on Password -> submit the login form.
+  const handleKeyDown = (e) => {
+    if (e.key !== 'Enter') return;
+
+    if (e.currentTarget.name === 'username') {
+      e.preventDefault();
+      passwordRef.current?.focus();
+    }
+  };
 
   // ==========================================
   // Login
@@ -166,15 +201,11 @@ const Login = () => {
       // -------------------------------------------------
 
       if (
-        form.username.trim() !==
-        MOBILITY_USERNAME ||
-        form.password !==
-        MOBILITY_PASSWORD
+        form.username.trim() !== MOBILITY_USERNAME ||
+        form.password !== MOBILITY_PASSWORD
       ) {
-        toast.error(
-          'Invalid username or password'
-        );
-
+        toast.error('Invalid username or password');
+        clearLoginFields();
         return;
       }
 
@@ -276,12 +307,12 @@ const Login = () => {
       // -------------------------------------------------
 
       if (!res.data?.user) {
-
         toast.error(
           res.data?.message ||
-          'Login Failed'
+          'Invalid username or password'
         );
 
+        clearLoginFields();
         return;
       }
 
@@ -373,9 +404,11 @@ const Login = () => {
 
       toast.error(
         err.response?.data?.message ||
-        err.message ||
-        'Login Failed'
+        'Invalid username or password'
       );
+
+      // Clear both fields after a failed API login attempt.
+      clearLoginFields();
     }
   };
 
@@ -455,10 +488,12 @@ const Login = () => {
 
 
                 <CFormInput
+                  ref={usernameRef}
                   name="username"
                   placeholder="Enter your Username"
                   value={form.username}
                   onChange={handleChange}
+                  onKeyDown={handleKeyDown}
                   className="lg-input"
                   autoComplete="username"
                 />
@@ -505,6 +540,7 @@ const Login = () => {
 
 
                 <CFormInput
+                  ref={passwordRef}
                   type={
                     showPassword
                       ? 'text'
@@ -513,6 +549,7 @@ const Login = () => {
                   name="password"
                   value={form.password}
                   onChange={handleChange}
+                  onKeyDown={handleKeyDown}
                   placeholder="Enter your password"
                   className="lg-input lg-input-pw"
                   autoComplete="current-password"

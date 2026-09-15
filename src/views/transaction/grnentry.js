@@ -852,7 +852,7 @@ const GRNEntry = () => {
         (currentPage - 1) * rowsPerPage + index + 1,
     },
     {
-      name: 'PART',
+      name: 'PART NUMBER',
       grow: 2,
       cell: (row) => (
         <div className="grn-part-cell">
