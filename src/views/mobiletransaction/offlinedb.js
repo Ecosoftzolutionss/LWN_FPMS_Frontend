@@ -24,7 +24,7 @@
 //                        them to the real backend.
 
 const DB_NAME = 'material_issue_offline'
-const DB_VERSION = 6 // bumped: pallets keyPath changed from palletNo -> id
+const DB_VERSION = 7 // add Supplier / Customer master caches
 
 // bumped: added pendingVerifications store
 
@@ -65,6 +65,14 @@ if (!db.objectStoreNames.contains('verifiedPalletIds')) {
 if (!db.objectStoreNames.contains('palletStatusCache')) {
   db.createObjectStore('palletStatusCache', { keyPath: 'id' })
 }
+
+      if (!db.objectStoreNames.contains('suppliers')) {
+        db.createObjectStore('suppliers', { keyPath: 'id' })
+      }
+
+      if (!db.objectStoreNames.contains('customers')) {
+        db.createObjectStore('customers', { keyPath: 'id' })
+      }
     }
 
     request.onsuccess = () => resolve(request.result)
@@ -272,3 +280,36 @@ export const getAllPalletStatus = () =>
     request.onsuccess = () => resolve(request.result || [])
     request.onerror = () => reject(request.error)
   })
+
+// ---- Supplier / Customer master cache ----
+const replaceMasterCache = async (storeName, records) => {
+  const db = await openDB()
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, 'readwrite')
+    const store = tx.objectStore(storeName)
+    store.clear()
+    ;(records || [])
+      .filter((r) => r?.id !== undefined && r?.id !== null)
+      .forEach((r) => store.put(r))
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+  })
+}
+
+const getAllMasterCache = async (storeName) =>
+  new Promise(async (resolve, reject) => {
+    try {
+      const db = await openDB()
+      const tx = db.transaction(storeName, 'readonly')
+      const request = tx.objectStore(storeName).getAll()
+      request.onsuccess = () => resolve(request.result || [])
+      request.onerror = () => reject(request.error)
+    } catch (error) {
+      reject(error)
+    }
+  })
+
+export const replaceSuppliersCache = async (suppliers) => replaceMasterCache('suppliers', suppliers)
+export const getAllSuppliers = async () => getAllMasterCache('suppliers')
+export const replaceCustomersCache = async (customers) => replaceMasterCache('customers', customers)
+export const getAllCustomers = async () => getAllMasterCache('customers')

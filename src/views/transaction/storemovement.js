@@ -22,6 +22,109 @@ const formatDate = (value) => {
   return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
 }
 
+
+// Keep Store Movement slot numbering exactly the same as Location Master.
+// LTR = Left to Right, RTL = Right to Left.
+const STORAGE_DIRECTION_LTR = 'LTR'
+const STORAGE_DIRECTION_RTL = 'RTL'
+
+const normalizeStorageDirection = (value) =>
+  String(value || '').toUpperCase() === STORAGE_DIRECTION_RTL
+    ? STORAGE_DIRECTION_RTL
+    : STORAGE_DIRECTION_LTR
+
+const normalizeRowIndex = (value) => {
+  const raw = String(value || '').trim().toUpperCase()
+  if (raw === 'G') return 0
+  return Number(raw.replace(/^G/i, '').replace(/^R/i, '')) || 0
+}
+
+const getDefaultStorageDirection = (rowIndex) =>
+  rowIndex % 2 === 0 ? STORAGE_DIRECTION_LTR : STORAGE_DIRECTION_RTL
+
+// Same continuous numbering used by Location Master.
+// Example with 4 columns and Fixture = 2:
+// G  (LTR): A1 -> 1,2 | A2 -> 3,4 | A3 -> 5,6 | A4 -> 7,8
+// G1 (RTL): A1 -> 16,15 | A2 -> 14,13 | A3 -> 12,11 | A4 -> 10,9
+// G2 (LTR): A1 -> 17,18 | A2 -> 19,20 | ...
+//
+// Front and Rear use the same numeric sequence independently.
+// The F/R suffix identifies the side.
+const getDirectionalSlotNumbers = (columns, columnIndex, rowNo) => {
+  if (!Array.isArray(columns) || columns.length === 0) return []
+
+  const targetRowIndex = normalizeRowIndex(rowNo)
+
+  const currentColumn = columns[columnIndex]
+  const currentRow = currentColumn?.rows?.find(
+    (r) => normalizeRowIndex(r.rowNo) === targetRowIndex,
+  )
+
+  const currentFixture = Math.max(1, Number(currentRow?.fixture) || 1)
+
+  const rowNumbers = Array.from(
+    new Set(
+      columns.flatMap((col) =>
+        (col.rows || []).map((row) => normalizeRowIndex(row.rowNo)),
+      ),
+    ),
+  ).sort((a, b) => a - b)
+
+  const getRowTotal = (rowIndex) =>
+    columns.reduce((total, col) => {
+      const row = (col.rows || []).find(
+        (r) => normalizeRowIndex(r.rowNo) === rowIndex,
+      )
+      return total + Math.max(1, Number(row?.fixture) || 1)
+    }, 0)
+
+  const previousRowsOffset = rowNumbers
+    .filter((index) => index < targetRowIndex)
+    .reduce((total, index) => total + getRowTotal(index), 0)
+
+  const previousColumnsOffset = columns
+    .slice(0, columnIndex)
+    .reduce((total, col) => {
+      const row = (col.rows || []).find(
+        (r) => normalizeRowIndex(r.rowNo) === targetRowIndex,
+      )
+      return total + Math.max(1, Number(row?.fixture) || 1)
+    }, 0)
+
+  const rowTotal = getRowTotal(targetRowIndex)
+
+  // Location Master stores the configured direction on every row.
+  // If an older API response does not contain it, use the same alternating
+  // default used when a new rack is generated in Location Master.
+  const directionValue =
+    currentRow?.storageDirection ??
+    currentRow?.StorageDirection ??
+    getDefaultStorageDirection(targetRowIndex)
+
+  const direction = normalizeStorageDirection(directionValue)
+
+  if (direction === STORAGE_DIRECTION_RTL) {
+    const startNumber =
+      previousRowsOffset +
+      rowTotal -
+      previousColumnsOffset -
+      currentFixture +
+      1
+
+    return Array.from(
+      { length: currentFixture },
+      (_, i) => startNumber + currentFixture - 1 - i,
+    )
+  }
+
+  const startNumber = previousRowsOffset + previousColumnsOffset + 1
+
+  return Array.from(
+    { length: currentFixture },
+    (_, i) => startNumber + i,
+  )
+}
+
 const StoreMovement = () => {
   const [grns, setGrns] = useState([])
   const [search, setSearch] = useState('')
@@ -206,11 +309,6 @@ const StoreMovement = () => {
       getPendingQtyForPallet(activePallet.id)
     : 0
 
-  // Front slots use odd numbers (1,3,5...), Rear uses even (2,4,6...),
-  // each running the full Fixture count — same convention as Location Master.
-  const buildSlotNumbers = (fixture, useSide) =>
-    Array.from({ length: fixture }, (_, i) => (useSide === 'Front' ? i * 2 + 1 : i * 2 + 2))
-
   const getPendingMoveForSlot = (rackRowId, slotNumber, slotSide) =>
     pendingMoves.find(
       (move) =>
@@ -231,9 +329,10 @@ const StoreMovement = () => {
     return pending ? `${pending.palletNo} (Pending)` : null
   }
 
-  // Search the complete location hierarchy. A matching parent keeps all of
-  // its children visible; otherwise only matching racks/columns/rows/slots
-  // are shown.
+  // Search the complete location hierarchy. Slot search uses the same
+  // continuous/directional numbering as Location Master.
+  // A matching parent keeps all of its children visible; otherwise only
+  // matching racks/columns/rows/slots are shown.
   const normalizedLocationSearch = locationSearch.trim().toLowerCase()
 
   const filteredRackStores = rackStores
@@ -247,14 +346,16 @@ const StoreMovement = () => {
         .map((rack) => {
           const rackMatches = String(rack.rackNo || '').toLowerCase().includes(normalizedLocationSearch)
 
-          const columns = (rack.columns || [])
-            .map((col) => {
+          const rackColumns = rack.columns || []
+
+          const columns = rackColumns
+            .map((col, columnIndex) => {
               const columnMatches = String(col.columnNo || '').toLowerCase().includes(normalizedLocationSearch)
 
               const rows = (col.rows || [])
                 .map((row) => {
                   const rowMatches = String(row.rowNo || '').toLowerCase().includes(normalizedLocationSearch)
-                  const slotNumbers = buildSlotNumbers(row.fixture, side)
+                  const slotNumbers = getDirectionalSlotNumbers(rackColumns, columnIndex, row.rowNo)
                   const slotMatches = slotNumbers.some((slotNumber) =>
                     `${col.columnNo}-${row.rowNo}-${slotNumber}${side === 'Front' ? 'F' : 'R'}`
                       .toLowerCase()
@@ -822,8 +923,23 @@ const StoreMovement = () => {
               onRowClicked={handlePalletSelect}
               conditionalRowStyles={[
                 {
+                  // A pallet is available when it still has quantity remaining.
+                  // Available pallets are highlighted in green for easy identification.
+                  when: (row) =>
+                    Number(row.quantity || 0) > Number(row.stuffedQty || 0) &&
+                    activePallet?.id !== row.id,
+                  style: {
+                    backgroundColor: '#e8f7ed',
+                    color: '#198754',
+                    fontWeight: 600,
+                  },
+                },
+                {
+                  // Keep the currently selected pallet highlighted separately.
                   when: (row) => activePallet?.id === row.id,
-                  style: { backgroundColor: '#e3ecfd' },
+                  style: {
+                    backgroundColor: '#e3ecfd',
+                  },
                 },
               ]}
               noDataComponent={<div className="sm-empty">No pallets for this GRN yet</div>}
@@ -973,7 +1089,7 @@ const StoreMovement = () => {
                         <div className="sm-rack-block-title">Rack {rack.rackNo}</div>
 
                         <div className="sm-rack-columns">
-                          {rack.columns.map((col) => (
+                          {rack.columns.map((col, columnIndex) => (
                             <div key={col.id} className="sm-rack-column">
                               <div className="sm-rack-column-title">{col.columnNo}</div>
 
@@ -981,11 +1097,29 @@ const StoreMovement = () => {
                                 const enabled = side === 'Front' ? row.hasFront : row.hasRear
                                 if (!enabled) return null
 
-                                const slotNumbers = buildSlotNumbers(row.fixture, side)
+                                const slotNumbers = getDirectionalSlotNumbers(rack.columns, columnIndex, row.rowNo)
+                                const directionValue =
+                                  row.storageDirection ??
+                                  row.StorageDirection ??
+                                  getDefaultStorageDirection(normalizeRowIndex(row.rowNo))
+                                const direction = normalizeStorageDirection(directionValue)
 
                                 return (
                                   <div key={row.id} className="sm-rack-row">
-                                    <div className="sm-rack-row-label">{row.rowNo}</div>
+                                    <div className="sm-rack-row-label">
+                                      <div>{row.rowNo}</div>
+                                      <small
+                                        style={{
+                                          display: 'block',
+                                          fontSize: 8,
+                                          fontWeight: 600,
+                                          marginTop: 2,
+                                          whiteSpace: 'nowrap',
+                                        }}
+                                      >
+                                        {direction === STORAGE_DIRECTION_RTL ? '← RTL' : '→ LTR'}
+                                      </small>
+                                    </div>
                                     <div className="sm-rack-row-slots">
                                       {slotNumbers.map((slotNumber) => {
                                         const occupied = isSlotOccupied(row, slotNumber)
@@ -1004,6 +1138,16 @@ const StoreMovement = () => {
                                             key={slotNumber}
                                             type="button"
                                             className={`sm-slot-btn ${occupied ? 'occupied' : 'available'} ${isSelected ? 'selected' : ''}`}
+                                            style={
+                                              !occupied && !isSelected
+                                                ? {
+                                                    backgroundColor: '#dff5e5',
+                                                    border: '1px solid #39a85b',
+                                                    color: '#198754',
+                                                    fontWeight: 600,
+                                                  }
+                                                : undefined
+                                            }
                                             disabled={occupied}
                                             data-tooltip={tooltipText}
                                             data-tooltip-type={occupied ? 'occupied' : 'available'}

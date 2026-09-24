@@ -68,6 +68,7 @@ const CustomerGroupMaster = () => {
   const [form, setForm] = useState({
     customerGroupType: '',
     description: '',
+    hasGST: false,
   })
 
   const [errors, setErrors] = useState({
@@ -119,6 +120,7 @@ const CustomerGroupMaster = () => {
     const temp = { customerGroupType: '' }
 
     const type = form.customerGroupType.trim()
+    const description = form.description.trim()
 
     if (!type) {
       temp.customerGroupType = 'Customer Group Type is required'
@@ -126,10 +128,13 @@ const CustomerGroupMaster = () => {
       groups.some(
         (g) =>
           g.customerGroupType?.trim().toLowerCase() === type.toLowerCase() &&
+          (g.description || '').trim().toLowerCase() === description.toLowerCase() &&
           g.id !== editId,
       )
     ) {
-      temp.customerGroupType = 'Customer Group Type already exists'
+      temp.customerGroupType = description
+        ? 'Customer Group Type with this Description already exists'
+        : 'Customer Group Type already exists'
     }
 
     setErrors(temp)
@@ -144,6 +149,7 @@ const CustomerGroupMaster = () => {
       const payload = {
         customerGroupType: form.customerGroupType.trim(),
         description: form.description.trim(),
+        hasGST: form.hasGST === true,
       }
 
       if (editId) {
@@ -171,6 +177,7 @@ const CustomerGroupMaster = () => {
       setForm({
         customerGroupType: res.data.customerGroupType || '',
         description: res.data.description || '',
+        hasGST: res.data.hasGST === true,
       })
 
       setErrors({ customerGroupType: '' })
@@ -194,6 +201,7 @@ const CustomerGroupMaster = () => {
     setForm({
       customerGroupType: '',
       description: '',
+      hasGST: false,
     })
 
     setErrors({ customerGroupType: '' })
@@ -245,6 +253,14 @@ const CustomerGroupMaster = () => {
     },
     { name: 'CUSTOMER GROUP TYPE', selector: (row) => row.customerGroupType, wrap: true },
     { name: 'DESCRIPTION', selector: (row) => row.description, wrap: true },
+    {
+      name: 'GST',
+      center: true,
+      cell: (row) =>
+        row.customerGroupType === 'External'
+          ? (row.hasGST ? 'Yes' : 'No')
+          : '—',
+    },
     {
       name: 'ACTION',
       center: true,
@@ -301,7 +317,7 @@ const CustomerGroupMaster = () => {
             <div className="section-title">Basic Information</div>
 
             <CRow className="g-3">
-              <CCol md={6}>
+              <CCol md={4}>
                 <label className="custom-label">
                   <strong>Customer Group Type</strong>{' '}
                   <span className="required">*</span>
@@ -345,7 +361,7 @@ const CustomerGroupMaster = () => {
                 )}
               </CCol>
 
-              <CCol md={6}>
+              <CCol md={4}>
                 <label className="custom-label">
                   <strong>Description</strong>
                 </label>
@@ -357,6 +373,47 @@ const CustomerGroupMaster = () => {
                   onChange={handleChange}
                 />
               </CCol>
+
+              {form.customerGroupType === 'External' && (
+                <CCol md={4}>
+                  <div className="gst-checkbox-wrapper">
+                    <label
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        cursor: 'pointer',
+                        marginTop: '8px',
+                        fontWeight: 600,
+                        color: '#123b73',
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={form.hasGST === true}
+                        onChange={(e) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            hasGST: e.target.checked,
+                          }))
+                        }
+                        style={{
+                          width: '18px',
+                          height: '18px',
+                          cursor: 'pointer',
+                        }}
+                      />
+                      Customer has GST
+                    </label>
+
+                    <small className="text-muted">
+                      Check this if GST details are applicable for this customer group.
+                    </small>
+                  </div>
+                </CCol>
+              )}
+
+
             </CRow>
 
             <div className="form-button-area">

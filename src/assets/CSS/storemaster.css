@@ -62,7 +62,7 @@
 }
 
 .store-master-page .add-item-btn::after {
-  content: 'Add Store';
+  content: 'Add Pallet';
   position: absolute;
   top: 56px;
   left: 50%;

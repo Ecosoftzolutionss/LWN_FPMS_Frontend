@@ -39,6 +39,7 @@ const DEFAULT_COLOUR = '#1E88E5'
 const EMPTY_FORM = {
   storeLocation: '',
   palletTypeId: '',
+  colourCode: '#1E88E5',
   partNumberId: '',
 }
 
@@ -102,6 +103,7 @@ const StoreMaster = () => {
   const [errors, setErrors] = useState({
     storeLocation: '',
     palletTypeId: '',
+    colourCode: '',
   })
 
   const [showForm, setShowForm] = useState(false)
@@ -168,13 +170,13 @@ const StoreMaster = () => {
        * This API returns:
        *   Id
        *   PalletName
-       *   ColourCode
        *   CurrentSequence
        *   RangeFrom
        *   RangeTo
        *
-       * ColourCode is used only for UI display.
-       * User does NOT enter the colour.
+       * Pallet Type is only used to generate/display
+       * the pallet number. Colour is entered separately
+       * by the user in this form.
        */
 
       const res =
@@ -290,7 +292,6 @@ const StoreMaster = () => {
         ''
 
       return {
-
         value:
           p.value ??
           p.id,
@@ -300,74 +301,10 @@ const StoreMaster = () => {
             ? `${palletName} (Range Completed)`
             : `${palletName} (Next: ${palletName}-${String(nextSequence).padStart(2, '0')})`,
 
-        /*
-         * Colour is attached to the dropdown option.
-         *
-         * It is NOT part of the form.
-         *
-         * It is only used to display the colour square.
-         */
-
-        colourCode:
-          p.colourCode ||
-          DEFAULT_COLOUR,
-
         disabled:
           isRangeCompleted,
       }
     })
-
-
-  // ==========================================================
-  // Pallet Type Dropdown Display
-  // ==========================================================
-
-  const formatPalletOption = (option) => {
-
-    if (!option) {
-      return null
-    }
-
-    return (
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px',
-          minHeight: '24px',
-        }}
-      >
-
-        {/* Colour Square */}
-
-        <span
-          style={{
-            width: '20px',
-            height: '20px',
-            minWidth: '20px',
-            borderRadius: '4px',
-
-            backgroundColor:
-              option.colourCode ||
-              DEFAULT_COLOUR,
-
-            border: '1px solid #ccc',
-
-            display: 'inline-block',
-
-            flexShrink: 0,
-          }}
-        />
-
-        {/* Pallet Type Text */}
-
-        <span>
-          {option.label}
-        </span>
-
-      </div>
-    )
-  }
 
 
   // ==========================================================
@@ -412,15 +349,8 @@ const StoreMaster = () => {
   const handlePalletTypeChange = (selected) => {
 
     /*
-     * IMPORTANT:
-     *
-     * We only store PalletTypeId in the form.
-     *
-     * We DO NOT store ColourCode in the form.
-     *
-     * The colour belongs to the selected Pallet Type
-     * and the backend will get the colour from
-     * PALLET_TYPE_MASTER.
+     * Pallet Type only controls the pallet type/sequence.
+     * Colour is entered separately by the user.
      */
 
     setForm((prev) => ({
@@ -443,6 +373,7 @@ const StoreMaster = () => {
     const temp = {
       storeLocation: '',
       palletTypeId: '',
+      colourCode: '',
     }
 
 
@@ -466,6 +397,24 @@ const StoreMaster = () => {
 
       temp.palletTypeId =
         'Pallet Type is required'
+    }
+
+
+    // Pallet Colour
+
+    if (!form.colourCode?.trim()) {
+
+      temp.colourCode =
+        'Pallet Colour is required'
+
+    } else if (
+      !/^#[0-9A-Fa-f]{6}$/.test(
+        form.colourCode.trim()
+      )
+    ) {
+
+      temp.colourCode =
+        'Enter a valid colour in #RRGGBB format'
     }
 
 
@@ -500,6 +449,9 @@ const StoreMaster = () => {
             storeLocation:
               form.storeLocation.trim(),
 
+            colourCode:
+              form.colourCode.trim().toUpperCase(),
+
             partNumberId:
               form.partNumberId
                 ? Number(form.partNumberId)
@@ -520,12 +472,8 @@ const StoreMaster = () => {
       else {
 
         /*
-         * IMPORTANT:
-         *
-         * ColourCode is NOT sent from frontend.
-         *
-         * Backend receives PalletTypeId and automatically
-         * gets ColourCode from PALLET_TYPE_MASTER.
+         * Pallet Type and Pallet Colour are independent.
+         * ColourCode is entered manually by the user.
          */
 
         await API.post(
@@ -536,6 +484,9 @@ const StoreMaster = () => {
 
             palletTypeId:
               Number(form.palletTypeId),
+
+            colourCode:
+              form.colourCode.trim().toUpperCase(),
 
             partNumberId:
               form.partNumberId
@@ -606,6 +557,9 @@ const StoreMaster = () => {
         palletTypeId:
           d.palletTypeId || '',
 
+        colourCode:
+          d.colourCode || '#1E88E5',
+
         partNumberId:
           d.partNumberId || '',
       })
@@ -613,6 +567,7 @@ const StoreMaster = () => {
       setErrors({
         storeLocation: '',
         palletTypeId: '',
+        colourCode: '',
       })
 
     } catch (err) {
@@ -639,6 +594,7 @@ const StoreMaster = () => {
     setErrors({
       storeLocation: '',
       palletTypeId: '',
+      colourCode: '',
     })
 
     setEditId(null)
@@ -772,11 +728,11 @@ const StoreMaster = () => {
 
 
     // --------------------------------------------------------
-    // PALLET LOCATION
+    // STORE LOCATION
     // --------------------------------------------------------
 
     {
-      name: 'PALLET LOCATION',
+      name: 'STORE LOCATION',
 
       selector: (row) =>
         row.storeLocation,
@@ -982,7 +938,7 @@ const StoreMaster = () => {
             <div>
 
               <div className="summary-label">
-                Total Store
+                Total Pallets
               </div>
 
               <div className="summary-value">
@@ -1051,12 +1007,12 @@ const StoreMaster = () => {
                   PALLET LOCATION
               ================================================= */}
 
-              <CCol md={4}>
+              <CCol md={3}>
 
                 <label className="custom-label">
 
                   <strong>
-                    Pallet Location
+                    Store Location
                   </strong>
 
                   <span className="required">
@@ -1071,7 +1027,7 @@ const StoreMaster = () => {
 
                   name="storeLocation"
 
-                  placeholder="Enter Pallet Location"
+                  placeholder="Enter Store Location"
 
                   value={form.storeLocation}
 
@@ -1100,7 +1056,7 @@ const StoreMaster = () => {
                   PART NUMBER
               ================================================= */}
 
-              <CCol md={4}>
+              <CCol md={3}>
 
                 <label className="custom-label">
 
@@ -1142,7 +1098,7 @@ const StoreMaster = () => {
                   PALLET TYPE
               ================================================= */}
 
-              <CCol md={4}>
+              <CCol md={3}>
 
                 <label className="custom-label">
 
@@ -1180,11 +1136,6 @@ const StoreMaster = () => {
                       options={
                         palletTypeOptions
                       }
-
-                      formatOptionLabel={
-                        formatPalletOption
-                      }
-
                       value={
 
                         palletTypeOptions.find(
@@ -1219,54 +1170,16 @@ const StoreMaster = () => {
 
                 {editId && (
 
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '10px',
-                    }}
-                  >
+                  <CFormInput
+                    value={
+                      stores.find(
+                        (s) =>
+                          s.id === editId
+                      )?.palletNumber || ''
+                    }
 
-                    {/* Existing pallet colour */}
-
-                    <span
-                      style={{
-                        width: '20px',
-                        height: '20px',
-                        minWidth: '20px',
-
-                        borderRadius: '4px',
-
-                        backgroundColor:
-                          stores.find(
-                            (s) =>
-                              s.id === editId
-                          )?.colourCode ||
-                          DEFAULT_COLOUR,
-
-                        border:
-                          '1px solid #ccc',
-
-                        display:
-                          'inline-block',
-                      }}
-                    />
-
-
-                    {/* Existing pallet number */}
-
-                    <CFormInput
-                      value={
-                        stores.find(
-                          (s) =>
-                            s.id === editId
-                        )?.palletNumber || ''
-                      }
-
-                      disabled
-                    />
-
-                  </div>
+                    disabled
+                  />
 
                 )}
 
@@ -1275,6 +1188,113 @@ const StoreMaster = () => {
 
                   <small className="text-danger">
                     {errors.palletTypeId}
+                  </small>
+
+                )}
+
+              </CCol>
+
+              {/* =================================================
+                  PALLET COLOUR
+              ================================================= */}
+
+              <CCol md={3}>
+
+                <label className="custom-label">
+
+                  <strong>
+                    Pallet Colour
+                  </strong>
+
+                  <span className="required">
+                    *
+                  </span>
+
+                </label>
+
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                  }}
+                >
+
+                  <input
+                    type="color"
+                    value={
+                      /^#[0-9A-Fa-f]{6}$/.test(
+                        form.colourCode || ''
+                      )
+                        ? form.colourCode
+                        : '#1E88E5'
+                    }
+                    onChange={(e) => {
+                      setForm((prev) => ({
+                        ...prev,
+                        colourCode:
+                          e.target.value.toUpperCase(),
+                      }))
+
+                      clearError('colourCode')
+                    }}
+                    style={{
+                      width: '46px',
+                      height: '38px',
+                      padding: '2px',
+                      border: '1px solid #ced4da',
+                      borderRadius: '5px',
+                      cursor: 'pointer',
+                      background: '#fff',
+                    }}
+                    title="Select Pallet Colour"
+                  />
+
+                  <CFormInput
+                    name="colourCode"
+                    value={
+                      form.colourCode || ''
+                    }
+                    placeholder="#1E88E5"
+                    maxLength={7}
+                    className={
+                      errors.colourCode
+                        ? 'error-input'
+                        : ''
+                    }
+                    onChange={(e) => {
+                      let value =
+                        e.target.value.toUpperCase()
+
+                      if (
+                        value &&
+                        !value.startsWith('#')
+                      ) {
+                        value = `#${value}`
+                      }
+
+                      value =
+                        '#' +
+                        value
+                          .replace(/#/g, '')
+                          .replace(/[^0-9A-F]/g, '')
+                          .slice(0, 6)
+
+                      setForm((prev) => ({
+                        ...prev,
+                        colourCode: value,
+                      }))
+
+                      clearError('colourCode')
+                    }}
+                  />
+
+                </div>
+
+                {errors.colourCode && (
+
+                  <small className="text-danger">
+                    {errors.colourCode}
                   </small>
 
                 )}
@@ -1335,7 +1355,7 @@ const StoreMaster = () => {
           <div className="table-header">
 
             <div className="table-title">
-              Store List
+              Pallet List
             </div>
 
 

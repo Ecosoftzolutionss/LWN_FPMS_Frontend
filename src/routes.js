@@ -39,7 +39,7 @@ const routes = [
   { path: '/masters/customergroupmaster', name: 'Customer Group Master', element: CustomerGroupMaster },
   { path: '/masters/customermaster', name: 'Customer Master', element: CustomerMaster },
   { path: '/masters/pricemaster', name: 'Price Master', element: PriceMaster },
-  { path: '/masters/storemaster', name: 'Store Master', element: StoreMaster },
+  { path: '/masters/storemaster', name: 'Pallet Master', element: StoreMaster },
   { path: '/masters/locationmaster', name: 'Location Master', element: LocationMaster },
   { path: '/masters/mailsetting', name: 'Mail Settings', element: MailSettings },
 

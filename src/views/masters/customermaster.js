@@ -37,6 +37,7 @@ const EMPTY_FORM = {
   mobileNumber: '',
   emailId: '',
   gstNo: '',
+  gstAvailable: false,
 }
 
 
@@ -136,6 +137,9 @@ const CustomerMaster = () => {
 
   const [customerGroups, setCustomerGroups] =
     useState([])
+
+  const [selectedCustomerGroup, setSelectedCustomerGroup] =
+    useState(null)
 
   const [showForm, setShowForm] =
     useState(false)
@@ -281,9 +285,14 @@ const CustomerMaster = () => {
         )
       })
       .map((g) => ({
-        value: g.customerGroupType,
-        label: g.customerGroupType,
+        value: String(g.id),
+        label: g.description
+          ? `${g.customerGroupType} - ${g.description}`
+          : g.customerGroupType,
         id: g.id,
+        customerGroupType: g.customerGroupType,
+        description: g.description || '',
+        hasGST: g.hasGST === true,
       }))
 
 
@@ -312,26 +321,29 @@ const CustomerMaster = () => {
 
   const handleCustomerGroupChange = (selected) => {
 
-    const customerGroup =
+    // react-select option.value contains the Customer Group Id
+    const customerGroupId =
       selected?.value || ''
 
-    const customerGroupId =
-      selected?.id || ''
+    const selectedGroupData =
+      customerGroups.find(
+        (g) => String(g.id) === String(customerGroupId)
+      ) || null
+
+    const customerGroupType =
+      selectedGroupData?.customerGroupType || ''
+
+    const groupHasGST =
+      selectedGroupData?.hasGST === true
+
+    setSelectedCustomerGroup(selectedGroupData)
 
     setForm((prev) => ({
       ...prev,
-
-      customerDivision:
-        customerGroup,
-
-      customerGroupId:
-        customerGroupId,
-
-      // Internal customers do not use GST
-      gstNo:
-        customerGroup === 'Internal'
-          ? ''
-          : prev.gstNo,
+      customerDivision: customerGroupType,
+      customerGroupId: customerGroupId,
+      gstNo: '',
+      gstAvailable: groupHasGST,
     }))
 
     clearError('customerDivision')
@@ -444,12 +456,10 @@ const CustomerMaster = () => {
     const mobileNumber =
       form.mobileNumber.trim()
 
-    if (!mobileNumber) {
-
-      temp.mobileNumber =
-        'Customer Mobile Number is required'
-
-    } else if (
+    // Customer Mobile Number is optional.
+    // Validate the format only when a value is entered.
+    if (
+      mobileNumber &&
       !MOBILE_REGEX.test(mobileNumber)
     ) {
 
@@ -465,12 +475,10 @@ const CustomerMaster = () => {
     const email =
       form.emailId.trim()
 
-    if (!email) {
-
-      temp.emailId =
-        'Customer Email ID is required'
-
-    } else if (
+    // Customer Email ID is optional.
+    // Validate format and duplicate only when a value is entered.
+    if (
+      email &&
       !EMAIL_REGEX.test(email)
     ) {
 
@@ -478,6 +486,7 @@ const CustomerMaster = () => {
         'Enter a valid email address'
 
     } else if (
+      email &&
       customers.some(
         (c) =>
           c.emailId
@@ -496,50 +505,37 @@ const CustomerMaster = () => {
     // -------------------------------------------------------
     // GST
     //
-    // ONLY External requires GST
+    // Internal -> GST checkbox and GST field are not shown.
+    // External -> GST checkbox is shown.
+    //            Checked   -> GST field displayed and required.
+    //            Unchecked -> GST not required.
     // -------------------------------------------------------
+
+    const groupHasGST =
+      selectedCustomerGroup?.hasGST === true
 
     const gstNo =
       form.gstNo.trim().toUpperCase()
 
-    if (
-      form.customerDivision
-        .trim()
-        .toLowerCase() === 'external'
-    ) {
+    if (groupHasGST) {
 
       if (!gstNo) {
-
         temp.gstNo =
-          'GST No is required for External customers'
-
-      } else if (
-        !GST_REGEX.test(gstNo)
-      ) {
-
+          'GST No is required for the selected Customer Group'
+      } else if (!GST_REGEX.test(gstNo)) {
         temp.gstNo =
           'Enter a valid 15-character GSTIN (e.g. 33ABCDE1234F1Z5)'
-
       } else if (
         customers.some(
           (c) =>
-            c.gstNo
-              ?.trim()
-              .toUpperCase() ===
-            gstNo &&
+            c.gstNo?.trim().toUpperCase() === gstNo &&
             c.id !== editId &&
-            c.gstNo?.toUpperCase() !==
-            'NOTPROVIDED'
+            c.gstNo?.trim().toUpperCase() !== 'NOTPROVIDED'
         )
       ) {
-
-        temp.gstNo =
-          'GST No already exists'
+        temp.gstNo = 'GST No already exists'
       }
-
     } else {
-
-      // Internal customer
       temp.gstNo = ''
     }
 
@@ -564,12 +560,8 @@ const CustomerMaster = () => {
 
     try {
 
-      const isExternal =
-        form.customerDivision
-          .trim()
-          .toLowerCase() ===
-        'external'
-
+      const groupHasGST =
+        selectedCustomerGroup?.hasGST === true
 
       const payload = {
 
@@ -586,18 +578,21 @@ const CustomerMaster = () => {
           Number(form.customerGroupId),
 
         mobileNumber:
-          form.mobileNumber.trim(),
+          form.mobileNumber.trim()
+            ? form.mobileNumber.trim()
+            : null,
 
         emailId:
-          form.emailId.trim(),
+          form.emailId.trim()
+            ? form.emailId.trim()
+            : null,
 
-        // External -> actual GST
-        // Internal -> NOTPROVIDED
+        gstAvailable:
+          groupHasGST,
+
         gstNo:
-          isExternal
-            ? form.gstNo
-              .trim()
-              .toUpperCase()
+          groupHasGST
+            ? form.gstNo.trim().toUpperCase()
             : 'NOTPROVIDED',
       }
 
@@ -690,6 +685,16 @@ const CustomerMaster = () => {
         ''
 
 
+      const selectedGroupData =
+        customerGroups.find(
+          (g) =>
+            String(g.id) === String(groupId)
+        ) ||
+        d.customerGroup ||
+        null
+
+      setSelectedCustomerGroup(selectedGroupData)
+
       setEditId(row.id)
 
       setForm({
@@ -718,6 +723,9 @@ const CustomerMaster = () => {
             'NOTPROVIDED'
             ? d.gstNo
             : '',
+
+        gstAvailable:
+          selectedGroupData?.hasGST === true,
       })
 
 
@@ -783,6 +791,7 @@ const CustomerMaster = () => {
     })
 
     setEditId(null)
+    setSelectedCustomerGroup(null)
   }
 
 
@@ -1293,10 +1302,6 @@ const CustomerMaster = () => {
                     Customer Mobile Number
                   </strong>
 
-                  <span className="required">
-                    *
-                  </span>
-
                 </label>
 
 
@@ -1375,8 +1380,8 @@ const CustomerMaster = () => {
                     value={
                       customerDivisionOptions.find(
                         (x) =>
-                          x.value ===
-                          form.customerDivision
+                          String(x.value) ===
+                          String(form.customerGroupId)
                       ) || null
                     }
 
@@ -1406,9 +1411,6 @@ const CustomerMaster = () => {
                   <strong>
                     Customer Email ID
                   </strong>
-                  <span className="required">
-                    *
-                  </span>
                 </label>
                 <CFormInput
                   type="email"
@@ -1436,64 +1438,54 @@ const CustomerMaster = () => {
 
               {/* =================================================
                   GST
-                  ONLY EXTERNAL
+                  DISPLAY ONLY WHEN SELECTED CUSTOMER GROUP HAS GST
               ================================================= */}
 
-              {form.customerDivision
-                ?.trim()
-                .toLowerCase() ===
-                'external' && (
+              {selectedCustomerGroup?.hasGST === true && (
+                <CCol md={4}>
+                  <label className="custom-label">
+                    <strong>
+                      GST No.
+                    </strong>
+                    <span className="required">
+                      *
+                    </span>
+                  </label>
 
-                  <CCol md={4}>
-                    <label className="custom-label">
-                      <strong>
-                        GST No.
-                      </strong>
-                      <span className="required">
-                        *
-                      </span>
-                    </label>
-                    <CFormInput
-                      name="gstNo"
+                  <CFormInput
+                    name="gstNo"
+                    placeholder="Enter GSTIN (e.g. 33ABCDE1234F1Z5)"
+                    value={form.gstNo}
+                    maxLength={15}
+                    className={
+                      errors.gstNo
+                        ? 'error-input'
+                        : ''
+                    }
+                    onChange={(e) =>
+                      handleChange({
+                        target: {
+                          name: 'gstNo',
+                          value:
+                            e.target.value
+                              .toUpperCase()
+                              .replace(
+                                /[^0-9A-Z]/g,
+                                ''
+                              ),
+                        },
+                      })
+                    }
+                  />
 
-                      placeholder="Enter GSTIN (e.g. 33ABCDE1234F1Z5)"
+                  {errors.gstNo && (
+                    <small className="text-danger">
+                      {errors.gstNo}
+                    </small>
+                  )}
+                </CCol>
+              )}
 
-                      value={form.gstNo}
-
-                      maxLength={15}
-
-                      className={
-                        errors.gstNo
-                          ? 'error-input'
-                          : ''
-                      }
-
-                      onChange={(e) =>
-                        handleChange({
-                          target: {
-                            name: 'gstNo',
-
-                            value:
-                              e.target.value
-                                .toUpperCase()
-                                .replace(
-                                  /[^0-9A-Z]/g,
-                                  ''
-                                ),
-                          },
-                        })
-                      }
-                    />
-
-                    {errors.gstNo && (
-
-                      <small className="text-danger">
-                        {errors.gstNo}
-                      </small>
-
-                    )}
-                  </CCol>
-                )}
             </CRow>
 
 
