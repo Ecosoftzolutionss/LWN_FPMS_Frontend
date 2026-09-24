@@ -26,7 +26,9 @@ import {
   countPendingVerifications,
   clearAllPendingVerifications,
   replaceVerifiedIdsCache,
-  replacePalletStatusCache, 
+  replacePalletStatusCache,
+  replaceSuppliersCache,
+  replaceCustomersCache,
 } from './offlineDb';
 
 // ==========================================
@@ -442,7 +444,33 @@ try {
 
 
       // ============================================================
-      // 3. DOWNLOAD LATEST PALLET DATA + VERIFIED-PALLET-IDS
+      // 3. DOWNLOAD SUPPLIER + CUSTOMER MASTER DATA
+      //    Cached locally for Material Issue Issued To dropdown.
+      // ============================================================
+      try {
+        const [supplierRes, customerRes] = await Promise.all([
+          API.get('/SupplierMaster'),
+          API.get('/CustomerMaster'),
+        ]);
+
+        const suppliers = Array.isArray(supplierRes.data) ? supplierRes.data : [];
+        const customers = Array.isArray(customerRes.data) ? customerRes.data : [];
+
+        await Promise.all([
+          replaceSuppliersCache(suppliers),
+          replaceCustomersCache(customers),
+        ]);
+
+
+        console.log('[DATA SYNC] Downloaded suppliers:', suppliers.length);
+        console.log('[DATA SYNC] Downloaded customers:', customers.length);
+      } catch (err) {
+        console.error('[DATA SYNC] Supplier/Customer master download failed:', err);
+        toast.warning('Supplier / Customer master refresh failed. Existing cached values will be used.');
+      }
+
+      // ============================================================
+      // 4. DOWNLOAD LATEST PALLET DATA + VERIFIED-PALLET-IDS
       // ============================================================
 
       try {
@@ -465,8 +493,7 @@ try {
           pallets
         );
 
-        downloadedCount =
-          pallets.length;
+        downloadedCount += pallets.length;
 
       } catch (err) {
 

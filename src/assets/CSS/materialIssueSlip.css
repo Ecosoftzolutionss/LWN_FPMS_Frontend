@@ -120,7 +120,7 @@
 
 
 .issue-slip {
-  width: 700px;
+  width: 820px;
   max-width: 100%;
   margin: auto;
 
@@ -179,24 +179,13 @@
   margin-right: 6px;
 }
 
-.leewon-text {
-  font-size: 23px;
-  font-weight: 700;
-
-  color: #333;
-
-  letter-spacing: -0.8px;
-  line-height: 1;
-}
 
 
-/* =========================================================
-   MATERIAL ISSUE SLIP HEADING
-========================================================= */
+
 
 
 .slip-heading {
-  font-size: 27px;
+  font-size: 22px;
   font-weight: 700;
 
   letter-spacing: 2px;
@@ -566,10 +555,22 @@
 @media print {
 
   @page {
-    size: A4 portrait;
-    margin: 10mm;
+    size: A4 landscape;
+    margin: 8mm;
   }
 
+  html,
+  body {
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  /* Hide the application UI, but keep only the slip visible. */
   body * {
     visibility: hidden !important;
   }
@@ -579,125 +580,256 @@
     visibility: visible !important;
   }
 
-  .issue-slip {
-    position: fixed !important;
+  /*
+     IMPORTANT:
+     CoreUI's centered modal can have a viewport-height/min-height.
+     In print this can push the slip onto page 2 and leave page 1 blank.
+     Reset every modal wrapper so the slip starts at the top of page 1.
+  */
+  .modal,
+  .modal.show,
+  .modal-dialog,
+  .modal-dialog-centered,
+  .modal-content,
+  .modal-body {
+    position: static !important;
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: auto !important;
 
-    top: 10mm !important;
-    left: 50% !important;
+    display: block !important;
 
-    transform: translateX(-50%) !important;
-
-    width: 700px !important;
+    width: auto !important;
+    min-width: 0 !important;
     max-width: none !important;
 
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+
     margin: 0 !important;
+    padding: 0 !important;
 
-    border: 1px solid #000 !important;
+    transform: none !important;
+    align-items: initial !important;
+    justify-content: initial !important;
 
-    background: #fff !important;
-
-    color: #000 !important;
-
+    background: transparent !important;
+    border: none !important;
     box-shadow: none !important;
-
-    z-index: 999999 !important;
+    overflow: visible !important;
   }
 
-  /* Hide modal controls */
-  .mis-modal-actions,
-  .mis-modal-title,
+  .modal-backdrop {
+    display: none !important;
+  }
+
   .modal-header,
+  .mis-modal-title,
+  .mis-modal-actions,
   .btn-close {
     display: none !important;
   }
 
-  /* Remove modal effects */
-  .modal,
-  .modal-dialog,
-  .modal-content,
-  .modal-body {
-    background: transparent !important;
+  /* The actual printable document. */
+  .issue-slip {
+    position: relative !important;
+    display: block !important;
 
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+
+    margin: 0 !important;
+    padding: 0 !important;
+
+    border: 1.2px solid #111 !important;
+    background: #fff !important;
+    color: #111 !important;
+
+    box-sizing: border-box !important;
     box-shadow: none !important;
 
-    border: none !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
   }
 
-  /* Keep header values small while printing */
+  /* Header/title */
+  .slip-title {
+    height: 58px !important;
+    padding: 0 18px !important;
+    border-bottom: 1.2px solid #111 !important;
+  }
+
+  .leewon-brand {
+    margin-right: 28px !important;
+  }
+
+  .leewon-logo {
+    width: 42px !important;
+    height: 32px !important;
+    object-fit: contain !important;
+  }
+
+  .slip-heading {
+    font-size: 19px !important;
+    font-weight: 700 !important;
+    letter-spacing: 1.8px !important;
+    line-height: 1.1 !important;
+    white-space: nowrap !important;
+  }
+
+  /* Top information */
+  .header-grid {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    border-bottom: 1.2px solid #111 !important;
+  }
+
   .header-cell {
+    min-height: 72px !important;
+    padding: 10px 12px !important;
+    border-right: 1px solid #111 !important;
     font-size: 11px !important;
+    box-sizing: border-box !important;
+  }
+
+  .header-cell:last-child {
+    border-right: none !important;
   }
 
   .header-cell > strong {
     font-size: 11px !important;
-  }
-
-  .value-line {
-    font-size: 12px !important;
+    font-weight: 700 !important;
   }
 
   .value-line,
   .value-line * {
     font-size: 12px !important;
   }
-.from-to-box {
-  font-size: 12px !important;
-}
 
-.address-content strong {
-  font-size: 12px !important;
-}
-  /* Keep table borders */
+  .value-line {
+    margin-top: 11px !important;
+    min-height: 19px !important;
+    padding: 0 5px 5px !important;
+    border-bottom: 1px solid #111 !important;
+    font-weight: 600 !important;
+    line-height: 1.25 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  /* Item table */
   .items-table {
     width: 100% !important;
-
     border-collapse: collapse !important;
+    table-layout: fixed !important;
+    margin: 0 !important;
   }
 
   .items-table th,
   .items-table td {
-    border: 1px solid #000 !important;
+    border: 1px solid #111 !important;
+    padding: 9px 8px !important;
+    font-size: 11.5px !important;
+    line-height: 1.25 !important;
+    vertical-align: middle !important;
   }
 
-  /* Prevent rows splitting */
+  .items-table th {
+    background: #eef2f7 !important;
+    color: #172033 !important;
+    text-align: center !important;
+    font-weight: 700 !important;
+  }
+
+  .items-table td {
+    height: 38px !important;
+    text-align: center !important;
+  }
+
   .items-table tr {
-    page-break-inside: avoid !important;
-
     break-inside: avoid !important;
+    page-break-inside: avoid !important;
   }
 
-  .items-table th,
-.items-table td {
-  font-size: 12px !important;
-}
+  /* SL NO | ITEM NO | ITEM NAME | QTY | FIFO NO | PALLET NO */
+  .items-table th:nth-child(1),
+  .items-table td:nth-child(1) { width: 8% !important; }
 
-.remarks {
-  font-size: 12px !important;
-}
+  .items-table th:nth-child(2),
+  .items-table td:nth-child(2) { width: 15% !important; }
 
-.approval-box {
-  font-size: 12px !important;
-}
+  .items-table th:nth-child(3),
+  .items-table td:nth-child(3) { width: 27% !important; }
 
-.thank-you {
-  font-size: 12px !important;
-}
+  .items-table th:nth-child(4),
+  .items-table td:nth-child(4) { width: 10% !important; }
 
-  html,
-  body {
+  .items-table th:nth-child(5),
+  .items-table td:nth-child(5) { width: 18% !important; }
+
+  .items-table th:nth-child(6),
+  .items-table td:nth-child(6) { width: 22% !important; }
+
+  /* Remarks */
+  .remarks {
+    min-height: 42px !important;
+    padding: 9px 10px !important;
+    border-bottom: 1px solid #111 !important;
+    font-size: 11px !important;
+    line-height: 1.4 !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Approval */
+  .approval-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+
+  .approval-box {
+    min-height: 92px !important;
+    padding: 12px !important;
+    border-right: 1px solid #111 !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    box-sizing: border-box !important;
+  }
+
+  .approval-box:last-child {
+    border-right: none !important;
+  }
+
+  .thank-you {
+    border-top: 1px solid #111 !important;
+    padding: 8px !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    text-align: center !important;
+  }
+
+  /* If FROM / TO is enabled later */
+  .from-to {
     width: 100% !important;
+  }
 
-    height: auto !important;
+  .from-to-box {
+    font-size: 11px !important;
+    padding: 9px !important;
+  }
 
-    overflow: visible !important;
+  .address-content {
+    margin-top: 4px !important;
+  }
 
-    background: #fff !important;
+  .address-content strong {
+    font-size: 11px !important;
   }
 }
-
-/* =========================================================
-   MOBILE
-========================================================= */
 
 @media (max-width: 768px) {
 
@@ -726,9 +858,7 @@
     max-height: 30px;
   }
 
-  .leewon-text {
-    font-size: 18px;
-  }
+
 
   .leewon-brand {
     margin-right: 10px;

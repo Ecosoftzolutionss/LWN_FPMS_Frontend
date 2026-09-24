@@ -46,6 +46,9 @@ const PAN_REGEX =
 const EMAIL_REGEX =
   /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
+const SUPPLIER_ID_REGEX =
+  /^[A-Z0-9-]+$/
+
 
 // =========================================================
 // EMPTY FORM
@@ -419,12 +422,7 @@ const SupplierMaster = () => {
     const email =
       form.email.trim()
 
-    if (!email) {
-
-      temp.email =
-        'Email is required'
-
-    } else if (!EMAIL_REGEX.test(email)) {
+    if (email && !EMAIL_REGEX.test(email)) {
 
       temp.email =
         'Enter a valid email address'
@@ -438,12 +436,8 @@ const SupplierMaster = () => {
     const contactNumber =
       form.contactNumber.trim()
 
-    if (!contactNumber) {
-
-      temp.contactNumber =
-        'Contact Number is required'
-
-    } else if (
+    if (
+      contactNumber &&
       !CONTACT_REGEX.test(contactNumber)
     ) {
 
@@ -456,11 +450,8 @@ const SupplierMaster = () => {
     // PERSON TO CONTACT
     // -------------------------------------------------------
 
-    if (!form.personToContact.trim()) {
-
-      temp.personToContact =
-        'Person to Contact is required'
-    }
+    // Person to Contact is optional.
+    // No validation is required when the field is empty.
 
 
     // -------------------------------------------------------
@@ -572,13 +563,13 @@ const SupplierMaster = () => {
           Number(form.supplierGroupId),
 
         email:
-          form.email.trim(),
+          form.email.trim() || null,
 
         contactNumber:
-          form.contactNumber.trim(),
+          form.contactNumber.trim() || null,
 
         personToContact:
-          form.personToContact.trim(),
+          form.personToContact.trim() || null,
 
         gstNo:
           form.gstNo
@@ -1356,10 +1347,6 @@ const SupplierMaster = () => {
                     Email
                   </strong>
 
-                  <span className="required">
-                    *
-                  </span>
-
                 </label>
 
 
@@ -1400,10 +1387,6 @@ const SupplierMaster = () => {
                   <strong>
                     Contact Number
                   </strong>
-
-                  <span className="required">
-                    *
-                  </span>
 
                 </label>
 
@@ -1459,10 +1442,6 @@ const SupplierMaster = () => {
                   <strong>
                     Person to Contact
                   </strong>
-
-                  <span className="required">
-                    *
-                  </span>
 
                 </label>
 

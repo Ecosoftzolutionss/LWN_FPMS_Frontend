@@ -882,7 +882,7 @@ const GRNPost = () => {
 
         <div className="fifo-right-col">
           <div className="fifo-meta-grid">
-            <div><FaRegFileAlt className="fifo-meta-icon" /> <span>S.I.NO:</span> {grnMeta.supplierInvoiceNumber}</div>
+            <div><FaRegFileAlt className="fifo-meta-icon" /> <span>SUP.INV.NO:</span> {grnMeta.supplierInvoiceNumber}</div>
             <div><FaRegCalendarAlt className="fifo-meta-icon" /> <span>DATE:</span> {formatDate(grnMeta.supplierInvoiceDate)}</div>
             <div><FaBoxOpen className="fifo-meta-icon" /> <span>QTY :</span> {grnMeta.totalQuantity ?? 0} Nos.</div>
             <div><FaRegFileAlt className="fifo-meta-icon" /> <span>GRN NO:</span> {grnMeta.grnNumber}</div>

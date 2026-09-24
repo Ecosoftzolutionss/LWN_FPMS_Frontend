@@ -50,6 +50,157 @@ const formatDateTime = (value) => {
     return `${day}/${month}/${year} ${hours}:${minutes} ${ampm}`
 }
 
+
+const toDisplayArray = (value) => {
+    if (Array.isArray(value)) {
+        return value.flatMap((v) => toDisplayArray(v)).filter(Boolean)
+    }
+    if (value === null || value === undefined || value === '') return []
+    if (typeof value === 'string') {
+        return value.split(',').map((v) => v.trim()).filter(Boolean)
+    }
+    return [String(value)]
+}
+
+const uniqueDisplayValues = (values) => {
+    const result = []
+    const seen = new Set()
+
+    values.flatMap((value) => toDisplayArray(value)).forEach((value) => {
+        const key = String(value).trim()
+        if (!key) return
+        const normalized = key.toLowerCase()
+        if (!seen.has(normalized)) {
+            seen.add(normalized)
+            result.push(key)
+        }
+    })
+
+    return result
+}
+
+const getGrnNumbers = (slip) => {
+    if (!slip) return []
+    return uniqueDisplayValues([
+        slip.grnNumbers,
+        slip.grnNos,
+        slip.grns,
+        slip.grnNumber,
+    ])
+}
+
+const getItemFifoNumbers = (item) => {
+    const nested = Array.isArray(item?.palletDetails)
+        ? item.palletDetails.flatMap((p) => [
+            p?.fifoNo, p?.fifoNumber, p?.fifoNos, p?.fifoNumbers,
+        ])
+        : []
+
+    return uniqueDisplayValues([
+        item?.fifoNo,
+        item?.fifoNumber,
+        item?.fifoNos,
+        item?.fifoNumbers,
+        nested,
+    ])
+}
+
+const getItemPalletNumbers = (item) => {
+    const nested = Array.isArray(item?.palletDetails)
+        ? item.palletDetails.flatMap((p) => [
+            p?.palletNo, p?.palletNumber, p?.palletNos, p?.palletNumbers,
+        ])
+        : []
+
+    return uniqueDisplayValues([
+        item?.palletNo,
+        item?.palletNumber,
+        item?.palletNos,
+        item?.palletNumbers,
+        nested,
+    ])
+}
+
+const getItemGrnNumbers = (item) => {
+    const nested = Array.isArray(item?.palletDetails)
+        ? item.palletDetails.flatMap((p) => [
+            p?.grnNo, p?.grnNumber, p?.grnNos, p?.grnNumbers,
+        ])
+        : []
+
+    return uniqueDisplayValues([
+        item?.grnNo,
+        item?.grnNumber,
+        item?.grnNos,
+        item?.grnNumbers,
+        nested,
+    ])
+}
+
+const makeDisplayKey = (values) =>
+    uniqueDisplayValues(values)
+        .map((value) => String(value).trim().toLowerCase())
+        .join('|') || '—'
+
+// IMPORTANT:
+// One IssueNumber represents one physical Material Issue Slip.
+// Rows are consolidated only when PART + FIFO NO + PALLET NO are the
+// same. This means if GRN 260003 and GRN 260004 were issued in the
+// same click and both use the same FIFO/Pallet, the slip shows ONE row:
+//   GRN: 260003, 260004 | FIFO: F26090003 | Pallet: BR-03
+// If FIFO/Pallet differs, they remain separate rows so the physical
+// traceability is never lost.
+const consolidateItems = (items = []) => {
+    const grouped = new Map()
+
+    items.forEach((item, index) => {
+        const partNumber = String(
+            item?.partNumber ?? item?.itemNumber ?? item?.partNo ?? ''
+        ).trim()
+
+        const partName = item?.partName ?? item?.itemName ?? '—'
+        const fifoNumbers = getItemFifoNumbers(item)
+        const palletNumbers = getItemPalletNumbers(item)
+        const grnNumbers = getItemGrnNumbers(item)
+
+        const groupKey = [
+            partNumber.toLowerCase() || `__part_${index}`,
+            makeDisplayKey(fifoNumbers),
+            makeDisplayKey(palletNumbers),
+        ].join('||')
+
+        if (!grouped.has(groupKey)) {
+            grouped.set(groupKey, {
+                ...item,
+                partNumber: partNumber || item?.partNumber || '—',
+                partName,
+                quantity: Number(item?.quantity ?? item?.qty ?? 0) || 0,
+                fifoNumbers,
+                palletNumbers,
+                grnNumbers,
+            })
+            return
+        }
+
+        const existing = grouped.get(groupKey)
+        existing.quantity += Number(item?.quantity ?? item?.qty ?? 0) || 0
+        existing.grnNumbers = uniqueDisplayValues([
+            existing.grnNumbers,
+            grnNumbers,
+        ])
+        existing.fifoNumbers = uniqueDisplayValues([
+            existing.fifoNumbers,
+            fifoNumbers,
+        ])
+        existing.palletNumbers = uniqueDisplayValues([
+            existing.palletNumbers,
+            palletNumbers,
+        ])
+    })
+
+    return Array.from(grouped.values())
+}
+
 const MaterialIssueSlip = () => {
 
     const [rows, setRows] = useState([])
@@ -133,32 +284,242 @@ const MaterialIssueSlip = () => {
     // =====================================================
 
     const filteredRows = rows.filter((row) => {
-
-        const value =
-            search.trim().toLowerCase()
+        const value = String(search || '').trim().toLowerCase();
 
         if (!value) {
-            return true
+            return true;
         }
 
-        return (
-            String(row.grnNumber || '')
-                .toLowerCase()
-                .includes(value) ||
+        const searchableValues = [
+            getGrnNumbers(row).join(', '),
+            row.issueNumber,
+            row.partNumber,
+            row.palletNo,
+        ];
 
-            String(row.issueNumber || '')
-                .toLowerCase()
-                .includes(value) ||
+        return searchableValues.some((item) =>
+            String(item ?? '').toLowerCase().includes(value)
+        );
+    });
 
-            String(row.partNumber || '')
-                .toLowerCase()
-                .includes(value) ||
+    // =====================================================
+    // PRINT MATERIAL ISSUE SLIP
+    // Opens only the slip in a clean print window.
+    // This avoids CoreUI modal layout causing a blank first page.
+    // =====================================================
+    const printMaterialIssueSlip = () => {
+        const slipElement = document.querySelector('.issue-slip')
 
-            String(row.palletNo || '')
-                .toLowerCase()
-                .includes(value)
+        if (!slipElement) {
+            toast.error('Material Issue Slip is not available for printing')
+            return
+        }
+
+        const printWindow = window.open(
+            '',
+            '_blank',
+            'width=1200,height=850,scrollbars=yes,resizable=yes'
         )
-    })
+
+        if (!printWindow) {
+            toast.error('Please allow pop-ups to print the Material Issue Slip')
+            return
+        }
+
+        // Copy the application's loaded CSS into the print window.
+        // Same-origin stylesheets can be read safely; inaccessible sheets
+        // are simply skipped.
+        let pageStyles = ''
+
+        Array.from(document.styleSheets).forEach((sheet) => {
+            try {
+                const rules = Array.from(sheet.cssRules || [])
+                    .map((rule) => rule.cssText)
+                    .join('\n')
+
+                pageStyles += rules
+            } catch (error) {
+                // Ignore stylesheets that the browser does not allow us to read.
+            }
+        })
+
+        const slipHtml = slipElement.outerHTML
+
+        printWindow.document.open()
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+                <head>
+                    <meta charset="UTF-8" />
+                    <title>Material Requisition and Issue Slip</title>
+
+                    <style>
+                        ${pageStyles}
+
+                        @page {
+                            size: A4 landscape;
+                            margin: 8mm;
+                        }
+
+                        html,
+                        body {
+                            width: 100%;
+                            min-height: 0 !important;
+                            height: auto !important;
+                            margin: 0 !important;
+                            padding: 0 !important;
+                            background: #fff !important;
+                            overflow: visible !important;
+                        }
+
+                        body {
+                            display: block !important;
+                        }
+
+                        .issue-slip {
+                            position: relative !important;
+                            display: block !important;
+                            width: 100% !important;
+                            max-width: 100% !important;
+                            height: auto !important;
+                            min-height: 0 !important;
+                            margin: 0 !important;
+                            padding: 0 !important;
+                            box-sizing: border-box !important;
+                            border: 1.2px solid #111 !important;
+                            background: #fff !important;
+                            color: #111 !important;
+                            box-shadow: none !important;
+                        }
+
+                        .mis-modal-actions,
+                        .mis-modal-title,
+                        .modal-header,
+                        .btn-close {
+                            display: none !important;
+                        }
+
+                        .items-table {
+                            width: 100% !important;
+                            table-layout: fixed !important;
+                            border-collapse: collapse !important;
+                        }
+
+                        .items-table th,
+                        .items-table td {
+                            border: 1px solid #111 !important;
+                            vertical-align: middle !important;
+                        }
+
+                        .items-table th:nth-child(1),
+                        .items-table td:nth-child(1) {
+                            width: 6% !important;
+                        }
+
+                        .items-table th:nth-child(2),
+                        .items-table td:nth-child(2) {
+                            width: 15% !important;
+                        }
+
+                        .items-table th:nth-child(3),
+                        .items-table td:nth-child(3) {
+                            width: 13% !important;
+                        }
+
+                        .items-table th:nth-child(4),
+                        .items-table td:nth-child(4) {
+                            width: 24% !important;
+                        }
+
+                        .items-table th:nth-child(5),
+                        .items-table td:nth-child(5) {
+                            width: 8% !important;
+                        }
+
+                        .items-table th:nth-child(6),
+                        .items-table td:nth-child(6) {
+                            width: 17% !important;
+                        }
+
+                        .items-table th:nth-child(7),
+                        .items-table td:nth-child(7) {
+                            width: 17% !important;
+                        }
+
+                        .header-grid {
+                            display: grid !important;
+                            grid-template-columns: repeat(4, 1fr) !important;
+                        }
+
+                        .approval-grid {
+                            display: grid !important;
+                            grid-template-columns: repeat(3, 1fr) !important;
+                        }
+
+                        .slip-title {
+                            height: 58px !important;
+                            display: flex !important;
+                            align-items: center !important;
+                        }
+
+                        .slip-heading {
+                            white-space: nowrap !important;
+                        }
+
+                        .items-table tr,
+                        .approval-grid,
+                        .remarks {
+                            break-inside: avoid !important;
+                            page-break-inside: avoid !important;
+                        }
+                    </style>
+                </head>
+
+                <body>
+                    ${slipHtml}
+                </body>
+            </html>
+        `)
+
+        printWindow.document.close()
+
+        // Wait for the logo and other resources before opening Chrome's
+        // print dialog.
+        const waitForImages = () => {
+            const images = Array.from(printWindow.document.images)
+
+            if (!images.length) {
+                return Promise.resolve()
+            }
+
+            return Promise.all(
+                images.map((image) => {
+                    if (image.complete) {
+                        return Promise.resolve()
+                    }
+
+                    return new Promise((resolve) => {
+                        image.onload = resolve
+                        image.onerror = resolve
+                    })
+                })
+            )
+        }
+
+        waitForImages().then(() => {
+            printWindow.focus()
+
+            // Small delay lets Chrome finish calculating the A4 landscape page.
+            setTimeout(() => {
+                printWindow.print()
+
+                setTimeout(() => {
+                    printWindow.close()
+                }, 700)
+            }, 250)
+        })
+    }
+
 
     // =====================================================
     // TABLE COLUMNS
@@ -178,7 +539,15 @@ const MaterialIssueSlip = () => {
         {
             name: 'GRN NO',
             selector: row =>
-                row.grnNumber || '—',
+                getGrnNumbers(row).join(', ') || '—',
+
+            cell: row => (
+                <div style={{ whiteSpace: 'normal', textAlign: 'center' }}>
+                    {getGrnNumbers(row).length
+                        ? getGrnNumbers(row).join(', ')
+                        : '—'}
+                </div>
+            ),
 
             center: true,
             minWidth: '150px',
@@ -380,7 +749,13 @@ const MaterialIssueSlip = () => {
                 <CModalBody>
 
                     {selectedSlip && (
+                        (() => {
+                            const slipGrnNumbers = getGrnNumbers(selectedSlip)
+                            const consolidatedItems = consolidateItems(
+                                selectedSlip.items || []
+                            )
 
+                            return (
                         <>
 
                             <div className="issue-slip">
@@ -398,13 +773,13 @@ const MaterialIssueSlip = () => {
                                             className="leewon-logo"
                                         />
 
-                                        <span className="leewon-text">
-                                            LEEWON
-                                        </span>
+                                        {/* <span className="leewon-text">
+                                           
+                                        </span> */}
                                     </div>
 
                                     <span className="slip-heading">
-                                        MATERIAL ISSUE SLIP
+                                        MATERIAL REQUISITION AND ISSUE SLIP
                                     </span>
 
                                 </div>
@@ -424,8 +799,7 @@ const MaterialIssueSlip = () => {
 
                                         <div className="value-line">
 
-                                            {selectedSlip.grnNumber || ''}
-
+                                            {slipGrnNumbers.length ? slipGrnNumbers.join(', ') : '—'}
                                         </div>
 
                                     </div>
@@ -573,27 +947,32 @@ const MaterialIssueSlip = () => {
                                     <thead>
                                         <tr>
                                             <th>SL. NO.</th>
+                                            <th>GRN NO.</th>
                                             <th>ITEM NO.</th>
                                             <th>ITEM NAME</th>
                                             <th>QTY</th>
+                                            <th>FIFO NO.</th>
+                                            <th>PALLET NO.</th>
                                         </tr>
                                     </thead>
 
                                     <tbody>
-                                        {(selectedSlip.items || []).map((item, index) => (
-                                            <tr key={item.id || index}>
+                                        {consolidatedItems.map((item, index) => (
+                                            <tr key={`${item.partNumber}-${index}`}>
                                                 <td>{index + 1}</td>
-
+                                                <td>{item.grnNumbers?.length ? item.grnNumbers.join(', ') : '—'}</td>
+                                                <td>{item.partNumber || '—'}</td>
+                                                <td>{item.partName || '—'}</td>
+                                                <td>{item.quantity || 0}</td>
                                                 <td>
-                                                    {item.partNumber || '—'}
+                                                    {item.fifoNumbers?.length
+                                                        ? item.fifoNumbers.join(', ')
+                                                        : '—'}
                                                 </td>
-
                                                 <td>
-                                                    {item.partName || '—'}
-                                                </td>
-
-                                                <td>
-                                                    {item.quantity || 0}
+                                                    {item.palletNumbers?.length
+                                                        ? item.palletNumbers.join(', ')
+                                                        : '—'}
                                                 </td>
                                             </tr>
                                         ))}
@@ -679,9 +1058,7 @@ const MaterialIssueSlip = () => {
 
                                 <CButton
                                     color="primary"
-                                    onClick={() =>
-                                        window.print()
-                                    }
+                                    onClick={printMaterialIssueSlip}
                                 >
 
                                     <FaPrint />
@@ -693,12 +1070,11 @@ const MaterialIssueSlip = () => {
                             </div>
 
                         </>
+                            )
+                        })()
                     )}
-
                 </CModalBody>
-
             </CModal>
-
         </div>
     )
 }

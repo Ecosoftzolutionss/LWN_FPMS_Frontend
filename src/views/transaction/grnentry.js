@@ -20,13 +20,14 @@ const EMPTY_HEADER = {
   partyType: '',
   poNumber: '',
   poDate: '',
-  grnType: '',
+  grnDate: '',
   supplierInvoiceNumber: '',
   supplierInvoiceDate: '',
 }
 
 const EMPTY_LINE = {
   itemId: '',
+  grnType: '',
   stuffQuantity: '',
   palletQuantity: '',
   rate: '',
@@ -168,7 +169,7 @@ const GRNEntry = () => {
         supplierId: data.supplierId || '',
         poNumber: data.poNumber || '',
         poDate: toInputDate(data.poDate),
-        grnType: data.grnType || '',
+        grnDate: toInputDate(data.grnDate),
         supplierInvoiceNumber: data.supplierInvoiceNumber || '',
         supplierInvoiceDate: toInputDate(data.supplierInvoiceDate),
       })
@@ -178,6 +179,7 @@ const GRNEntry = () => {
         key: `existing-${l.id || index}`,
         id: l.id,
         itemId: String(l.itemId),
+        grnType: l.grnType || data.grnType || 'Regular',
         partNumber: l.partNumber || '',
         itemName: l.partName || '',
         uom: l.uom || '',
@@ -226,16 +228,17 @@ const GRNEntry = () => {
       toast.error('Failed to load part numbers')
     }
   }
-  const itemOptions = items.map((i) => ({
-    value: i.id,
-    label: i.itemNumber,
-    itemName: i.itemName,
-    uom: i.uom,
-    unitPrice: i.unitPrice,
-    effectiveDate: i.effectiveDate,
-    stuffQuantity: i.stuffQuantity,
-    customerOrSupplier: i.customerOrSupplier,
-  }))
+ const itemOptions = items.map((i) => ({
+  value: i.id,
+  label: i.itemNumber,
+  itemName: i.itemName,
+  uom: i.uom,
+  unitPrice: i.unitPrice,
+  effectiveFrom: i.effectiveFrom,
+  effectiveTo: i.effectiveTo,
+  stuffQuantity: i.stuffQuantity,
+  customerOrSupplier: i.customerOrSupplier,
+}))
 
 
   const filteredItemOptions = header.partyType
@@ -268,10 +271,13 @@ const GRNEntry = () => {
       const item = itemRes.data || {}
 
       const rate = item.unitPrice ?? ''
+const effectiveFrom = item.effectiveFrom
+  ? String(item.effectiveFrom).substring(0, 10)
+  : ''
 
-      const effectiveDate = item.effectiveDate
-        ? String(item.effectiveDate).substring(0, 10)
-        : ''
+const effectiveTo = item.effectiveTo
+  ? String(item.effectiveTo).substring(0, 10)
+  : ''
 
       const stuffQuantity =
         item.stuffQuantity !== null &&
@@ -323,11 +329,13 @@ const GRNEntry = () => {
       }
 
       // --------------------------------------------------
-      // 4. Existing Effective Date validation
+      // 4. Part Price Effective Date validation
       // --------------------------------------------------
+      // Do NOT compare Part Master effective dates with GRN Date.
+      // Only check whether the Part Price is currently effective.
       const today = getTodayInputDate()
 
-      if (!effectiveDate) {
+      if (!effectiveFrom || !effectiveTo) {
         setLine((prev) => ({
           ...prev,
           itemId: selected.value,
@@ -339,7 +347,7 @@ const GRNEntry = () => {
         setErrors((prev) => ({
           ...prev,
           itemId:
-            'Effective Date is not configured for this Part Number. Please update the Part Master.',
+            'This Part Price effective date is not configured. Please update the Part Master and continue.',
           rate: '',
           stuffQuantity: '',
           palletQuantity: '',
@@ -348,12 +356,8 @@ const GRNEntry = () => {
         return
       }
 
-      if (effectiveDate < today) {
-        const displayDate = effectiveDate
-          .split('-')
-          .reverse()
-          .join('/')
-
+      // Current date must be within Effective From and Effective To.
+      if (today < effectiveFrom || today > effectiveTo) {
         setLine((prev) => ({
           ...prev,
           itemId: selected.value,
@@ -365,8 +369,7 @@ const GRNEntry = () => {
         setErrors((prev) => ({
           ...prev,
           itemId:
-            `Rate for Part Number ${selected.label} is effective from ${displayDate}. ` +
-            'Please update the Part Master Effective Date and Rate before continuing with the GRN process.',
+            'This Part Price effective date is complete. Please update the Part Master Effective From / Effective To date and continue.',
           rate: '',
           stuffQuantity: '',
           palletQuantity: '',
@@ -451,14 +454,16 @@ const GRNEntry = () => {
 
   const supplierOptions = suppliers.map((s) => ({
     value: s.id,
-    label: s.supplierName,
+    label: s.supplierCode || String(s.id),
     type: 'Supplier',
+    supplierName: s.supplierName,
   }))
 
   const customerOptions = customers.map((c) => ({
     value: c.id,
-    label: c.customerName,
+    label: c.customerCode || String(c.id),
     type: 'Customer',
+    customerName: c.customerName,
   }))
 
   const partyOptions = [
@@ -473,16 +478,17 @@ const GRNEntry = () => {
   const clearError = (name) =>
     setErrors((prev) => ({ ...prev, [name]: '' }))
 
-  const handleHeaderChange = (e) => {
-    const { name, value } = e.target
+ const handleHeaderChange = (e) => {
+  const { name, value } = e.target
 
-    setHeader((prev) => ({
-      ...prev,
-      [name]: value,
-    }))
+  setHeader((prev) => ({
+    ...prev,
+    [name]: value,
+  }))
 
-    clearError(name)
-  }
+  clearError(name)
+
+}
 
   // Native <input type="date"> only opens its picker when the small
   // calendar icon is clicked, not the rest of the field. This makes a
@@ -561,7 +567,8 @@ const GRNEntry = () => {
 }
     if (!header.poNumber.trim()) temp.poNumber = 'PO Number is required'
     if (!header.poDate) temp.poDate = 'PO Date is required'
-    if (!header.grnType) temp.grnType = 'GRN Type is required'
+    if (!header.grnDate) temp.grnDate = 'GRN Date is required'
+    if (!line.grnType) temp.grnType = 'GRN Type is required'
 
     const invoiceNumber = header.supplierInvoiceNumber.trim()
     if (!invoiceNumber) {
@@ -578,13 +585,17 @@ const GRNEntry = () => {
     if (!line.itemId) {
       temp.itemId = 'Part Number is required'
     } else if (errors.itemId) {
-      // Effective Date validation errors are stored against Part Number.
+      // Part Price effective-date validation errors are stored against Part Number.
       temp.itemId = errors.itemId
     } else if (
       !editingLineKey &&
-      lineItems.some((l) => String(l.itemId) === String(line.itemId))
+      lineItems.some(
+        (l) =>
+          String(l.itemId) === String(line.itemId) &&
+          String(l.grnType || '').toLowerCase() === String(line.grnType || '').toLowerCase()
+      )
     ) {
-      temp.itemId = 'This part has already been added'
+      temp.itemId = `This part is already added as ${line.grnType}`
     }
 
     if (line.rate === '' || Number(line.rate) <= 0) {
@@ -614,6 +625,7 @@ const GRNEntry = () => {
 
     const baseRow = {
       itemId: line.itemId,
+      grnType: line.grnType,
       partNumber: selectedItem?.label || '',
       itemName: selectedItem?.itemName || '',
       uom: selectedItem?.uom || '',
@@ -696,25 +708,24 @@ const GRNEntry = () => {
       const res = await API.get(`/ItemMaster/${row.itemId}`)
       const item = res.data || {}
 
-      const effectiveDate = item.effectiveDate
-        ? String(item.effectiveDate).substring(0, 10)
+      const effectiveFrom = item.effectiveFrom
+        ? String(item.effectiveFrom).substring(0, 10)
+        : ''
+
+      const effectiveTo = item.effectiveTo
+        ? String(item.effectiveTo).substring(0, 10)
         : ''
 
       const today = getTodayInputDate()
 
-      if (!effectiveDate) {
+      if (
+        !effectiveFrom ||
+        !effectiveTo ||
+        today < effectiveFrom ||
+        today > effectiveTo
+      ) {
         toast.error(
-          'Effective Date is not configured for this Part Number. Please update the Part Master.'
-        )
-        return
-      }
-
-      if (effectiveDate < today) {
-        const displayDate = effectiveDate.split('-').reverse().join('/')
-
-        toast.error(
-          `Part is not effective. Effective Date is ${displayDate}. ` +
-          'Please update the Part Master Effective Date and then continue the GRN process.'
+          'This Part Price effective date is complete. Please update the Part Master Effective From / Effective To date and continue.'
         )
         return
       }
@@ -728,6 +739,7 @@ const GRNEntry = () => {
 
       setLine({
         itemId: String(row.itemId),
+        grnType: row.grnType || 'Regular',
         stuffQuantity: masterStuffQuantity,
         palletQuantity:
           row.palletQuantity === null ||
@@ -791,11 +803,17 @@ const GRNEntry = () => {
           partyType: header.partyType,
         poNumber: header.poNumber.trim(),
         poDate: header.poDate,
-        grnType: header.grnType,
+        grnDate: header.grnDate,
+        // Header GRN Type is derived from line types.
+        grnType: (() => {
+          const types = [...new Set(lineItems.map((l) => l.grnType).filter(Boolean))]
+          return types.length === 1 ? types[0] : 'Mixed'
+        })(),
         supplierInvoiceNumber: header.supplierInvoiceNumber.trim(),
         supplierInvoiceDate: header.supplierInvoiceDate,
         lines: lineItems.map((l) => ({
           itemId: Number(l.itemId),
+          grnType: l.grnType,
           uom: l.uom,
           palletQuantity: l.palletQuantity === '' ? null : Number(l.palletQuantity),
           rate: l.rate,
@@ -851,6 +869,7 @@ const GRNEntry = () => {
       cell: (row, index) =>
         (currentPage - 1) * rowsPerPage + index + 1,
     },
+    { name: 'GRN TYPE', selector: (row) => row.grnType || '—', center: true },
     {
       name: 'PART NUMBER',
       grow: 2,
@@ -937,13 +956,13 @@ const GRNEntry = () => {
 
             <CCol md={4}>
               <label className="custom-label">
-                <strong>Supplier / Customer</strong>{' '}
+                <strong>Supplier ID / Customer ID</strong>{' '}
                 <span className="required">*</span>
               </label>
               <div className={errors.supplierId ? 'react-select-error' : ''}>
                 <Select
                   classNamePrefix="react-select"
-                  placeholder="Select Supplier / Customer"
+                  placeholder="Select Supplier ID / Customer ID"
                   options={partyOptions}
                   value={
                     partyOptions.find(
@@ -1009,16 +1028,33 @@ const GRNEntry = () => {
             </CCol>
 
             <CCol md={4}>
+              <label className="custom-label"><strong>GRN Date</strong> <span className="required">*</span></label>
+              <CFormInput
+                type="date"
+                name="grnDate"
+                value={header.grnDate}
+                className={errors.grnDate ? 'error-input' : ''}
+                onChange={handleHeaderChange}
+                onClick={handleDateFieldClick}
+              />
+              {errors.grnDate && <small className="text-danger">{errors.grnDate}</small>}
+            </CCol>
+
+            <CCol md={4}>
               <label className="custom-label"><strong>GRN Type</strong> <span className="required">*</span></label>
               <div className={errors.grnType ? 'react-select-error' : ''}>
                 <Select
                   classNamePrefix="react-select"
                   placeholder="Select GRN Type"
                   options={GRN_TYPE_OPTIONS}
-                  value={GRN_TYPE_OPTIONS.find((x) => x.value === header.grnType) || null}
+                  value={GRN_TYPE_OPTIONS.find((x) => x.value === line.grnType) || null}
                   onChange={(selected) => {
-                    setHeader({ ...header, grnType: selected?.value || '' })
+                    setLine((prev) => ({
+                      ...prev,
+                      grnType: selected?.value || '',
+                    }))
                     clearError('grnType')
+                    clearError('itemId')
                   }}
                   isClearable
                 />

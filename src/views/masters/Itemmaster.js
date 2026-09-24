@@ -29,7 +29,8 @@ const EMPTY_FORM = {
   hsnCode: '',
   unitPrice: '',
   customerOrSupplier: '',
-  effectiveDate: '',
+  effectiveFrom: '',
+  effectiveTo: '',
   uom: '',
   weightPerUnit: '',
   stuffQuantity: '',
@@ -61,7 +62,7 @@ const getErrorMessage = (err, fallback) => {
 
 const ItemMaster = () => {
   const itemNumberRef = useRef()
-  const effectiveDateRef = useRef()
+  const effectiveFromRef = useRef()
 
   const customStyles = {
     rows: {
@@ -115,7 +116,8 @@ const ItemMaster = () => {
     itemGroupId: '',
     unitPrice: '',
     customerOrSupplier: '',
-    effectiveDate: '',
+    effectiveFrom: '',
+    effectiveTo: '',
     uom: '',
     safetyLevel: '',
     reorderLevel: '',
@@ -200,7 +202,8 @@ const ItemMaster = () => {
       itemGroupId: '',
       unitPrice: '',
       customerOrSupplier: '',
-      effectiveDate: '',
+      effectiveFrom: '',
+      effectiveTo: '',
       uom: '',
       safetyLevel: '',
       reorderLevel: '',
@@ -237,10 +240,19 @@ const ItemMaster = () => {
     if (!form.itemGroupId) temp.itemGroupId = 'Item Group is required'
     if (form.unitPrice === '' || form.unitPrice === null) temp.unitPrice = 'Unit Price is required'
     if (!form.customerOrSupplier) temp.customerOrSupplier = 'Customer / Supplier is required'
-    if (!form.effectiveDate) {
-      temp.effectiveDate = 'Effective Date is required'
-    } else if (form.effectiveDate < getTodayDate()) {
-      temp.effectiveDate = 'Effective Date cannot be a past date'
+    if (!form.effectiveFrom) {
+      temp.effectiveFrom = 'Effective From is required'
+    } else if (form.effectiveFrom < getTodayDate()) {
+      temp.effectiveFrom = 'Effective From cannot be a past date'
+    }
+
+    if (!form.effectiveTo) {
+      temp.effectiveTo = 'Effective To is required'
+    } else if (
+      form.effectiveFrom &&
+      form.effectiveTo < form.effectiveFrom
+    ) {
+      temp.effectiveTo = 'Effective To cannot be before Effective From'
     }
     if (!form.uom.trim()) temp.uom = 'UOM is required'
     if (form.safetyLevel === '' || form.safetyLevel === null) temp.safetyLevel = 'Safety Level is required'
@@ -265,7 +277,8 @@ const ItemMaster = () => {
         hsnCode: form.hsnCode.trim(),
         unitPrice: Number(form.unitPrice) || 0,
         customerOrSupplier: form.customerOrSupplier,
-        effectiveDate: form.effectiveDate,
+        effectiveFrom: form.effectiveFrom,
+        effectiveTo: form.effectiveTo,
         uom: form.uom.trim(),
         weightPerUnit: toNumberOrNull(form.weightPerUnit),
         stuffQuantity: toNumberOrNull(form.stuffQuantity),
@@ -311,7 +324,13 @@ const ItemMaster = () => {
         hsnCode: d.hsnCode || '',
         unitPrice: d.unitPrice ?? '',
         customerOrSupplier: d.customerOrSupplier || '',
-        effectiveDate: d.effectiveDate ? d.effectiveDate.substring(0, 10) : '',
+        effectiveFrom: d.effectiveFrom
+          ? d.effectiveFrom.substring(0, 10)
+          : '',
+
+        effectiveTo: d.effectiveTo
+          ? d.effectiveTo.substring(0, 10)
+          : '',
         uom: d.uom || '',
         weightPerUnit: d.weightPerUnit ?? '',
         stuffQuantity: d.stuffQuantity ?? '',
@@ -332,7 +351,8 @@ const ItemMaster = () => {
         itemGroupId: '',
         unitPrice: '',
         customerOrSupplier: '',
-        effectiveDate: '',
+        effectiveFrom: '',
+        effectiveTo: '',
         uom: '',
         safetyLevel: '',
         reorderLevel: '',
@@ -367,7 +387,8 @@ const ItemMaster = () => {
       itemGroupId: '',
       unitPrice: '',
       customerOrSupplier: '',
-      effectiveDate: '',
+      effectiveFrom: '',
+      effectiveTo: '',
       uom: '',
       safetyLevel: '',
       reorderLevel: '',
@@ -479,22 +500,38 @@ const ItemMaster = () => {
     {
       name: 'CUSTOMER / SUPPLIER',
       selector: (row) => row.customerOrSupplier,
-      minWidth: '170px',
-      width: '170px',
+      minWidth: '190px',
+      width: '190px',
       center: true,
       cell: (row) => <TooltipCell value={row.customerOrSupplier} />,
     },
     {
-      name: 'EFFECTIVE DATE',
-      selector: (row) => row.effectiveDate,
+      name: 'EFFECTIVE FROM',
+      selector: (row) => row.effectiveFrom,
+      minWidth: '160px',
+      width: '160px',
+      center: true,
+      cell: (row) => (
+        <TooltipCell
+          value={
+            row.effectiveFrom
+              ? new Date(row.effectiveFrom).toLocaleDateString('en-GB')
+              : '—'
+          }
+        />
+      ),
+    },
+    {
+      name: 'EFFECTIVE TO',
+      selector: (row) => row.effectiveTo,
       minWidth: '140px',
       width: '140px',
       center: true,
       cell: (row) => (
         <TooltipCell
           value={
-            row.effectiveDate
-              ? new Date(row.effectiveDate).toLocaleDateString('en-GB')
+            row.effectiveTo
+              ? new Date(row.effectiveTo).toLocaleDateString('en-GB')
               : '—'
           }
         />
@@ -849,7 +886,7 @@ const ItemMaster = () => {
               </div>
 
               <CRow className="g-3">
-                <CCol md={6}>
+                <CCol md={4}>
                   <label className="custom-label">
                     <strong>Unit Price</strong>{' '}
                     <span className="required">*</span>
@@ -871,19 +908,19 @@ const ItemMaster = () => {
                   )}
                 </CCol>
 
-                <CCol md={6}>
+                <CCol md={4}>
                   <label className="custom-label">
-                    <strong>Effective Date</strong>{' '}
+                    <strong>Effective From</strong>{' '}
                     <span className="required">*</span>
                   </label>
 
                   <CFormInput
-                    ref={effectiveDateRef}
+                    ref={effectiveFromRef}
                     type="date"
-                    name="effectiveDate"
+                    name="effectiveFrom"
                     min={getTodayDate()}
-                    value={form.effectiveDate}
-                    className={errors.effectiveDate ? 'error-input' : ''}
+                    value={form.effectiveFrom}
+                    className={errors.effectiveFrom ? 'error-input' : ''}
                     onClick={(e) => {
                       if (e.currentTarget.showPicker) {
                         e.currentTarget.showPicker()
@@ -892,9 +929,36 @@ const ItemMaster = () => {
                     onChange={handleChange}
                   />
 
-                  {errors.effectiveDate && (
+                  {errors.effectiveFrom && (
                     <small className="text-danger">
-                      {errors.effectiveDate}
+                      {errors.effectiveFrom}
+                    </small>
+                  )}
+                </CCol>
+
+                <CCol md={4}>
+                  <label className="custom-label">
+                    <strong>Effective To</strong>{' '}
+                    <span className="required">*</span>
+                  </label>
+
+                  <CFormInput
+                    type="date"
+                    name="effectiveTo"
+                    min={form.effectiveFrom || getTodayDate()}
+                    value={form.effectiveTo}
+                    className={errors.effectiveTo ? 'error-input' : ''}
+                    onClick={(e) => {
+                      if (e.currentTarget.showPicker) {
+                        e.currentTarget.showPicker()
+                      }
+                    }}
+                    onChange={handleChange}
+                  />
+
+                  {errors.effectiveTo && (
+                    <small className="text-danger">
+                      {errors.effectiveTo}
                     </small>
                   )}
                 </CCol>

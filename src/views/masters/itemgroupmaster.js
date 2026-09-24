@@ -113,7 +113,8 @@ const ItemGroupMaster = () => {
 
     if (name === 'groupName') {
       // Allow alphabetic characters and spaces only
-      const alphabeticOnly = value.replace(/[^a-zA-Z\s]/g, '')
+      // const alphabeticOnly = value.replace(/[^a-zA-Z\s]/g, '')
+      const alphabeticOnly = value;
 
       setForm({
         ...form,

@@ -27,14 +27,147 @@ const getErrorMessage = (err, fallback) => {
   return fallback
 }
 
-// Front slots use ODD numbers (1,3,5...), Rear slots use EVEN numbers
-// (2,4,6...) — each side gets its own full run of {fixture} slots,
-// matching the reference app's makeBins() logic exactly.
+// Storage direction is configured independently for every level.
+// LTR = Left to Right, RTL = Right to Left.
+// Old R1/R2 rows are supported when loading and normalized to G1/G2.
+const STORAGE_DIRECTION_LTR = 'LTR'
+const STORAGE_DIRECTION_RTL = 'RTL'
+
+const normalizeStorageDirection = (value) =>
+  String(value || '').toUpperCase() === STORAGE_DIRECTION_RTL
+    ? STORAGE_DIRECTION_RTL
+    : STORAGE_DIRECTION_LTR
+
+const getDefaultStorageDirection = (rowIndex) =>
+  rowIndex % 2 === 0 ? STORAGE_DIRECTION_LTR : STORAGE_DIRECTION_RTL
+
 const buildSlotCode = (columnNo, rowNo, slotNumber, side) =>
   `${columnNo}-${rowNo}-${slotNumber}${side === 'front' ? 'F' : 'R'}`
 
-const buildFrontSlots = (fixture) => Array.from({ length: fixture }, (_, i) => i * 2 + 1)
-const buildRearSlots = (fixture) => Array.from({ length: fixture }, (_, i) => i * 2 + 2)
+// Generates pallet/slot numbers CONTINUOUSLY across the complete rack,
+// row by row, and according to each row's configured storage direction.
+//
+// Example: 4 columns, Fixture = 2
+//
+// G  (LTR)
+//   A1 -> 1, 2
+//   A2 -> 3, 4
+//   A3 -> 5, 6
+//   A4 -> 7, 8
+//
+// G1 (RTL)
+//   A1 -> 16, 15
+//   A2 -> 14, 13
+//   A3 -> 12, 11
+//   A4 -> 10, 9
+//
+// G2 (LTR)
+//   A1 -> 17, 18
+//   A2 -> 19, 20
+//   A3 -> 21, 22
+//   A4 -> 23, 24
+//
+// Front and Rear use the SAME numeric sequence independently:
+//   Front -> 1F, 2F, 3F, 4F...
+//   Rear  -> 1R, 2R, 3R, 4R...
+//
+// If Fixture differs between columns, the numbering still continues
+// correctly by using the actual Fixture value of every column.
+const getDirectionalSlotNumbers = (columns, columnIndex, rowNo, side) => {
+  if (!Array.isArray(columns) || columns.length === 0) return []
+
+  const normalizeRow = (value) =>
+    String(value || '').trim().toUpperCase() === 'G'
+      ? 0
+      : Number(String(value || '').replace(/^G/i, '').replace(/^R/i, '')) || 0
+
+  const targetRowIndex = normalizeRow(rowNo)
+
+  // Get the target row from the current column.
+  const currentRow = columns[columnIndex]?.rows?.find(
+    (r) => normalizeRow(r.rowNo) === targetRowIndex,
+  )
+
+  const currentFixture = Math.max(1, Number(currentRow?.fixture) || 1)
+
+  // Build the complete row order: G, G1, G2, G3...
+  // This allows numbering to continue from the previous level.
+  const rowNumbers = Array.from(
+    new Set(
+      columns.flatMap((col) =>
+        (col.rows || []).map((row) => normalizeRow(row.rowNo)),
+      ),
+    ),
+  ).sort((a, b) => a - b)
+
+  // Total number of slots in each row across ALL columns.
+  const getRowTotal = (rowIndex) =>
+    columns.reduce((total, col) => {
+      const row = (col.rows || []).find(
+        (r) => normalizeRow(r.rowNo) === rowIndex,
+      )
+
+      return total + Math.max(1, Number(row?.fixture) || 1)
+    }, 0)
+
+  // Numbering offset created by all previous levels.
+  const previousRowsOffset = rowNumbers
+    .filter((index) => index < targetRowIndex)
+    .reduce((total, index) => total + getRowTotal(index), 0)
+
+  // Numbering offset created by columns before the current column.
+  const previousColumnsOffset = columns
+    .slice(0, columnIndex)
+    .reduce((total, col) => {
+      const row = (col.rows || []).find(
+        (r) => normalizeRow(r.rowNo) === targetRowIndex,
+      )
+
+      return total + Math.max(1, Number(row?.fixture) || 1)
+    }, 0)
+
+  const rowTotal = getRowTotal(targetRowIndex)
+
+  const direction = normalizeStorageDirection(currentRow?.storageDirection)
+
+  if (direction === STORAGE_DIRECTION_RTL) {
+    // RTL:
+    // Last slot of the row is displayed at the first column.
+    //
+    // Example row has 8 slots:
+    // A1 -> 8,7
+    // A2 -> 6,5
+    // A3 -> 4,3
+    // A4 -> 2,1
+    const startNumber =
+      previousRowsOffset +
+      rowTotal -
+      previousColumnsOffset -
+      currentFixture +
+      1
+
+    return Array.from(
+      { length: currentFixture },
+      (_, i) => startNumber + currentFixture - 1 - i,
+    )
+  }
+
+  // LTR:
+  // First slot of the row starts at the first column.
+  //
+  // Example row has 8 slots:
+  // A1 -> 1,2
+  // A2 -> 3,4
+  // A3 -> 5,6
+  // A4 -> 7,8
+  const startNumber =
+    previousRowsOffset + previousColumnsOffset + 1
+
+  return Array.from(
+    { length: currentFixture },
+    (_, i) => startNumber + i,
+  )
+}
 
 // ─────────────────────────────────────────────────────────────────────
 // Builds the grid from Rack No / Rows / Columns, but MERGES in any
@@ -61,6 +194,9 @@ const buildGridFromInputs = (rackNo, rows, cols, prevGrid = []) => {
       hasFront: prevGround ? prevGround.hasFront : true,
       hasRear: prevGround ? prevGround.hasRear : true,
       fixture: prevGround ? prevGround.fixture : 1,
+      storageDirection: prevGround
+        ? normalizeStorageDirection(prevGround.storageDirection)
+        : getDefaultStorageDirection(0),
       _c: c,
       _r: 0,
     })
@@ -71,10 +207,13 @@ const buildGridFromInputs = (rackNo, rows, cols, prevGrid = []) => {
 
       grid.push({
         columnNo: `${rackNo}${c}`,
-        rowNo: `R${r}`,
+        rowNo: `G${r}`,
         hasFront: prev ? prev.hasFront : true,
         hasRear: prev ? prev.hasRear : true,
         fixture: prev ? prev.fixture : 1,
+        storageDirection: prev
+          ? normalizeStorageDirection(prev.storageDirection)
+          : getDefaultStorageDirection(r),
         _c: c,
         _r: r,
       })
@@ -91,22 +230,23 @@ const attachPositions = (columns) => {
 
   columns.forEach((col, cIdx) => {
     col.rows.forEach((row) => {
-
-      const isGround = row.rowNo?.toUpperCase() === 'G'
+      const rawRowNo = String(row.rowNo || '').trim().toUpperCase()
+      const isGround = rawRowNo === 'G'
+      const legacyRowMatch = rawRowNo.match(/^R(\d+)$/)
+      const newRowMatch = rawRowNo.match(/^G(\d+)$/)
+      const rowIndex = isGround
+        ? 0
+        : Number(legacyRowMatch?.[1] || newRowMatch?.[1] || 0)
 
       grid.push({
         columnNo: col.columnNo,
-        rowNo: row.rowNo,
+        rowNo: isGround ? 'G' : `G${rowIndex}`,
         hasFront: row.hasFront,
         hasRear: row.hasRear,
         fixture: row.fixture,
-
-        // G = position 0
-        // R1 = position 1
-        // R2 = position 2
-        // R3 = position 3
+        storageDirection: normalizeStorageDirection(row.storageDirection),
         _c: cIdx + 1,
-        _r: isGround ? 0 : Number(row.rowNo.replace('R', '')),
+        _r: rowIndex,
       })
     })
   })
@@ -163,20 +303,30 @@ const LocationMaster = () => {
   const [zoom, setZoom] = useState(100)
   const { privileges: userPrivileges = [] } = usePrivilege()
   const uPrivilege = userPrivileges.find((p) => p.menuName === 'Location Master') || {}
+useEffect(() => {
+  initializeLocationMaster()
+}, [])
 
-  useEffect(() => {
-    loadStores()
-    loadStoreMasters()
-  }, [])
-
-  const loadStoreMasters = async () => {
-    try {
-      const res = await API.get('/StoreMaster')
-      setStoreMasters(res.data || [])
-    } catch {
-      toast.error('Failed to load stores from Store Master')
-    }
+const initializeLocationMaster = async () => {
+  try {
+    await loadStoreMasters()
+    await loadStores()
+  } catch (err) {
+    console.error(
+      'Location Master initialization failed:',
+      err
+    )
   }
+}
+const loadStoreMasters = async () => {
+  try {
+    const res = await API.get('/StoreMaster')
+    setStoreMasters(res.data || [])
+  } catch (err) {
+    console.error('Failed to load Store Master:', err)
+    toast.error('Failed to load stores from Store Master')
+  }
+}
 
   const storeMasterOptions = storeMasters.map((s) => ({
     value: s.id,
@@ -197,49 +347,115 @@ const LocationMaster = () => {
 
   const clearError = (name) => setErrors((prev) => ({ ...prev, [name]: '' }))
 
-  const loadStores = async () => {
-    try {
-      const res = await API.get('/LocationMaster')
-      setStores(res.data || [])
-    } catch {
-      toast.error('Failed to load stores')
-    }
-  }
+const loadStores = async () => {
+  try {
+    const res = await API.get('/LocationMaster')
 
-  const loadRacks = async (storeId) => {
-    try {
-      const res = await API.get(`/LocationRack/store/${storeId}`)
-      setRacks(res.data || [])
-      return res.data || []
-    } catch {
-      toast.error('Failed to load racks')
-      return []
-    }
-  }
+    const storeList = res.data || []
 
-  const loadOccupancy = async (storeId) => {
-    try {
-      const res = await API.get(`/LocationRack/store/${storeId}/occupancy`)
-      setOccupancy(res.data || [])
-    } catch {
-      toast.error('Failed to load slot occupancy')
-    }
-  }
+    setStores(storeList)
 
-  const openStore = async (store) => {
+    // Automatically select/open first store
+    // when Location Master is opened.
+    if (storeList.length > 0) {
+      await openStore(storeList[0])
+    } else {
+      setActiveStore(null)
+      setRacks([])
+      setOccupancy([])
+    }
+  } catch (err) {
+    console.error('Failed to load stores:', err)
+
+    toast.error(
+      getErrorMessage(
+        err,
+        'Failed to load stores'
+      )
+    )
+  }
+}
+ const loadRacks = async (storeId) => {
+  try {
+    const res = await API.get(
+      `/LocationRack/store/${storeId}`
+    )
+
+    setRacks(res.data || [])
+
+    return res.data || []
+  } catch (err) {
+    console.error('Failed to load racks:', err)
+
+    toast.error(
+      getErrorMessage(
+        err,
+        'Failed to load racks'
+      )
+    )
+
+    return []
+  }
+}
+
+const loadOccupancy = async (storeId) => {
+  try {
+    const res = await API.get(
+      `/LocationRack/store/${storeId}/occupancy`
+    )
+
+    setOccupancy(res.data || [])
+  } catch (err) {
+    console.error(
+      'Failed to load slot occupancy:',
+      err
+    )
+
+    toast.error(
+      getErrorMessage(
+        err,
+        'Failed to load slot occupancy'
+      )
+    )
+  }
+}
+
+const openStore = async (store) => {
+  try {
     setActiveStore(store)
+
     setShowRackPanel(false)
     setDraftGrid([])
     setRackFormNo('')
     setSelectedRackKey(null)
 
-    const res = await API.get(`/LocationRack/store/${store.id}`)
+    const res = await API.get(
+      `/LocationRack/store/${store.id}`
+    )
+
     const freshRacks = res.data || []
+
     setRacks(freshRacks)
-    setSelectedRackKey(freshRacks[0]?.id ?? null)
+
+    setSelectedRackKey(
+      freshRacks[0]?.id ?? null
+    )
 
     await loadOccupancy(store.id)
+  } catch (err) {
+    console.error(
+      'Failed to open store:',
+      err
+    )
+
+    toast.error(
+      getErrorMessage(
+        err,
+        'Failed to load store details'
+      )
+    )
   }
+}
 
   const handleSubmit = async () => {
     if (!form.storeMasterId) {
@@ -723,12 +939,12 @@ setModalRows(normalRowCount || 1)
 
             <div className="loc-field">
               <label className="custom-label">
-                <strong>Pallet Location</strong> <span className="required">*</span>
+                <strong>Store Location</strong> <span className="required">*</span>
               </label>
               <div className={errors.storeMasterId ? 'react-select-error' : ''}>
                 <Select
                   classNamePrefix="react-select"
-                  placeholder="Select Pallet Location"
+                  placeholder="Select Store Location"
                   options={storeMasterOptions}
                   filterOption={filterStoreMasterOption}
                   value={storeMasterOptions.find((x) => String(x.value) === String(form.storeMasterId)) || null}
@@ -954,6 +1170,7 @@ setModalRows(normalRowCount || 1)
                           <tr>
                             <th>Column</th>
                             <th>Row</th>
+                            <th>Direction</th>
                             <th>
                               <label style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'center' }}>
                                 <input
@@ -972,6 +1189,16 @@ setModalRows(normalRowCount || 1)
                             <tr key={`${row._c}-${row._r}`}>
                               <td>{row.columnNo}</td>
                               <td>{row.rowNo}</td>
+                              <td>
+                                <select
+                                  className="form-select form-select-sm"
+                                  value={normalizeStorageDirection(row.storageDirection)}
+                                  onChange={(e) => updateDraftRow(index, 'storageDirection', e.target.value)}
+                                >
+                                  <option value={STORAGE_DIRECTION_LTR}>Left to Right</option>
+                                  <option value={STORAGE_DIRECTION_RTL}>Right to Left</option>
+                                </select>
+                              </td>
                               <td>
                                 <label className="chk-l">
                                   <input
@@ -1103,11 +1330,23 @@ setModalRows(normalRowCount || 1)
 
                           {[...col.rows].reverse().map((row) => {
                             const enabled = viewSide === 'front' ? row.hasFront : row.hasRear
-                            const slotNumbers = viewSide === 'front' ? buildFrontSlots(row.fixture) : buildRearSlots(row.fixture)
+                            const previewColumns = isPreviewSelected ? draftColumns : selectedSavedRack.columns
+                            const currentColumnIndex = previewColumns.findIndex((c) => c.columnNo === col.columnNo)
+                            const slotNumbers = getDirectionalSlotNumbers(
+                              previewColumns,
+                              currentColumnIndex,
+                              row.rowNo,
+                              viewSide,
+                            )
 
                             return (
                               <div key={row.rowNo} className="rack-preview-row">
-                                <div className="rack-preview-row-label">{row.rowNo}</div>
+                                <div className="rack-preview-row-label">
+                                  <div>{row.rowNo}</div>
+                                  <small style={{ display: 'block', fontSize: 8, fontWeight: 600, marginTop: 2 }}>
+                                    {normalizeStorageDirection(row.storageDirection) === STORAGE_DIRECTION_RTL ? '← RTL' : '→ LTR'}
+                                  </small>
+                                </div>
                                 <div className="rack-preview-row-slots">
                                   {!enabled ? (
                                     <span className="rack-slot-box disabled">— side not configured —</span>
@@ -1226,7 +1465,7 @@ setModalRows(normalRowCount || 1)
             {modalEditingRackNo ? `Edit Rack ${modalEditingRackNo}` : 'Add New Rack'}
           </div>
           <div className="text-muted mb-2" style={{ fontSize: 11 }}>
-            Rack Name: letters only (A, B, AB…). Rows/Columns update the grid live — change them any time.
+            Rack Name: letters only (A, B, AB…). Rows/Columns update the grid live. Configure each level's storage direction; pallet slot numbers follow that direction.
           </div>
 
           <div className="row g-2 align-items-end mb-3">
@@ -1271,6 +1510,7 @@ setModalRows(normalRowCount || 1)
                   <CTableRow>
                     <CTableHeaderCell>Column</CTableHeaderCell>
                     <CTableHeaderCell>Row</CTableHeaderCell>
+                    <CTableHeaderCell>Direction</CTableHeaderCell>
                     <CTableHeaderCell className="text-center">
                       <CFormCheck
                         label="View"
@@ -1286,6 +1526,16 @@ setModalRows(normalRowCount || 1)
                     <CTableRow key={`${row._c}-${row._r}`}>
                       <CTableDataCell className="fw-bold text-primary">{row.columnNo}</CTableDataCell>
                       <CTableDataCell>{row.rowNo}</CTableDataCell>
+                      <CTableDataCell style={{ minWidth: 150 }}>
+                        <CFormSelect
+                          size="sm"
+                          value={normalizeStorageDirection(row.storageDirection)}
+                          onChange={(e) => updateModalRow(index, 'storageDirection', e.target.value)}
+                        >
+                          <option value={STORAGE_DIRECTION_LTR}>Left to Right</option>
+                          <option value={STORAGE_DIRECTION_RTL}>Right to Left</option>
+                        </CFormSelect>
+                      </CTableDataCell>
                       <CTableDataCell>
                         <div className="d-flex gap-2 justify-content-center">
                           <CFormCheck
