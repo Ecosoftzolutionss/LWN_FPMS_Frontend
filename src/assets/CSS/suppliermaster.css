@@ -465,3 +465,29 @@
   cursor: default;
 }
  
+
+/* =========================================================
+   SUPPLIER GROUP REQUIREMENT NOTE
+========================================================= */
+
+.supplier-master-page .group-requirement-note {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+  color: #64748b;
+  font-size: 11px;
+}
+
+.supplier-master-page .group-requirement-note strong {
+  color: #0d47a1;
+}
+
+.supplier-master-page .delete-preview {
+  background: #f8f9fa;
+  padding: 12px;
+  border-radius: 8px;
+  margin-top: 10px;
+  display: grid;
+  gap: 6px;
+}

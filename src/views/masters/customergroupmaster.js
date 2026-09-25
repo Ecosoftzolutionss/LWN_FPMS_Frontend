@@ -403,19 +403,16 @@ const CustomerGroupMaster = () => {
                           cursor: 'pointer',
                         }}
                       />
-                      Customer has GST
+                     GST No
                     </label>
 
                     <small className="text-muted">
-                      Check this if GST details are applicable for this customer group.
+                       GST details required
                     </small>
                   </div>
                 </CCol>
               )}
-
-
             </CRow>
-
             <div className="form-button-area">
               <CButton className={editId ? 'update-btn' : 'save-btn'} onClick={handleSubmit}>
                 {editId ? 'Update' : 'Save'}

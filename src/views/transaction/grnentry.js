@@ -1014,7 +1014,7 @@ const effectiveTo = item.effectiveTo
               {errors.poNumber && <small className="text-danger">{errors.poNumber}</small>}
             </CCol>
 
-            <CCol md={4}>
+            <CCol md={3}>
               <label className="custom-label"><strong>PO Date</strong> <span className="required">*</span></label>
               <CFormInput
                 type="date"
@@ -1027,7 +1027,7 @@ const effectiveTo = item.effectiveTo
               {errors.poDate && <small className="text-danger">{errors.poDate}</small>}
             </CCol>
 
-            <CCol md={4}>
+            <CCol md={3}>
               <label className="custom-label"><strong>GRN Date</strong> <span className="required">*</span></label>
               <CFormInput
                 type="date"
@@ -1040,7 +1040,7 @@ const effectiveTo = item.effectiveTo
               {errors.grnDate && <small className="text-danger">{errors.grnDate}</small>}
             </CCol>
 
-            <CCol md={4}>
+            <CCol md={3}>
               <label className="custom-label"><strong>GRN Type</strong> <span className="required">*</span></label>
               <div className={errors.grnType ? 'react-select-error' : ''}>
                 <Select
@@ -1062,7 +1062,7 @@ const effectiveTo = item.effectiveTo
               {errors.grnType && <small className="text-danger">{errors.grnType}</small>}
             </CCol>
 
-            <CCol md={4}>
+            <CCol md={3}>
               <label className="custom-label">
                 <strong>Part Number</strong> <span className="required">*</span>
               </label>
@@ -1087,12 +1087,12 @@ const effectiveTo = item.effectiveTo
                 <small className="text-danger">{errors.itemId}</small>
               )}
             </CCol>
-            <CCol md={4}>
+            <CCol md={3}>
               <label className="custom-label"><strong>Part Name</strong></label>
               <CFormInput value={selectedItem?.itemName || ''} placeholder="Auto-filled from Part Number" disabled />
             </CCol>
 
-            <CCol md={4}>
+            <CCol md={3}>
               <label className="custom-label"><strong>Supplier Invoice Number</strong> <span className="required">*</span></label>
               <CFormInput
                 name="supplierInvoiceNumber"
@@ -1108,7 +1108,7 @@ const effectiveTo = item.effectiveTo
               {errors.supplierInvoiceNumber && <small className="text-danger">{errors.supplierInvoiceNumber}</small>}
             </CCol>
 
-            <CCol md={4}>
+            <CCol md={3}>
               <label className="custom-label"><strong>Supplier Invoice Date</strong> <span className="required">*</span></label>
               <CFormInput
                 type="date"
@@ -1121,12 +1121,12 @@ const effectiveTo = item.effectiveTo
               {errors.supplierInvoiceDate && <small className="text-danger">{errors.supplierInvoiceDate}</small>}
             </CCol>
 
-            <CCol md={4}>
+            <CCol md={3}>
               <label className="custom-label"><strong>UOM</strong></label>
               <CFormInput value={selectedItem?.uom || ''} placeholder="Auto-filled from Part Number" disabled />
             </CCol>
 
-            <CCol md={4}>
+            <CCol md={3}>
               <label className="custom-label"><strong>Quantity</strong> <span className="required">*</span></label>
               <CFormInput
                 type="number"
@@ -1139,7 +1139,7 @@ const effectiveTo = item.effectiveTo
               {errors.quantity && <small className="text-danger">{errors.quantity}</small>}
             </CCol>
 
-            <CCol md={4}>
+            <CCol md={3}>
               <label className="custom-label">
                 <strong>Rate (₹)</strong> <span className="required">*</span>
               </label>
@@ -1157,7 +1157,7 @@ const effectiveTo = item.effectiveTo
                 <small className="text-danger">{errors.rate}</small>
               )}
             </CCol>
-            <CCol md={4}>
+            <CCol md={3}>
               <label className="custom-label">
                 <strong>Stuff Quantity</strong>
               </label>
@@ -1181,7 +1181,7 @@ const effectiveTo = item.effectiveTo
               )}
             </CCol>
 
-            <CCol md={4}>
+            <CCol md={3}>
               <label className="custom-label"><strong>Total Value (₹)</strong></label>
               <CFormInput value={totalValue ? totalValue.toFixed(2) : ''} placeholder="Auto-calculated" disabled />
             </CCol>
