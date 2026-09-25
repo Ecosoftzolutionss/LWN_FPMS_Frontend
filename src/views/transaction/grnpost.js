@@ -35,6 +35,74 @@ const formatDate = (value) => {
   return `${dd}/${mm}/${yyyy}`
 }
 
+// =========================================================
+// AUTO-SHRINK FONT HELPERS
+// ---------------------------------------------------------
+// The FIFO card ships with big, easy-to-read default font sizes for
+// PALLET NO, PART NUMBER/NAME and PALLET QTY (see grnPost.css), since
+// users read these from a distance on the shop floor. But a value can
+// occasionally be long (a long part description, a 7-digit quantity,
+// an unusually long pallet code) — these helpers shrink JUST that one
+// value's font size, in steps, only once it's actually too long to
+// safely fit on one line, so nothing wraps awkwardly or gets clipped.
+// =========================================================
+const getPalletNoFontSize = (value) => {
+  // ONLY the FIFO pallet number is conditionally resized.
+  // The value is rotated -90deg, so longer pallet numbers need a
+  // smaller font to remain fully visible inside the pallet box.
+  const len = String(value ?? '').trim().length
+
+  if (len <= 3) return 54
+  if (len <= 5) return 46
+  if (len <= 7) return 40
+  if (len <= 9) return 34
+  if (len <= 12) return 29
+  if (len <= 15) return 24
+  return 20
+}
+
+// The 50x20mm compact label now stacks the pallet number ABOVE a QR
+// code (instead of the number filling the whole card), so the number
+// only has the top ~62% of the card's height to rotate into — about
+// 0.62x the room it had before. Sized down proportionally from
+// getPalletNoFontSize() so a value like "BR-03" still sits on one
+// line without overlapping the QR row underneath it.
+const getCompactPalletNoFontSize = (value) => {
+  // 50x20mm compact label:
+  // The pallet number is rotated -90deg. After rotation, the text width
+  // becomes the vertical space available inside the pallet box.
+  // Therefore ONLY the pallet-number font is reduced according to length.
+  // The rest of the label is not changed.
+  const len = String(value ?? '').trim().length
+
+  // Values are intentionally small enough to keep the COMPLETE pallet
+  // number visible on one line inside the 50x20mm pallet box.
+  if (len <= 2) return 12
+  if (len <= 3) return 10
+  if (len <= 5) return 8
+  if (len <= 7) return 7
+  if (len <= 9) return 6
+  if (len <= 12) return 5
+  if (len <= 15) return 4.5
+  return 4
+}
+
+const getPartNameFontSize = (value) => {
+  const len = (value || '').length
+  if (len <= 20) return 32
+  if (len <= 32) return 28
+  if (len <= 48) return 23
+  return 18
+}
+
+const getQtyFontSize = (value) => {
+  const digits = String(value ?? '').replace(/[^0-9]/g, '').length
+  // Customer sample specifically calls for a larger 6-digit quantity.
+  if (digits <= 4) return 50
+  if (digits <= 6) return 42
+  return 32
+}
+
 // The three label sizes the user can pick before printing/downloading.
 // widthMm/heightMm drive the physical output size (preview + @page + PDF).
 const LABEL_SIZE_OPTIONS = [
@@ -51,10 +119,10 @@ const LABEL_SIZE_OPTIONS = [
     heightMm: 100,
   },
   {
-    value: '50x25',
-    label: 'Size (50 x 25mm)',
+    value: '50x20',
+    label: 'Size (50 x 20mm)',
     widthMm: 50,
-    heightMm: 25,
+    heightMm: 20,
   },
   {
     value: '100x75',
@@ -602,6 +670,194 @@ const GRNPost = () => {
         size: ${size.widthMm}mm ${size.heightMm}mm;
         margin: 0;
       }
+
+      /* 50 x 20 mm compact label.
+         Match the customer sample: the FIFO PALLET NO strip stays
+         vertical, while BR-04 / pallet number stays horizontal. */
+      ${labelSize === '50x20' ? `
+      @page {
+        size: 50mm 20mm;
+        margin: 0;
+      }
+
+      /* FINAL 50x20 PRINT FIX: force the compact layout to win over any
+         copied application styles in the print window. */
+      .fifo-card-compact {
+        width: 50mm !important;
+        height: 20mm !important;
+        min-width: 50mm !important;
+        min-height: 20mm !important;
+        max-width: 50mm !important;
+        max-height: 20mm !important;
+        box-sizing: border-box !important;
+        overflow: hidden !important;
+        display: flex !important;
+        flex-direction: column !important;
+        transform: none !important;
+      }
+
+      .fifo-card-compact .fifo-card-header {
+        display: flex !important;
+        flex: 0 0 3.35mm !important;
+        height: 3.35mm !important;
+        min-height: 3.35mm !important;
+      }
+
+      .fifo-card-compact .fifo-card-main {
+        display: flex !important;
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        height: auto !important;
+        overflow: hidden !important;
+      }
+
+      .fifo-card-compact .fifo-left-col {
+        display: flex !important;
+        flex-direction: column !important;
+        flex: 0 0 10.7mm !important;
+        width: 10.7mm !important;
+        min-width: 10.7mm !important;
+        min-height: 0 !important;
+      }
+
+      .fifo-card-compact .fifo-right-col {
+        display: flex !important;
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+        height: 100% !important;
+        overflow: hidden !important;
+      }
+
+      .fifo-card-compact .fifo-meta-grid {
+        display: grid !important;
+        flex: 0 0 4.25mm !important;
+        height: 4.25mm !important;
+        min-height: 4.25mm !important;
+        grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr) minmax(0, 0.95fr) !important;
+        grid-template-rows: repeat(2, 2mm) !important;
+        overflow: hidden !important;
+        font-size: 1.02mm !important;
+      }
+
+      .fifo-card-compact .fifo-meta-grid > div {
+        display: flex !important;
+        align-items: center !important;
+        min-width: 0 !important;
+        width: 100% !important;
+        height: 2mm !important;
+        overflow: hidden !important;
+        white-space: nowrap !important;
+        font-size: 1.02mm !important;
+      }
+
+      .fifo-card-compact .fifo-part-row {
+        display: flex !important;
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        height: auto !important;
+        overflow: hidden !important;
+      }
+
+      .fifo-card-compact .fifo-part-row > div:first-child {
+        min-width: 0 !important;
+        overflow: hidden !important;
+      }
+
+      .fifo-card-compact .fifo-part-value {
+        font-size: 3.7mm !important;
+        line-height: 0.95 !important;
+        max-width: 100% !important;
+        overflow: hidden !important;
+        white-space: nowrap !important;
+      }
+
+      .fifo-card-compact .fifo-part-name {
+        font-size: 1.45mm !important;
+        line-height: 1.05 !important;
+        max-height: 3.05mm !important;
+        overflow: hidden !important;
+        white-space: normal !important;
+        word-break: break-word !important;
+      }
+
+      .fifo-card-compact .fifo-pallet-qty {
+        flex: 0 0 6.6mm !important;
+        min-width: 6.6mm !important;
+        width: 6.6mm !important;
+        overflow: hidden !important;
+      }
+
+      .fifo-card-compact .fifo-qty-value {
+        font-size: 3.75mm !important;
+        line-height: 1 !important;
+        white-space: nowrap !important;
+      }
+
+      .fifo-card-compact .fifo-card-footer {
+        display: flex !important;
+        flex: 0 0 1.55mm !important;
+        height: 1.55mm !important;
+        min-height: 1.55mm !important;
+      }
+
+      .fifo-card-compact .fifo-pallet-number-text {
+        transform: rotate(-90deg) !important;
+        rotate: none !important;
+      }
+
+      /* 50x20 print: keep pallet value visible and center FIFO CARD. */
+      .fifo-card-compact .fifo-box-value {
+        display: flex !important;
+        visibility: visible !important;
+      }
+      .fifo-card-compact .fifo-card-header {
+        position: relative !important;
+      }
+      .fifo-card-compact .fifo-title-wrap {
+        position: absolute !important;
+        left: 50% !important;
+        top: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        width: auto !important;
+        max-width: 60% !important;
+        gap: 0 !important;
+        justify-content: center !important;
+        overflow: visible !important;
+        z-index: 2 !important;
+      }
+      .fifo-card-compact .fifo-meta-grid .fifo-meta-label {
+        font-weight: 700 !important;
+        color: #64748b !important;
+      }
+      .fifo-card-compact .fifo-meta-grid .fifo-meta-value {
+        font-weight: 400 !important;
+        color: #1f2937 !important;
+      }
+
+      .fifo-card-compact .fifo-compact-label-text {
+        transform: rotate(-90deg) !important;
+        rotate: none !important;
+      }
+      ` : ''}
+
+      /* FINAL COMPACT GEOMETRY — same dimensions as the live preview */
+      ${labelSize === '50x20' ? `
+      .fifo-card-compact .fifo-card-header { flex-basis: 3.05mm !important; height: 3.05mm !important; min-height: 3.05mm !important; }
+      .fifo-card-compact .fifo-card-main { height: 0 !important; min-height: 0 !important; overflow: hidden !important; gap: 0.65mm !important; }
+      .fifo-card-compact .fifo-left-col { flex: 0 0 10.4mm !important; width: 10.4mm !important; min-width: 10.4mm !important; }
+      .fifo-card-compact .fifo-qr-box { flex-basis: 4.15mm !important; height: 4.15mm !important; min-height: 4.15mm !important; max-height: 4.15mm !important; }
+      .fifo-card-compact .fifo-qr-img { width: 3.85mm !important; height: 3.85mm !important; max-width: 3.85mm !important; max-height: 3.85mm !important; }
+      .fifo-card-compact .fifo-right-col { width: 0 !important; min-width: 0 !important; padding-left: 0.55mm !important; }
+      .fifo-card-compact .fifo-meta-grid { flex-basis: 3.65mm !important; height: 3.65mm !important; min-height: 3.65mm !important; grid-template-rows: repeat(2, 1.65mm) !important; font-size: 0.9mm !important; }
+      .fifo-card-compact .fifo-meta-grid > div { height: 1.65mm !important; font-size: 0.9mm !important; }
+      .fifo-card-compact .fifo-part-row { height: 0 !important; min-height: 0 !important; padding-top: 0.15mm !important; }
+      .fifo-card-compact .fifo-part-value { font-size: 3.7mm !important; line-height: 0.95 !important; }
+      .fifo-card-compact .fifo-part-name { font-size: 1.45mm !important; line-height: 1.05 !important; max-height: 3.05mm !important; }
+      .fifo-card-compact .fifo-pallet-qty { flex-basis: 6.6mm !important; min-width: 6.6mm !important; width: 6.6mm !important; }
+      .fifo-card-compact .fifo-qty-value { font-size: 3.75mm !important; }
+      .fifo-card-compact .fifo-card-footer { flex-basis: 1.35mm !important; height: 1.35mm !important; min-height: 1.35mm !important; }
+      ` : ''}
+
       html, body {
         margin: 0 !important;
         padding: 0 !important;
@@ -693,6 +949,73 @@ const GRNPost = () => {
         size: ${size.widthMm}mm ${size.heightMm}mm;
         margin: 0;
       }
+
+      ${bulkLabelSize === '50x20' ? `
+      /* FINAL 50x20 BULK PRINT FIX */
+      .fifo-card-compact {
+        width: 50mm !important;
+        height: 20mm !important;
+        min-width: 50mm !important;
+        min-height: 20mm !important;
+        max-width: 50mm !important;
+        max-height: 20mm !important;
+        box-sizing: border-box !important;
+        overflow: hidden !important;
+        display: flex !important;
+        flex-direction: column !important;
+        transform: none !important;
+      }
+      .fifo-card-compact .fifo-card-main {
+        display: flex !important;
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
+      }
+      .fifo-card-compact .fifo-meta-grid {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr) minmax(0, 0.95fr) !important;
+        grid-template-rows: repeat(2, 2mm) !important;
+        flex: 0 0 4.25mm !important;
+        height: 4.25mm !important;
+        min-height: 4.25mm !important;
+        overflow: hidden !important;
+      }
+      .fifo-card-compact .fifo-meta-grid > div {
+        min-width: 0 !important;
+        overflow: hidden !important;
+        white-space: nowrap !important;
+        font-size: 1.02mm !important;
+      }
+      .fifo-card-compact .fifo-part-row {
+        display: flex !important;
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
+      }
+      .fifo-card-compact .fifo-part-value {
+        font-size: 3.7mm !important;
+        line-height: 0.95 !important;
+        overflow: hidden !important;
+        white-space: nowrap !important;
+      }
+      .fifo-card-compact .fifo-part-name {
+        font-size: 2mm !important;
+        line-height: 1 !important;
+        max-height: 3.8mm !important;
+        overflow: hidden !important;
+      }
+      .fifo-card-compact .fifo-pallet-qty {
+        flex: 0 0 7.2mm !important;
+        width: 7.2mm !important;
+        min-width: 7.2mm !important;
+        overflow: hidden !important;
+      }
+      .fifo-card-compact .fifo-qty-value {
+        font-size: 3.75mm !important;
+        white-space: nowrap !important;
+      }
+      ` : ''}
+
       html, body {
         margin: 0 !important;
         padding: 0 !important;
@@ -823,20 +1146,30 @@ const GRNPost = () => {
   // Renders the actual FIFO card markup for one line. Shared by both the
   // single-label modal and the bulk-label modal so the design can never
   // drift between the two — only the wrapping frame differs.
-  const renderFifoCard = (grnMeta, line, scale, offsetXmm, offsetYmm) => (
+  const renderFifoCard = (grnMeta, line, scale, offsetXmm, offsetYmm, compact = false) => (
     <div
-      className="fifo-card"
-      style={{
-        width: `${BASE_CARD_WIDTH_MM}mm`,
-        height: `${BASE_CARD_HEIGHT_MM}mm`,
-        // ★ FIX: transform-origin must be the top-left corner for the
-        // translate+scale offsets computed in computeCardTransform() to
-        // land correctly. Without this, the browser scales from the
-        // element's center by default, which can shift/clip the card
-        // for any label size other than the 150x100mm base size.
-        transformOrigin: 'top left',
-        transform: `translate(${offsetXmm}mm, ${offsetYmm}mm) scale(${scale})`,
-      }}
+      className={`fifo-card ${compact ? 'fifo-card-compact' : ''}`}
+      style={
+        compact
+          ? {
+              width: '50mm',
+              height: '20mm',
+              transform: 'none',
+              transformOrigin: 'top left',
+              boxSizing: 'border-box',
+            }
+          : {
+              width: `${BASE_CARD_WIDTH_MM}mm`,
+              height: `${BASE_CARD_HEIGHT_MM}mm`,
+              // ★ FIX: transform-origin must be the top-left corner for the
+              // translate+scale offsets computed in computeCardTransform() to
+              // land correctly. Without this, the browser scales from the
+              // element's center by default, which can shift/clip the card
+              // for any label size other than the 150x100mm base size.
+              transformOrigin: 'top left',
+              transform: `translate(${offsetXmm}mm, ${offsetYmm}mm) scale(${scale})`,
+            }
+      }
     >
       <div className="fifo-card-header">
         <div className="fifo-logo-wrap">
@@ -844,22 +1177,37 @@ const GRNPost = () => {
           <span className="fifo-logo-text">LEEWON</span>
         </div>
         <div className="fifo-title-wrap">
-          <span className="fifo-dash" />
+         
           <span className="fifo-title">FIFO CARD</span>
-          <span className="fifo-dash" />
+         
         </div>
       </div>
 
       <div className="fifo-card-main">
         <div className="fifo-left-col">
           <div className="fifo-box">
-            <div className="fifo-box-label">PALLET NO.</div>
-            <div className="fifo-box-value">{line?.palletNo || '—'}</div>
+            <div className="fifo-box-label"><span className="fifo-compact-label-text">FIFO PALLET NO</span></div>
+            {/* ★ Bigger by default (see .fifo-box-value in grnPost.css).
+                In the 50x20mm compact label the number sits above a QR
+                code (getCompactPalletNoFontSize), so it has less room
+                than the full-size layouts (getPalletNoFontSize). */}
+            <div className="fifo-box-value">
+              <span
+                className="fifo-pallet-number-text"
+                style={{
+                  '--fifo-pallet-font-size': compact
+                    ? `${getCompactPalletNoFontSize(line?.palletNo)}px`
+                    : `${getPalletNoFontSize(line?.palletNo)}px`,
+                }}
+              >
+                {line?.palletNo || '—'}
+              </span>
+            </div>
           </div>
-          <div className="fifo-box">
-            <div className="fifo-box-label">FIFO PALLET NO.</div>
-            <div className="fifo-box-value small">{line?.fifoPalletNo || '—'}</div>
-          </div>
+          {/* On the compact label this renders BELOW the pallet-number
+              box (fifo-left-col stacks them), giving the "pallet number
+              on top, QR underneath" layout. On the full-size labels it
+              keeps its original spot in the left column. */}
           <div className="fifo-qr-box">
             <img
               className="fifo-qr-img"
@@ -876,29 +1224,34 @@ const GRNPost = () => {
                 }),
               )}`}
             />
-            <div className="fifo-qr-caption">SCAN FOR DETAILS</div>
+            {/* <div className="fifo-qr-caption">SCAN FOR DETAILS</div> */}
           </div>
         </div>
 
         <div className="fifo-right-col">
           <div className="fifo-meta-grid">
-            <div><FaRegFileAlt className="fifo-meta-icon" /> <span>SUP.INV.NO:</span> {grnMeta.supplierInvoiceNumber}</div>
-            <div><FaRegCalendarAlt className="fifo-meta-icon" /> <span>DATE:</span> {formatDate(grnMeta.supplierInvoiceDate)}</div>
-            <div><FaBoxOpen className="fifo-meta-icon" /> <span>QTY :</span> {grnMeta.totalQuantity ?? 0} Nos.</div>
-            <div><FaRegFileAlt className="fifo-meta-icon" /> <span>GRN NO:</span> {grnMeta.grnNumber}</div>
-            <div><FaRegCalendarAlt className="fifo-meta-icon" /> <span>DATE:</span> {formatDate(line?.postedDate)}</div>
-            <div><FaBoxOpen className="fifo-meta-icon" /> <span>PQTY:</span> {line?.palletQuantity ?? 0} Nos.</div>
+            <div><FaRegFileAlt className="fifo-meta-icon" /><span className="fifo-meta-label">SUP.INV.NO:</span><span className="fifo-meta-value">{grnMeta.supplierInvoiceNumber || '—'}</span></div>
+            <div><FaRegCalendarAlt className="fifo-meta-icon" /><span className="fifo-meta-label">DATE:</span><span className="fifo-meta-value">{formatDate(grnMeta.supplierInvoiceDate) || '—'}</span></div>
+            <div><FaBoxOpen className="fifo-meta-icon" /><span className="fifo-meta-label">QTY:</span><span className="fifo-meta-value">{grnMeta.totalQuantity ?? 0} Nos.</span></div>
+            <div><FaRegFileAlt className="fifo-meta-icon" /><span className="fifo-meta-label">GRN NO:</span><span className="fifo-meta-value">{grnMeta.grnNumber || '—'}</span></div>
+            <div><FaRegCalendarAlt className="fifo-meta-icon" /><span className="fifo-meta-label">DATE:</span><span className="fifo-meta-value">{formatDate(line?.postedDate) || '—'}</span></div>
+            <div><FaBoxOpen className="fifo-meta-icon" /><span className="fifo-meta-label">PQTY:</span><span className="fifo-meta-value">{line?.palletQuantity ?? 0} Nos.</span></div>
           </div>
 
           <div className="fifo-part-row">
             <div>
               <div className="fifo-part-label">PART NUMBER &amp; NAME</div>
+              {/* ★ Bigger by default (see .fifo-part-value in grnPost.css). */}
               <div className="fifo-part-value">{line?.partNumber}</div>
-              <div className="fifo-part-name">{line?.partName?.toUpperCase()}</div>
+              <div className="fifo-part-name">
+                {line?.partName?.toUpperCase()}
+              </div>
             </div>
             <div className="fifo-pallet-qty">
               <div className="fifo-part-label">PALLET QTY (Nos.)</div>
-              <div className="fifo-qty-value">{line?.palletQuantity ?? line?.quantity ?? 0}</div>
+              <div className="fifo-qty-value">
+                {line?.palletQuantity ?? line?.quantity ?? 0}
+              </div>
             </div>
           </div>
         </div>
@@ -1376,7 +1729,14 @@ const GRNPost = () => {
                       height: `${activeSize.heightMm}mm`,
                     }}
                   >
-                    {renderFifoCard(labelGrn, firstLine, cardScale, cardOffsetXmm, cardOffsetYmm)}
+                    {renderFifoCard(
+                      labelGrn,
+                      firstLine,
+                      cardScale,
+                      cardOffsetXmm,
+                      cardOffsetYmm,
+                      labelSize === '50x20',
+                    )}
                   </div>
                 </div>
               )}
@@ -1447,7 +1807,14 @@ const GRNPost = () => {
                         height: `${bulkActiveSize.heightMm}mm`,
                       }}
                     >
-                      {renderFifoCard(bulkLabelGrn, line, bulkCardScale, bulkCardOffsetXmm, bulkCardOffsetYmm)}
+                      {renderFifoCard(
+                        bulkLabelGrn,
+                        line,
+                        bulkCardScale,
+                        bulkCardOffsetXmm,
+                        bulkCardOffsetYmm,
+                        bulkLabelSize === '50x20',
+                      )}
                     </div>
                   ))}
                 </div>

@@ -1,5 +1,6 @@
 /* =========================================================
-   SUPPLIER GROUP MASTER PAGE — SCOPED CSS
+   SUPPLIER GROUP MASTER PAGE
+   Scoped styles - does not affect other pages
 ========================================================= */
 
 .supplier-group-page {
@@ -44,7 +45,6 @@
   height: 48px;
   border-radius: 50%;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
   border: none;
@@ -52,7 +52,9 @@
   background: #111827;
   color: #fff;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-  transition: background 0.2s ease, transform 0.15s ease;
+  transition:
+    background 0.2s ease,
+    transform 0.15s ease;
   position: relative;
 }
 
@@ -61,19 +63,13 @@
   transform: translateY(-1px);
 }
 
-
-
-.supplier-group-page .add-item-btn {
-  position: relative;
-}
-
 .supplier-group-page .add-item-btn::after {
   content: 'Add Supplier Group';
   position: absolute;
-  top: 50px;
+  top: 56px;
   left: 50%;
   transform: translateX(-50%);
-  width: 80px;
+  width: 120px;
   font-size: 12px;
   font-weight: 600;
   color: #1f2937;
@@ -81,6 +77,7 @@
   line-height: 1.2;
   white-space: normal;
 }
+
 /* =========================================================
    FORM CARD
 ========================================================= */
@@ -91,7 +88,8 @@
   background: #fff;
 }
 
-.supplier-group-page .supplier-group-form-card-body {
+.supplier-group-page
+  .supplier-group-form-card-body {
   padding-top: 24px !important;
   position: relative;
 }
@@ -137,7 +135,9 @@
   display: block;
 }
 
-.supplier-group-page .supplier-group-form-card .form-control {
+.supplier-group-page
+  .supplier-group-form-card
+  .form-control {
   height: 40px !important;
   border-radius: 6px !important;
   border: 1px solid #c4d3ea !important;
@@ -147,17 +147,24 @@
   transition: all 0.2s ease-in-out;
 }
 
-.supplier-group-page .supplier-group-form-card .form-control:hover {
+.supplier-group-page
+  .supplier-group-form-card
+  .form-control:hover {
   border-color: #7aa7ea !important;
 }
 
-.supplier-group-page .supplier-group-form-card .form-control:focus {
+.supplier-group-page
+  .supplier-group-form-card
+  .form-control:focus {
   border: 2px solid #2f6fed !important;
-  box-shadow: 0 0 0 3px rgba(47, 111, 237, 0.15) !important;
+  box-shadow:
+    0 0 0 3px rgba(47, 111, 237, 0.15) !important;
   outline: none !important;
 }
 
-.supplier-group-page .supplier-group-form-card .form-control::placeholder {
+.supplier-group-page
+  .supplier-group-form-card
+  .form-control::placeholder {
   color: #9aa7bd !important;
   font-size: 13px;
 }
@@ -168,10 +175,49 @@
 
 .supplier-group-page .error-input:focus {
   border-color: #dc3545 !important;
-  box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.15) !important;
+  box-shadow:
+    0 0 0 3px rgba(220, 53, 69, 0.15) !important;
 }
 
-/* Save / Update / Clear buttons */
+/* =========================================================
+   CHECKBOXES
+========================================================= */
+
+.supplier-group-page .checkbox-wrapper {
+  margin-top: 8px;
+  min-height: 70px;
+}
+
+.supplier-group-page .checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  color: #123b73;
+  margin-bottom: 6px;
+  user-select: none;
+}
+
+.supplier-group-page .checkbox-label input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: #0d4ea2;
+}
+
+.supplier-group-page .checkbox-wrapper small {
+  display: block;
+  color: #6b7280;
+  font-size: 11px;
+  line-height: 1.35;
+  padding-left: 28px;
+}
+
+/* =========================================================
+   BUTTONS
+========================================================= */
 
 .supplier-group-page .form-button-area {
   display: flex;
@@ -227,7 +273,7 @@
 }
 
 /* =========================================================
-   SUPPLIER GROUP LIST CARD
+   TABLE
 ========================================================= */
 
 .supplier-group-page .table-header {
@@ -266,7 +312,8 @@
 
 .supplier-group-page .search-box:focus {
   border-color: #2f6fed !important;
-  box-shadow: 0 0 0 3px rgba(47, 111, 237, 0.15) !important;
+  box-shadow:
+    0 0 0 3px rgba(47, 111, 237, 0.15) !important;
   outline: none !important;
 }
 
@@ -288,16 +335,17 @@
 }
 
 .supplier-group-page .rdt_TableCell {
-  font-size: 15px !important;
+  font-size: 14px !important;
   font-weight: 500 !important;
   color: #1f2937 !important;
 }
 
 .supplier-group-page .rdt_TableRow {
-  min-height: 38px !important;
+  min-height: 42px !important;
 }
 
-.supplier-group-page .rdt_TableRow:nth-child(even) {
+.supplier-group-page
+  .rdt_TableRow:nth-child(even) {
   background: #f8fbff;
 }
 
@@ -328,7 +376,8 @@
   transition: 0.2s;
 }
 
-.supplier-group-page .table-action-btn:hover {
+.supplier-group-page
+  .table-action-btn:hover {
   transform: scale(1.08);
 }
 
@@ -344,14 +393,65 @@
   border-color: #ffd6d8;
 }
 
+.supplier-group-page .status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.supplier-group-page .status-yes {
+  color: #137333;
+  background: #e7f6ec;
+}
+
+.supplier-group-page .status-no {
+  color: #6b7280;
+  background: #f0f2f5;
+}
+
+.supplier-group-page .empty-table-message {
+  padding: 30px 10px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+/* =========================================================
+   DELETE MODAL
+========================================================= */
+
+.supplier-group-page .delete-preview {
+  background: #f8f9fa;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-top: 10px;
+  text-align: left;
+  line-height: 1.9;
+}
+
 /* =========================================================
    RESPONSIVE
 ========================================================= */
 
+@media (max-width: 992px) {
+  .supplier-group-page .checkbox-wrapper {
+    margin-top: 0;
+  }
+}
+
 @media (max-width: 768px) {
+  .supplier-group-page {
+    padding: 10px;
+  }
+
   .supplier-group-page .table-header {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
   }
 
   .supplier-group-page .search-box {

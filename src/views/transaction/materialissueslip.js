@@ -318,7 +318,7 @@ const MaterialIssueSlip = () => {
         const printWindow = window.open(
             '',
             '_blank',
-            'width=1200,height=850,scrollbars=yes,resizable=yes'
+            'width=1280,height=900,scrollbars=yes,resizable=yes'
         )
 
         if (!printWindow) {
@@ -326,9 +326,8 @@ const MaterialIssueSlip = () => {
             return
         }
 
-        // Copy the application's loaded CSS into the print window.
-        // Same-origin stylesheets can be read safely; inaccessible sheets
-        // are simply skipped.
+        // Copy same-origin application styles so the print document
+        // keeps the same typography and table formatting.
         let pageStyles = ''
 
         Array.from(document.styleSheets).forEach((sheet) => {
@@ -339,7 +338,7 @@ const MaterialIssueSlip = () => {
 
                 pageStyles += rules
             } catch (error) {
-                // Ignore stylesheets that the browser does not allow us to read.
+                // Ignore stylesheets that cannot be read by the browser.
             }
         })
 
@@ -351,6 +350,10 @@ const MaterialIssueSlip = () => {
             <html>
                 <head>
                     <meta charset="UTF-8" />
+                    <meta
+                        name="viewport"
+                        content="width=device-width, initial-scale=1.0"
+                    />
                     <title>Material Requisition and Issue Slip</title>
 
                     <style>
@@ -361,59 +364,175 @@ const MaterialIssueSlip = () => {
                             margin: 8mm;
                         }
 
-                        html,
+                        * {
+                            box-sizing: border-box !important;
+                        }
+
+                        html {
+                            width: 100% !important;
+                            min-height: 0 !important;
+                            margin: 0 !important;
+                            padding: 0 !important;
+                            background: #ffffff !important;
+                        }
+
                         body {
-                            width: 100%;
+                            width: 100% !important;
+                            min-width: 0 !important;
                             min-height: 0 !important;
                             height: auto !important;
                             margin: 0 !important;
                             padding: 0 !important;
-                            background: #fff !important;
+                            background: #ffffff !important;
+                            color: #111827 !important;
                             overflow: visible !important;
-                        }
-
-                        body {
-                            display: block !important;
+                            font-family:
+                                Arial,
+                                Helvetica,
+                                sans-serif !important;
+                            -webkit-print-color-adjust: exact !important;
+                            print-color-adjust: exact !important;
                         }
 
                         .issue-slip {
                             position: relative !important;
                             display: block !important;
-                            width: 100% !important;
-                            max-width: 100% !important;
+
+                            /* Leave a tiny amount of room so the outer
+                               border is always visible in Chrome preview. */
+                            width: calc(100% - 4px) !important;
+                            max-width: none !important;
                             height: auto !important;
                             min-height: 0 !important;
-                            margin: 0 !important;
+
+                            margin: 2px auto !important;
                             padding: 0 !important;
+
+                            border: 2px solid #111827 !important;
+                            border-radius: 2px !important;
+
+                            background: #ffffff !important;
+                            color: #111827 !important;
+
                             box-sizing: border-box !important;
-                            border: 1.2px solid #111 !important;
-                            background: #fff !important;
-                            color: #111 !important;
                             box-shadow: none !important;
+
+                            overflow: visible !important;
+
+                            break-inside: avoid !important;
+                            page-break-inside: avoid !important;
                         }
 
-                        .mis-modal-actions,
-                        .mis-modal-title,
-                        .modal-header,
-                        .btn-close {
-                            display: none !important;
+                        .slip-title {
+                            width: 100% !important;
+                            height: 58px !important;
+                            min-height: 58px !important;
+                            display: flex !important;
+                            align-items: center !important;
+                            justify-content: flex-start !important;
+                            padding: 0 18px !important;
+                            border-bottom: 1px solid #111827 !important;
+                            background: #ffffff !important;
+                        }
+
+                        .leewon-brand {
+                            display: flex !important;
+                            align-items: center !important;
+                            flex-shrink: 0 !important;
+                            margin-right: 28px !important;
+                        }
+
+                        .leewon-logo {
+                            width: 42px !important;
+                            height: 32px !important;
+                            object-fit: contain !important;
+                            display: block !important;
+                        }
+
+                        .slip-heading {
+                            font-size: 19px !important;
+                            font-weight: 700 !important;
+                            letter-spacing: 1.8px !important;
+                            line-height: 1.1 !important;
+                            white-space: nowrap !important;
+                            color: #111827 !important;
+                        }
+
+                        .header-grid {
+                            display: grid !important;
+                            grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+                            width: 100% !important;
+                            border-bottom: 1px solid #111827 !important;
+                        }
+
+                        .header-cell {
+                            min-width: 0 !important;
+                            min-height: 72px !important;
+                            padding: 10px 12px !important;
+                            text-align: center !important;
+                            border-right: 1px solid #111827 !important;
+                            font-size: 11px !important;
+                        }
+
+                        .header-cell:last-child {
+                            border-right: none !important;
+                        }
+
+                        .header-cell > strong {
+                            display: block !important;
+                            font-size: 11px !important;
+                            font-weight: 700 !important;
+                            line-height: 1.2 !important;
+                            white-space: nowrap !important;
+                        }
+
+                        .value-line {
+                            margin-top: 11px !important;
+                            min-height: 19px !important;
+                            padding: 0 5px 5px !important;
+                            border-bottom: 1px solid #111827 !important;
+                            font-size: 12px !important;
+                            font-weight: 600 !important;
+                            line-height: 1.25 !important;
+                            text-align: center !important;
+                            white-space: nowrap !important;
+                            overflow: hidden !important;
+                            text-overflow: ellipsis !important;
                         }
 
                         .items-table {
                             width: 100% !important;
                             table-layout: fixed !important;
                             border-collapse: collapse !important;
+                            margin: 0 !important;
                         }
 
                         .items-table th,
                         .items-table td {
-                            border: 1px solid #111 !important;
+                            border: 1px solid #111827 !important;
                             vertical-align: middle !important;
+                        }
+
+                        .items-table th {
+                            background: #eef2f7 !important;
+                            color: #172033 !important;
+                            text-align: center !important;
+                            font-weight: 700 !important;
+                            padding: 8px !important;
+                            font-size: 11px !important;
+                        }
+
+                        .items-table td {
+                            height: 36px !important;
+                            padding: 7px 8px !important;
+                            text-align: center !important;
+                            font-size: 11px !important;
+                            line-height: 1.25 !important;
                         }
 
                         .items-table th:nth-child(1),
                         .items-table td:nth-child(1) {
-                            width: 6% !important;
+                            width: 8% !important;
                         }
 
                         .items-table th:nth-child(2),
@@ -423,47 +542,80 @@ const MaterialIssueSlip = () => {
 
                         .items-table th:nth-child(3),
                         .items-table td:nth-child(3) {
-                            width: 13% !important;
+                            width: 15% !important;
                         }
 
                         .items-table th:nth-child(4),
                         .items-table td:nth-child(4) {
-                            width: 24% !important;
+                            width: 25% !important;
                         }
 
                         .items-table th:nth-child(5),
                         .items-table td:nth-child(5) {
-                            width: 8% !important;
+                            width: 10% !important;
                         }
 
                         .items-table th:nth-child(6),
                         .items-table td:nth-child(6) {
-                            width: 17% !important;
+                            width: 27% !important;
                         }
 
-                        .items-table th:nth-child(7),
-                        .items-table td:nth-child(7) {
-                            width: 17% !important;
-                        }
-
-                        .header-grid {
-                            display: grid !important;
-                            grid-template-columns: repeat(4, 1fr) !important;
+                        .remarks {
+                            min-height: 42px !important;
+                            padding: 8px 10px !important;
+                            border-bottom: 1px solid #111827 !important;
+                            font-size: 11px !important;
+                            line-height: 1.35 !important;
                         }
 
                         .approval-grid {
                             display: grid !important;
-                            grid-template-columns: repeat(3, 1fr) !important;
+                            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+                            width: 100% !important;
                         }
 
-                        .slip-title {
-                            height: 58px !important;
+                        .approval-box {
+                            min-width: 0 !important;
+                            min-height: 92px !important;
+
                             display: flex !important;
-                            align-items: center !important;
+                            align-items: flex-end !important;
+                            justify-content: center !important;
+
+                            padding: 0 12px 8px 12px !important;
+
+                            text-align: center !important;
+                            font-size: 11px !important;
+                            font-weight: 700 !important;
+
+                            border-right: 1px solid #111827 !important;
+                            box-sizing: border-box !important;
                         }
 
-                        .slip-heading {
-                            white-space: nowrap !important;
+                        .approval-box span {
+                            display: block !important;
+                            width: 100% !important;
+                            text-align: center !important;
+                        }
+
+                        .approval-box:last-child {
+                            border-right: none !important;
+                        }
+
+                        .thank-you {
+                            border-top: 1px solid #111827 !important;
+                            padding: 8px !important;
+                            font-size: 11px !important;
+                            font-weight: 700 !important;
+                            text-align: center !important;
+                        }
+
+                        .mis-modal-actions,
+                        .mis-modal-title,
+                        .modal-header,
+                        .btn-close,
+                        .mis-document-toolbar {
+                            display: none !important;
                         }
 
                         .items-table tr,
@@ -471,6 +623,22 @@ const MaterialIssueSlip = () => {
                         .remarks {
                             break-inside: avoid !important;
                             page-break-inside: avoid !important;
+                        }
+
+                        @media print {
+                            html,
+                            body {
+                                width: 100% !important;
+                                margin: 0 !important;
+                                padding: 0 !important;
+                            }
+
+                            .issue-slip {
+                                width: calc(100% - 4px) !important;
+                                margin: 2px auto !important;
+                                border: 2px solid #111827 !important;
+                                border-radius: 2px !important;
+                            }
                         }
                     </style>
                 </head>
@@ -483,8 +651,6 @@ const MaterialIssueSlip = () => {
 
         printWindow.document.close()
 
-        // Wait for the logo and other resources before opening Chrome's
-        // print dialog.
         const waitForImages = () => {
             const images = Array.from(printWindow.document.images)
 
@@ -509,14 +675,18 @@ const MaterialIssueSlip = () => {
         waitForImages().then(() => {
             printWindow.focus()
 
-            // Small delay lets Chrome finish calculating the A4 landscape page.
             setTimeout(() => {
                 printWindow.print()
 
+                // Give Chrome time to open/close the native print dialog.
                 setTimeout(() => {
-                    printWindow.close()
-                }, 700)
-            }, 250)
+                    try {
+                        printWindow.close()
+                    } catch (error) {
+                        // Ignore close errors.
+                    }
+                }, 1000)
+            }, 350)
         })
     }
 
@@ -704,7 +874,7 @@ const MaterialIssueSlip = () => {
       ================================================= */}
 
             <CModal
-
+                className="mis-modal"
                 visible={modalVisible}
 
                 onClose={() =>
@@ -746,7 +916,7 @@ const MaterialIssueSlip = () => {
                 </CModalHeader>
 
 
-                <CModalBody>
+                <CModalBody className="mis-modal-body">
 
                     {selectedSlip && (
                         (() => {
@@ -758,6 +928,17 @@ const MaterialIssueSlip = () => {
                             return (
                         <>
 
+                            <div className="mis-document-toolbar">
+                                <div className="mis-document-label">
+                                    Ready to print
+                                </div>
+
+                                <div className="mis-document-meta">
+                                    A4 Landscape • Material Issue Slip
+                                </div>
+                            </div>
+
+                            <div className="mis-document-frame">
                             <div className="issue-slip">
 
                                 {/* ==============================
@@ -951,7 +1132,7 @@ const MaterialIssueSlip = () => {
                                             <th>ITEM NO.</th>
                                             <th>ITEM NAME</th>
                                             <th>QTY</th>
-                                            <th>FIFO NO.</th>
+                                            {/* <th>FIFO NO.</th> */}
                                             <th>PALLET NO.</th>
                                         </tr>
                                     </thead>
@@ -964,11 +1145,11 @@ const MaterialIssueSlip = () => {
                                                 <td>{item.partNumber || '—'}</td>
                                                 <td>{item.partName || '—'}</td>
                                                 <td>{item.quantity || 0}</td>
-                                                <td>
+                                                {/* <td>
                                                     {item.fifoNumbers?.length
                                                         ? item.fifoNumbers.join(', ')
                                                         : '—'}
-                                                </td>
+                                                </td> */}
                                                 <td>
                                                     {item.palletNumbers?.length
                                                         ? item.palletNumbers.join(', ')
@@ -1001,30 +1182,21 @@ const MaterialIssueSlip = () => {
                     APPROVAL
                 ============================== */}
 
-                                <div className="approval-grid">
+                               <div className="approval-grid">
 
-                                    <div className="approval-box">
-                                        PREPARED BY
-                                        <br />
-                                        <br />
-                                        {selectedSlip.issuedTo || ''}
-                                    </div>
+    <div className="approval-box">
+        <span>PREPARED BY</span>
+    </div>
 
+    <div className="approval-box">
+        <span>CHECKED BY</span>
+    </div>
 
-                                    <div className="approval-box">
+    <div className="approval-box">
+        <span>APPROVED BY</span>
+    </div>
 
-                                        CHECKED BY
-
-                                    </div>
-
-
-                                    <div className="approval-box">
-
-                                        APPROVED BY
-
-                                    </div>
-
-                                </div>
+</div>
 
 
                                 <div className="thank-you">
@@ -1033,6 +1205,7 @@ const MaterialIssueSlip = () => {
 
                                 </div>
 
+                            </div>
                             </div>
 
 

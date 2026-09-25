@@ -56,11 +56,91 @@ const SUMMARY_CONFIG = [
 
 const GRN_TYPE_OPTIONS = ['REGULAR', 'SAMPLE'];
 
-const createIssueNumber = () => {
-  const year = new Date().getFullYear();
-  const stamp = Date.now().toString(36).toUpperCase();
-  const random = Math.random().toString(36).slice(2, 7).toUpperCase();
-  return `MI-${year}-${stamp}-${random}`;
+const createIssueNumber = async () => {
+  const now = new Date();
+
+  const year = String(now.getFullYear()).slice(-2);
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+
+  const datePrefix = `${year}${month}${day}`;
+
+  let maxSequence = 0;
+
+  // ---------------------------------------------------------
+  // 1. Check already generated/saved issues from API
+  // ---------------------------------------------------------
+  try {
+    const response = await API.get('/MaterialIssue');
+
+    const records = response.data || [];
+
+    records.forEach((record) => {
+      const issueNumber = String(record.issueNumber || '').trim();
+
+      if (!issueNumber.startsWith(datePrefix)) {
+        return;
+      }
+
+      const sequencePart = issueNumber.slice(datePrefix.length);
+
+      if (/^\d{3}$/.test(sequencePart)) {
+        const sequence = Number(sequencePart);
+
+        if (sequence > maxSequence) {
+          maxSequence = sequence;
+        }
+      }
+    });
+  } catch (error) {
+    console.warn(
+      'Unable to read existing Material Issue numbers:',
+      error
+    );
+  }
+
+  // ---------------------------------------------------------
+  // 2. Check pending offline issues
+  // ---------------------------------------------------------
+  try {
+    const pendingIssues = await getAllPendingIssues();
+
+    (pendingIssues || []).forEach((record) => {
+      const issueNumber = String(record.issueNumber || '').trim();
+
+      if (!issueNumber.startsWith(datePrefix)) {
+        return;
+      }
+
+      const sequencePart = issueNumber.slice(datePrefix.length);
+
+      if (/^\d{3}$/.test(sequencePart)) {
+        const sequence = Number(sequencePart);
+
+        if (sequence > maxSequence) {
+          maxSequence = sequence;
+        }
+      }
+    });
+  } catch (error) {
+    console.warn(
+      'Unable to read pending Material Issue numbers:',
+      error
+    );
+  }
+
+  // ---------------------------------------------------------
+  // 3. Generate next number
+  // ---------------------------------------------------------
+  const nextSequence = maxSequence + 1;
+
+  if (nextSequence > 999) {
+    throw new Error(
+      `Issue number sequence exceeded 999 for ${datePrefix}.`
+    );
+  }
+
+  return `${datePrefix}${String(nextSequence).padStart(3, '0')}`;
 };
 
 const createIdempotencyKey = (deviceId, issueNumber, palletId) => {
@@ -1229,11 +1309,12 @@ const MaterialIssue = () => {
     //     BR-03 -> GRN 260710
     //
     // IdempotencyKey remains UNIQUE per pallet/queued transaction.
-    const deviceId = getDeviceId();
-    const createdAt = new Date().toISOString();
-    const issueNumber = createIssueNumber();
+const deviceId = getDeviceId();
+const createdAt = new Date().toISOString();
 
-    setSaving(true);
+const issueNumber = await createIssueNumber();
+
+setSaving(true);
 
     try {
       const queuedIssues = [];
