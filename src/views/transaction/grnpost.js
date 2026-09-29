@@ -52,13 +52,27 @@ const getPalletNoFontSize = (value) => {
   // smaller font to remain fully visible inside the pallet box.
   const len = String(value ?? '').trim().length
 
-  if (len <= 3) return 54
-  if (len <= 5) return 46
-  if (len <= 7) return 40
-  if (len <= 9) return 34
-  if (len <= 12) return 29
-  if (len <= 15) return 24
-  return 20
+  // scaleY(2.5) widens the rotated text. These sizes keep common
+  // pallet codes such as TWN-04 and TWEX-70 inside the pallet-value
+  // column instead of letting them overlap the part/quantity area.
+  if (len <= 3) return 40
+  if (len <= 5) return 39
+  if (len <= 7) return 36
+  if (len <= 9) return 31
+  if (len <= 12) return 26
+  if (len <= 15) return 21
+  return 17
+}
+
+const getPalletNoScaleY = (value) => {
+  const len = String(value ?? '').trim().length
+  if (len <= 4) return 2.5
+  if (len <= 5) return 2.3
+  if (len <= 7) return 2.0
+  if (len <= 9) return 1.75
+  if (len <= 12) return 1.5
+  if (len <= 15) return 1.3
+  return 1.15
 }
 
 // The 50x20mm compact label now stacks the pallet number ABOVE a QR
@@ -77,30 +91,82 @@ const getCompactPalletNoFontSize = (value) => {
 
   // Values are intentionally small enough to keep the COMPLETE pallet
   // number visible on one line inside the 50x20mm pallet box.
-  if (len <= 2) return 12
-  if (len <= 3) return 10
+  if (len <= 2) return 9
+  if (len <= 3) return 8.5
   if (len <= 5) return 8
   if (len <= 7) return 7
-  if (len <= 9) return 6
-  if (len <= 12) return 5
-  if (len <= 15) return 4.5
-  return 4
+  if (len <= 9) return 6.5
+  if (len <= 12) return 5.8
+  if (len <= 15) return 5
+  return 4.5
 }
 
-const getPartNameFontSize = (value) => {
-  const len = (value || '').length
+const getPartNumberFontSize = (value, compact = false) => {
+  const len = String(value ?? '').trim().length
+
+  if (compact) {
+    // Physical 50x20mm label. The font is deliberately reduced only
+    // when the part number is long enough to exceed the compact area.
+    if (len <= 6) return 3.0
+    if (len <= 9) return 2.7
+    if (len <= 12) return 2.35
+    if (len <= 15) return 2.1
+    if (len <= 18) return 1.9
+    return 1.7
+  }
+
+  if (len <= 8) return 44
+  if (len <= 10) return 40
+  if (len <= 12) return 36
+  if (len <= 14) return 32
+  if (len <= 18) return 28
+  return 24
+}
+
+const getPartNameFontSize = (value, compact = false) => {
+  const len = String(value ?? '').trim().length
+
+  if (compact) {
+    // 50x20mm: allow the description to wrap to two lines instead
+    // of clipping it. Long descriptions get progressively smaller.
+    if (len <= 18) return 1.55
+    if (len <= 24) return 1.45
+    if (len <= 32) return 1.30
+    if (len <= 42) return 1.18
+    return 1.08
+  }
+
   if (len <= 20) return 32
   if (len <= 32) return 28
   if (len <= 48) return 23
   return 18
 }
 
-const getQtyFontSize = (value) => {
+const getQtyFontSize = (value, compact = false) => {
   const digits = String(value ?? '').replace(/[^0-9]/g, '').length
-  // Customer sample specifically calls for a larger 6-digit quantity.
-  if (digits <= 4) return 50
-  if (digits <= 6) return 42
-  return 32
+
+  if (compact) {
+    // Physical 50x20mm label. Keep the quantity readable while making
+    // sure even a 7-digit pallet quantity remains completely visible.
+    if (digits <= 2) return 3.0
+    if (digits <= 3) return 2.7
+    if (digits <= 4) return 2.35
+    if (digits <= 5) return 2.05
+    if (digits <= 6) return 1.80
+    if (digits <= 7) return 1.60
+    return 1.40
+  }
+
+  // Master 150x100mm card. The 100x75mm label scales this card down
+  // to 66.67%, so 4-7 digit quantities must use a size that still fits
+  // inside the quantity column after scaling.
+  if (digits <= 2) return 50
+  if (digits <= 3) return 42
+  if (digits <= 4) return 34
+  if (digits <= 5) return 30
+  if (digits <= 6) return 26
+  if (digits <= 7) return 22
+  return 19
 }
 
 // The three label sizes the user can pick before printing/downloading.
@@ -133,26 +199,33 @@ const LABEL_SIZE_OPTIONS = [
 ]
 
 // The FIFO card is always designed/laid out at this one "master" size.
-// Every label size option is produced by uniformly scaling this exact
-// design down (or up) to fit inside the chosen physical label, then
-// centering it. This guarantees the card looks identical — same logo,
-// boxes, QR, meta grid, part row, footer — at every size, just smaller,
-// instead of needing a different hand-built layout per size.
+// Every label size option is produced by scaling this exact master design to the chosen physical label. The X/Y
+// scale is independent so every physical label is completely filled; this
+// is important for 100x75 because its aspect ratio differs from 150x100.
 const BASE_CARD_WIDTH_MM = 150
 const BASE_CARD_HEIGHT_MM = 100
 
 // Shared scale-to-fit math used both by the single-label preview and the
 // bulk-label preview, so both stay pixel-for-pixel identical.
 const computeCardTransform = (activeSize) => {
-  if (!activeSize) return { scale: 0, offsetXmm: 0, offsetYmm: 0 }
-  const scale = Math.min(
-    activeSize.widthMm / BASE_CARD_WIDTH_MM,
-    activeSize.heightMm / BASE_CARD_HEIGHT_MM
-  )
+  if (!activeSize) {
+    return { scaleX: 0, scaleY: 0, offsetXmm: 0, offsetYmm: 0 }
+  }
+
+  // IMPORTANT: 100x75 is a different aspect ratio from the 150x100
+  // master card. Uniform scaling leaves ~8.33mm of empty space at the
+  // bottom, which is exactly why the signature was disappearing and the
+  // label looked vertically incomplete in the browser print preview.
+  // Scale independently in X/Y so the card fills the COMPLETE physical
+  // label frame. 150x100 remains 1:1 and 50x20 uses its compact layout.
+  const scaleX = activeSize.widthMm / BASE_CARD_WIDTH_MM
+  const scaleY = activeSize.heightMm / BASE_CARD_HEIGHT_MM
+
   return {
-    scale,
-    offsetXmm: (activeSize.widthMm - BASE_CARD_WIDTH_MM * scale) / 2,
-    offsetYmm: (activeSize.heightMm - BASE_CARD_HEIGHT_MM * scale) / 2,
+    scaleX,
+    scaleY,
+    offsetXmm: 0,
+    offsetYmm: 0,
   }
 }
 
@@ -178,11 +251,69 @@ const waitForImages = async (doc) => {
   const images = Array.from(doc.images || [])
   await Promise.all(
     images.map((img) => {
-      if (img.complete) return Promise.resolve()
+      // `complete` can be true even when a browser finished a failed
+      // external-image request. Check naturalWidth as well so the first
+      // bulk label does not get printed before its QR image is available.
+      if (img.complete && img.naturalWidth > 0) return Promise.resolve()
+
       return new Promise((resolve) => {
-        img.onload = resolve
-        img.onerror = resolve
+        let finished = false
+        const done = () => {
+          if (finished) return
+          finished = true
+          resolve()
+        }
+
+        img.addEventListener('load', done, { once: true })
+        img.addEventListener('error', done, { once: true })
+
+        // Never block printing forever because of one image.
+        setTimeout(done, 5000)
       })
+    })
+  )
+}
+
+// Convert external images to data URLs before cloning/printing/capturing.
+// This is especially important for the QR image because bulk printing moves
+// the label into a new iframe and html2canvas is stricter about external
+// images than the normal browser renderer.
+const blobToDataUrl = (blob) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result)
+    reader.onerror = reject
+    reader.readAsDataURL(blob)
+  })
+
+const inlineImagesInElement = async (root) => {
+  if (!root) return
+
+  const images = Array.from(root.querySelectorAll('img'))
+
+  await Promise.all(
+    images.map(async (img) => {
+      const src = img.getAttribute('src')
+      if (!src || src.startsWith('data:') || src.startsWith('blob:')) return
+
+      try {
+        const response = await fetch(src, {
+          mode: 'cors',
+          cache: 'force-cache',
+        })
+
+        if (!response.ok) throw new Error(`Image request failed: ${response.status}`)
+
+        const blob = await response.blob()
+        const dataUrl = await blobToDataUrl(blob)
+        img.setAttribute('src', dataUrl)
+        img.removeAttribute('crossorigin')
+      } catch (error) {
+        // Same-origin/local images and already-renderable external images can
+        // still be printed normally. We deliberately do not break the whole
+        // print job if one remote image refuses CORS.
+        console.warn('Could not inline FIFO label image:', src, error)
+      }
     })
   )
 }
@@ -243,6 +374,196 @@ const buildPrintHead = (title, extraStyle) => {
       .fifo-label-frame, .fifo-card, .fifo-card * {
         visibility: visible !important;
         opacity: 1 !important;
+      }
+
+      /* =========================================================
+         FINAL 50 x 20mm COMPACT OVERRIDE
+         ---------------------------------------------------------
+         This is intentionally the LAST print rule. Older copied
+         application styles may contain earlier compact dimensions;
+         these rules guarantee that 50x20 print uses the same
+         geometry as the live preview and keeps dynamic values.
+      ========================================================= */
+      .fifo-card-compact {
+        width: 50mm !important;
+        height: 20mm !important;
+        min-width: 50mm !important;
+        min-height: 20mm !important;
+        max-width: 50mm !important;
+        max-height: 20mm !important;
+        padding: 0.65mm !important;
+        border: 0.45mm solid #172033 !important;
+        box-sizing: border-box !important;
+        display: flex !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
+        transform: none !important;
+      }
+
+      .fifo-card-compact .fifo-card-header {
+        flex: 0 0 3.15mm !important;
+        height: 3.15mm !important;
+        min-height: 3.15mm !important;
+        margin: 0 0 0.28mm !important;
+        padding: 0 0 0.22mm !important;
+        border-bottom: 0.32mm solid #172033 !important;
+      }
+
+      .fifo-card-compact .fifo-logo-img {
+        height: 2.05mm !important;
+      }
+
+      .fifo-card-compact .fifo-logo-text {
+        font-size: 1.75mm !important;
+        color: #000000 !important;
+      }
+
+      .fifo-card-compact .fifo-title {
+        font-size: 3.05mm !important;
+        color: #000000 !important;
+      }
+
+      .fifo-card-compact .fifo-card-main {
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        height: auto !important;
+        display: flex !important;
+        gap: 0.55mm !important;
+        overflow: hidden !important;
+      }
+
+      .fifo-card-compact .fifo-left-col {
+        flex: 0 0 9.5mm !important;
+        width: 9.5mm !important;
+        min-width: 9.5mm !important;
+        gap: 0.25mm !important;
+        overflow: hidden !important;
+      }
+
+      .fifo-card-compact .fifo-box-label {
+        flex: 0 0 2mm !important;
+        width: 2mm !important;
+        min-width: 2mm !important;
+        max-width: 2mm !important;
+        font-size: 0.72mm !important;
+      }
+
+      .fifo-card-compact .fifo-box-value,
+      .fifo-card-compact .fifo-pallet-number-text {
+        font-size: var(--fifo-compact-pallet-font-size, 7px) !important;
+      }
+
+      .fifo-card-compact .fifo-qr-box {
+        flex: 0 0 4.25mm !important;
+        width: 100% !important;
+        height: 4.25mm !important;
+        min-height: 4.25mm !important;
+        max-height: 4.25mm !important;
+      }
+
+      .fifo-card-compact .fifo-qr-img {
+        width: 4mm !important;
+        height: 4mm !important;
+        max-width: 4mm !important;
+        max-height: 4mm !important;
+        padding: 0 !important;
+      }
+
+      .fifo-card-compact .fifo-right-col {
+        flex: 1 1 auto !important;
+        width: 0 !important;
+        min-width: 0 !important;
+        padding-left: 0.55mm !important;
+        overflow: hidden !important;
+      }
+
+      .fifo-card-compact .fifo-meta-grid {
+        flex: 0 0 4.15mm !important;
+        height: 4.15mm !important;
+        min-height: 4.15mm !important;
+        grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr) minmax(0, 0.95fr) !important;
+        grid-template-rows: repeat(2, 1.85mm) !important;
+        gap: 0.08mm 0.25mm !important;
+        font-size: 0.75mm !important;
+      }
+
+      .fifo-card-compact .fifo-meta-grid > div {
+        height: 1.85mm !important;
+        font-size: 0.75mm !important;
+      }
+
+      .fifo-card-compact .fifo-meta-icon,
+      .fifo-card-compact .fifo-meta-grid .fifo-meta-label,
+      .fifo-card-compact .fifo-meta-grid .fifo-meta-value {
+        font-size: 0.75mm !important;
+        color: #000000 !important;
+      }
+
+      .fifo-card-compact .fifo-part-row {
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        gap: 0.45mm !important;
+        padding: 0.35mm 0 0 !important;
+        overflow: hidden !important;
+      }
+
+      .fifo-card-compact .fifo-part-info {
+        min-width: 0 !important;
+        overflow: hidden !important;
+      }
+
+      .fifo-card-compact .fifo-part-label {
+        font-size: 0.72mm !important;
+        margin: 0 0 0.18mm !important;
+      }
+
+      .fifo-card-compact .fifo-part-value {
+        font-size: var(--fifo-compact-part-number-font-size, 2.35mm) !important;
+        line-height: 0.95 !important;
+        max-width: 100% !important;
+        overflow: hidden !important;
+        white-space: nowrap !important;
+      }
+
+      .fifo-card-compact .fifo-part-name {
+        font-size: var(--fifo-compact-part-name-font-size, 1.3mm) !important;
+        line-height: 1.04 !important;
+        max-width: 100% !important;
+        max-height: 3.0mm !important;
+        overflow: hidden !important;
+        white-space: normal !important;
+        word-break: break-word !important;
+      }
+
+      .fifo-card-compact .fifo-pallet-qty {
+        flex: 0 0 9.7mm !important;
+        width: 9.7mm !important;
+        min-width: 9.7mm !important;
+        max-width: 9.7mm !important;
+        overflow: hidden !important;
+      }
+
+      .fifo-card-compact .fifo-pallet-qty .fifo-part-label {
+        font-size: 0.64mm !important;
+        line-height: 0.95 !important;
+      }
+
+      .fifo-card-compact .fifo-qty-value {
+        font-size: var(--fifo-compact-qty-font-size, 1.6mm) !important;
+        line-height: 1 !important;
+        white-space: nowrap !important;
+      }
+
+      .fifo-card-compact .fifo-card-footer {
+        flex: 0 0 1.35mm !important;
+        height: 1.35mm !important;
+        min-height: 1.35mm !important;
+        gap: 0.35mm !important;
+        padding: 0.08mm 0.25mm 0 !important;
+      }
+
+      .fifo-card-compact .fifo-sign {
+        font-size: 0.62mm !important;
       }
     </style>
   `
@@ -615,6 +936,8 @@ const GRNPost = () => {
     const size = LABEL_SIZE_OPTIONS.find((s) => s.value === labelSize) || LABEL_SIZE_OPTIONS[0]
 
     try {
+      await inlineImagesInElement(node)
+
       const canvas = await html2canvas(node, {
         scale: 3,
         backgroundColor: '#ffffff',
@@ -664,6 +987,7 @@ const GRNPost = () => {
 
     const clonedLabel = source.cloneNode(true)
     clonedLabel.removeAttribute('id')
+    await inlineImagesInElement(clonedLabel)
 
     const headHtml = buildPrintHead('FIFO GRN Label', `
       @page {
@@ -714,9 +1038,9 @@ const GRNPost = () => {
       .fifo-card-compact .fifo-left-col {
         display: flex !important;
         flex-direction: column !important;
-        flex: 0 0 10.7mm !important;
-        width: 10.7mm !important;
-        min-width: 10.7mm !important;
+        flex: 0 0 13mm !important;
+        width: 13mm !important;
+        min-width: 13mm !important;
         min-height: 0 !important;
       }
 
@@ -764,7 +1088,7 @@ const GRNPost = () => {
       }
 
       .fifo-card-compact .fifo-part-value {
-        font-size: 3.7mm !important;
+        font-size: var(--fifo-compact-part-number-font-size, 2.35mm) !important;
         line-height: 0.95 !important;
         max-width: 100% !important;
         overflow: hidden !important;
@@ -788,7 +1112,7 @@ const GRNPost = () => {
       }
 
       .fifo-card-compact .fifo-qty-value {
-        font-size: 3.75mm !important;
+        font-size: var(--fifo-compact-qty-font-size, 1.6mm) !important;
         line-height: 1 !important;
         white-space: nowrap !important;
       }
@@ -801,8 +1125,11 @@ const GRNPost = () => {
       }
 
       .fifo-card-compact .fifo-pallet-number-text {
-        transform: rotate(-90deg) !important;
+        font-size: var(--fifo-pallet-font-size, 10px) !important;
+        transform: rotate(-90deg) scaleY(2.5) !important;
+        transform-origin: center center !important;
         rotate: none !important;
+        scale: none !important;
       }
 
       /* 50x20 print: keep pallet value visible and center FIFO CARD. */
@@ -851,11 +1178,107 @@ const GRNPost = () => {
       .fifo-card-compact .fifo-meta-grid { flex-basis: 3.65mm !important; height: 3.65mm !important; min-height: 3.65mm !important; grid-template-rows: repeat(2, 1.65mm) !important; font-size: 0.9mm !important; }
       .fifo-card-compact .fifo-meta-grid > div { height: 1.65mm !important; font-size: 0.9mm !important; }
       .fifo-card-compact .fifo-part-row { height: 0 !important; min-height: 0 !important; padding-top: 0.15mm !important; }
-      .fifo-card-compact .fifo-part-value { font-size: 3.7mm !important; line-height: 0.95 !important; }
+      .fifo-card-compact .fifo-part-value { font-size: var(--fifo-compact-part-number-font-size, 2.35mm) !important; line-height: 0.95 !important; }
       .fifo-card-compact .fifo-part-name { font-size: 1.45mm !important; line-height: 1.05 !important; max-height: 3.05mm !important; }
       .fifo-card-compact .fifo-pallet-qty { flex-basis: 6.6mm !important; min-width: 6.6mm !important; width: 6.6mm !important; }
-      .fifo-card-compact .fifo-qty-value { font-size: 3.75mm !important; }
+      .fifo-card-compact .fifo-qty-value { font-size: var(--fifo-compact-qty-font-size, 1.6mm) !important; }
       .fifo-card-compact .fifo-card-footer { flex-basis: 1.35mm !important; height: 1.35mm !important; min-height: 1.35mm !important; }
+      ` : ''}
+
+      /* =========================================================
+         100 x 75 BULK PRINT FIX
+         Keep the card inside the exact physical label and force the
+         signature footer to stay visible.
+         ========================================================= */
+      ${bulkLabelSize === '100x75' ? `
+      .fifo-bulk-label-frame-100x75 .fifo-card:not(.fifo-card-compact) {
+        overflow: hidden !important;
+        box-sizing: border-box !important;
+      }
+
+      .fifo-bulk-label-frame-100x75 .fifo-card-footer {
+        position: absolute !important;
+        left: 8px !important;
+        right: 8px !important;
+        bottom: 5px !important;
+        width: auto !important;
+        min-height: 12px !important;
+        height: auto !important;
+        margin: 0 !important;
+        padding: 4px 0 0 !important;
+        display: flex !important;
+        justify-content: flex-end !important;
+        align-items: center !important;
+        gap: 70px !important;
+        overflow: visible !important;
+        z-index: 20 !important;
+      }
+
+      .fifo-bulk-label-frame-100x75 .fifo-sign {
+        display: block !important;
+        width: 95px !important;
+        min-width: 95px !important;
+        font-size: 9px !important;
+        line-height: 1 !important;
+        font-weight: 700 !important;
+        text-align: center !important;
+        white-space: nowrap !important;
+        overflow: visible !important;
+      }
+
+      .fifo-bulk-label-frame-100x75 .fifo-qr-box {
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        align-items: center !important;
+        justify-content: center !important;
+      }
+
+      .fifo-bulk-label-frame-100x75 .fifo-qr-img {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+      }
+      ` : ''}
+
+      /* =========================================================
+         100 x 75 SINGLE PRINT FIX
+         ========================================================= */
+      ${labelSize === '100x75' ? `
+      .fifo-label-frame-100x75 .fifo-card:not(.fifo-card-compact) {
+        overflow: hidden !important;
+        box-sizing: border-box !important;
+      }
+
+      .fifo-label-frame-100x75 .fifo-card-footer {
+        position: absolute !important;
+        left: 8px !important;
+        right: 8px !important;
+        bottom: 5px !important;
+        width: auto !important;
+        min-height: 12px !important;
+        height: auto !important;
+        margin: 0 !important;
+        padding: 4px 0 0 !important;
+        display: flex !important;
+        justify-content: flex-end !important;
+        align-items: center !important;
+        gap: 70px !important;
+        overflow: visible !important;
+        z-index: 20 !important;
+      }
+
+      .fifo-label-frame-100x75 .fifo-sign {
+        display: block !important;
+        width: 95px !important;
+        min-width: 95px !important;
+        font-size: 9px !important;
+        line-height: 1 !important;
+        font-weight: 700 !important;
+        text-align: center !important;
+        white-space: nowrap !important;
+        overflow: visible !important;
+      }
       ` : ''}
 
       html, body {
@@ -932,17 +1355,20 @@ const GRNPost = () => {
       return
     }
 
-    const labelsHtml = bulkLabelGrn.lines
-      .map((line) => {
+    const labelHtmlParts = await Promise.all(
+      bulkLabelGrn.lines.map(async (line) => {
         const existing = document.getElementById(`fifo-bulk-frame-${line.id}`)
         if (!existing) return ''
 
         const cloned = existing.cloneNode(true)
         cloned.removeAttribute('id')
+        await inlineImagesInElement(cloned)
 
         return `<div class="bulk-print-page">${cloned.outerHTML}</div>`
       })
-      .join('')
+    )
+
+    const labelsHtml = labelHtmlParts.join('')
 
     const headHtml = buildPrintHead(`FIFO GRN Labels - ${bulkLabelGrn.grnNumber}`, `
       @page {
@@ -993,13 +1419,13 @@ const GRNPost = () => {
         overflow: hidden !important;
       }
       .fifo-card-compact .fifo-part-value {
-        font-size: 3.7mm !important;
+        font-size: var(--fifo-compact-part-number-font-size, 2.35mm) !important;
         line-height: 0.95 !important;
         overflow: hidden !important;
         white-space: nowrap !important;
       }
       .fifo-card-compact .fifo-part-name {
-        font-size: 2mm !important;
+        font-size: var(--fifo-compact-part-name-font-size, 1.3mm) !important;
         line-height: 1 !important;
         max-height: 3.8mm !important;
         overflow: hidden !important;
@@ -1011,7 +1437,7 @@ const GRNPost = () => {
         overflow: hidden !important;
       }
       .fifo-card-compact .fifo-qty-value {
-        font-size: 3.75mm !important;
+        font-size: var(--fifo-compact-qty-font-size, 1.6mm) !important;
         white-space: nowrap !important;
       }
       ` : ''}
@@ -1098,6 +1524,8 @@ const GRNPost = () => {
         const node = document.getElementById(`fifo-bulk-frame-${line.id}`)
         if (!node) continue
 
+        await inlineImagesInElement(node)
+
         const canvas = await html2canvas(node, {
           scale: 3,
           backgroundColor: '#ffffff',
@@ -1129,24 +1557,20 @@ const GRNPost = () => {
     (s) => s.value === labelSize
   )
 
-  // Uniform scale-to-fit: the card is always drawn at BASE_CARD_WIDTH_MM
-  // x BASE_CARD_HEIGHT_MM, then scaled down (or up) to fit inside the
-  // chosen physical label and centered. This is what keeps the design
-  // identical — logo, boxes, QR, meta grid, part row, footer — across
-  // every label size instead of needing bespoke, easily-broken layouts
-  // per size.
-  const { scale: cardScale, offsetXmm: cardOffsetXmm, offsetYmm: cardOffsetYmm } = computeCardTransform(activeSize)
+  // Scale the master card to completely fill the selected physical label.
+  // 100x75 uses independent X/Y scaling so no blank lower area remains.
+  const { scaleX: cardScaleX, scaleY: cardScaleY, offsetXmm: cardOffsetXmm, offsetYmm: cardOffsetYmm } = computeCardTransform(activeSize)
 
   // Same scale-to-fit math, driven by the bulk modal's own size selector
   // so a user can pick a different label size for a bulk run than
   // whatever was last used for a single reprint.
   const bulkActiveSize = LABEL_SIZE_OPTIONS.find((s) => s.value === bulkLabelSize)
-  const { scale: bulkCardScale, offsetXmm: bulkCardOffsetXmm, offsetYmm: bulkCardOffsetYmm } = computeCardTransform(bulkActiveSize)
+  const { scaleX: bulkCardScaleX, scaleY: bulkCardScaleY, offsetXmm: bulkCardOffsetXmm, offsetYmm: bulkCardOffsetYmm } = computeCardTransform(bulkActiveSize)
 
   // Renders the actual FIFO card markup for one line. Shared by both the
   // single-label modal and the bulk-label modal so the design can never
   // drift between the two — only the wrapping frame differs.
-  const renderFifoCard = (grnMeta, line, scale, offsetXmm, offsetYmm, compact = false) => (
+  const renderFifoCard = (grnMeta, line, scaleX, scaleY, offsetXmm, offsetYmm, compact = false) => (
     <div
       className={`fifo-card ${compact ? 'fifo-card-compact' : ''}`}
       style={
@@ -1167,7 +1591,7 @@ const GRNPost = () => {
               // element's center by default, which can shift/clip the card
               // for any label size other than the 150x100mm base size.
               transformOrigin: 'top left',
-              transform: `translate(${offsetXmm}mm, ${offsetYmm}mm) scale(${scale})`,
+              transform: `translate(${offsetXmm}mm, ${offsetYmm}mm) scaleX(${scaleX}) scaleY(${scaleY})`,
             }
       }
     >
@@ -1195,9 +1619,19 @@ const GRNPost = () => {
               <span
                 className="fifo-pallet-number-text"
                 style={{
+                  fontSize: compact
+                    ? `${getCompactPalletNoFontSize(line?.palletNo)}px`
+                    : `${getPalletNoFontSize(line?.palletNo)}px`,
+                  // Final CSS reads this variable for BOTH preview and print,
+                  // so the pallet code stays dynamic for values such as
+                  // TWN-04, TWEX-70, BR-01, etc.
                   '--fifo-pallet-font-size': compact
                     ? `${getCompactPalletNoFontSize(line?.palletNo)}px`
                     : `${getPalletNoFontSize(line?.palletNo)}px`,
+                  '--fifo-pallet-scale-y': `${getPalletNoScaleY(line?.palletNo)}`,
+                  '--fifo-compact-pallet-font-size': compact
+                    ? `${getCompactPalletNoFontSize(line?.palletNo)}px`
+                    : undefined,
                 }}
               >
                 {line?.palletNo || '—'}
@@ -1212,7 +1646,6 @@ const GRNPost = () => {
             <img
               className="fifo-qr-img"
               alt="Scan for details"
-              crossOrigin="anonymous"
               src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&margin=0&data=${encodeURIComponent(
                 JSON.stringify({
                   grn: grnMeta.grnNumber,
@@ -1239,17 +1672,52 @@ const GRNPost = () => {
           </div>
 
           <div className="fifo-part-row">
-            <div>
+            <div className="fifo-part-info">
               <div className="fifo-part-label">PART NUMBER &amp; NAME</div>
               {/* ★ Bigger by default (see .fifo-part-value in grnPost.css). */}
-              <div className="fifo-part-value">{line?.partNumber}</div>
-              <div className="fifo-part-name">
-                {line?.partName?.toUpperCase()}
+              <div
+                className="fifo-part-value"
+                style={{
+                  fontSize: compact
+                    ? `${getPartNumberFontSize(line?.partNumber, true)}mm`
+                    : `${getPartNumberFontSize(line?.partNumber, false)}px`,
+                  '--fifo-compact-part-number-font-size': compact
+                    ? `${getPartNumberFontSize(line?.partNumber, true)}mm`
+                    : undefined,
+                }}
+              >
+                {line?.partNumber || '—'}
+              </div>
+              <div
+                className="fifo-part-name"
+                style={{
+                  fontSize: compact
+                    ? `${getPartNameFontSize(line?.partName, true)}mm`
+                    : `${getPartNameFontSize(line?.partName, false)}px`,
+                  '--fifo-compact-part-name-font-size': compact
+                    ? `${getPartNameFontSize(line?.partName, true)}mm`
+                    : undefined,
+                }}
+              >
+                {line?.partName?.toUpperCase() || '—'}
               </div>
             </div>
             <div className="fifo-pallet-qty">
               <div className="fifo-part-label">PALLET QTY (Nos.)</div>
-              <div className="fifo-qty-value">
+              <div
+                className="fifo-qty-value"
+                style={{
+                  fontSize: compact
+                    ? `${getQtyFontSize(line?.palletQuantity ?? line?.quantity ?? 0, true)}mm`
+                    : `${getQtyFontSize(line?.palletQuantity ?? line?.quantity ?? 0, false)}px`,
+                  '--fifo-qty-font-size': compact
+                    ? `${getQtyFontSize(line?.palletQuantity ?? line?.quantity ?? 0, true)}mm`
+                    : `${getQtyFontSize(line?.palletQuantity ?? line?.quantity ?? 0, false)}px`,
+                  '--fifo-compact-qty-font-size': compact
+                    ? `${getQtyFontSize(line?.palletQuantity ?? line?.quantity ?? 0, true)}mm`
+                    : undefined,
+                }}
+              >
                 {line?.palletQuantity ?? line?.quantity ?? 0}
               </div>
             </div>
@@ -1722,7 +2190,7 @@ const GRNPost = () => {
               ) : (
                 <div className="fifo-print-preview-wrap">
                   <div
-                    className="fifo-label-frame"
+                    className={`fifo-label-frame ${labelSize === '100x75' ? 'fifo-label-frame-100x75' : ''}`}
                     id="fifo-print-area"
                     style={{
                       width: `${activeSize.widthMm}mm`,
@@ -1732,7 +2200,8 @@ const GRNPost = () => {
                     {renderFifoCard(
                       labelGrn,
                       firstLine,
-                      cardScale,
+                      cardScaleX,
+                      cardScaleY,
                       cardOffsetXmm,
                       cardOffsetYmm,
                       labelSize === '50x20',
@@ -1800,7 +2269,7 @@ const GRNPost = () => {
                   {bulkLabelGrn.lines.map((line) => (
                     <div
                       key={line.id}
-                      className="fifo-label-frame fifo-bulk-label-frame"
+                      className={`fifo-label-frame fifo-bulk-label-frame ${bulkLabelSize === '100x75' ? 'fifo-bulk-label-frame-100x75' : ''}`}
                       id={`fifo-bulk-frame-${line.id}`}
                       style={{
                         width: `${bulkActiveSize.widthMm}mm`,
@@ -1810,7 +2279,8 @@ const GRNPost = () => {
                       {renderFifoCard(
                         bulkLabelGrn,
                         line,
-                        bulkCardScale,
+                        bulkCardScaleX,
+                        bulkCardScaleY,
                         bulkCardOffsetXmm,
                         bulkCardOffsetYmm,
                         bulkLabelSize === '50x20',
