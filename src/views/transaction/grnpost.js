@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DataTable from 'react-data-table-component';
-import { CButton, CFormInput, CFormSelect, CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter } from '@coreui/react';
+import { CButton, CFormInput, CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter } from '@coreui/react';
 import { FaEye, FaEdit, FaTrash, FaCheckCircle, FaFileAlt, FaPrint, FaTimes, FaDownload, FaRegCalendarAlt, FaBoxOpen, FaRegFileAlt, FaLayerGroup } from 'react-icons/fa';
 import { toast } from 'react-toastify'
 import html2canvas from 'html2canvas';
@@ -36,32 +36,51 @@ const formatDate = (value) => {
 }
 
 // =========================================================
-// AUTO-SHRINK FONT HELPERS
+// AUTO-FIT FONT HELPERS
 // ---------------------------------------------------------
-// The FIFO card ships with big, easy-to-read default font sizes for
-// PALLET NO, PART NUMBER/NAME and PALLET QTY (see grnPost.css), since
-// users read these from a distance on the shop floor. But a value can
-// occasionally be long (a long part description, a 7-digit quantity,
-// an unusually long pallet code) — these helpers shrink JUST that one
-// value's font size, in steps, only once it's actually too long to
-// safely fit on one line, so nothing wraps awkwardly or gets clipped.
+// Compact (50x25 / 100x50) sizes are now COMPUTED from the text length
+// and the real column width (average bold glyph width ~0.6 x font size),
+// so long values such as 1000000 or 24210-04087D always fit and are
+// never cut off.
 // =========================================================
-const getPalletNoFontSize = (value) => {
-  // ONLY the FIFO pallet number is conditionally resized.
-  // The value is rotated -90deg, so longer pallet numbers need a
-  // smaller font to remain fully visible inside the pallet box.
-  const len = String(value ?? '').trim().length
+const AVG_GLYPH = 0.6 // average bold Arial glyph width as a fraction of font size
 
-  // scaleY(2.5) widens the rotated text. These sizes keep common
-  // pallet codes such as TWN-04 and TWEX-70 inside the pallet-value
-  // column instead of letting them overlap the part/quantity area.
-  if (len <= 3) return 40
-  if (len <= 5) return 39
-  if (len <= 7) return 36
-  if (len <= 9) return 31
-  if (len <= 12) return 26
-  if (len <= 15) return 21
-  return 17
+const fitFontMm = (length, widthMm, maxMm, minMm = 1.4) => {
+  const n = Math.max(Number(length) || 0, 1)
+  const size = widthMm / (AVG_GLYPH * n)
+  return Number(Math.max(minMm, Math.min(maxMm, size)).toFixed(2))
+}
+
+// Pallet value is shown on TWO lines:  TWEX-01  ->  "TWEX" / "01".
+const splitPalletNo = (value) => {
+  const text = String(value ?? '').trim()
+  if (!text) return ['—', '']
+
+  const dash = text.lastIndexOf('-')
+  if (dash > 0 && dash < text.length - 1) {
+    return [text.slice(0, dash).trim(), text.slice(dash + 1).trim()]
+  }
+
+  const m = text.match(/^([A-Za-z]+)(\d+)$/)
+  if (m) return [m[1], m[2]]
+
+  return [text, '']
+}
+
+const longestPalletLine = (value) =>
+  Math.max(...splitPalletNo(value).map((line) => line.length), 1)
+
+const getPalletNoFontSize = (value) => {
+  const n = longestPalletLine(value)
+
+  if (n <= 4) return 44
+  if (n <= 5) return 37
+  if (n <= 6) return 31
+  if (n <= 7) return 27
+  if (n <= 8) return 23
+  if (n <= 10) return 18
+  if (n <= 12) return 15
+  return 12
 }
 
 const getPalletNoScaleY = (value) => {
@@ -75,69 +94,50 @@ const getPalletNoScaleY = (value) => {
   return 1.15
 }
 
-// The 50x20mm compact label now stacks the pallet number ABOVE a QR
-// code (instead of the number filling the whole card), so the number
-// only has the top ~62% of the card's height to rotate into — about
-// 0.62x the room it had before. Sized down proportionally from
-// getPalletNoFontSize() so a value like "BR-03" still sits on one
-// line without overlapping the QR row underneath it.
+// Compact pallet number (mm): two lines in a ~13.4mm wide box.
 const getCompactPalletNoFontSize = (value) => {
-  // 50x20mm compact label:
-  // The pallet number is rotated -90deg. After rotation, the text width
-  // becomes the vertical space available inside the pallet box.
-  // Therefore ONLY the pallet-number font is reduced according to length.
-  // The rest of the label is not changed.
-  const len = String(value ?? '').trim().length
+  const n = longestPalletLine(value)
 
-  // Values are intentionally small enough to keep the COMPLETE pallet
-  // number visible on one line inside the 50x20mm pallet box.
-  if (len <= 2) return 9
-  if (len <= 3) return 8.5
-  if (len <= 5) return 8
-  if (len <= 7) return 7
-  if (len <= 9) return 6.5
-  if (len <= 12) return 5.8
-  if (len <= 15) return 5
-  return 4.5
+  if (n <= 4) return 4.0
+  if (n <= 5) return 3.4
+  if (n <= 6) return 2.9
+  if (n <= 7) return 2.6
+  if (n <= 8) return 2.25
+  if (n <= 10) return 1.8
+  if (n <= 12) return 1.5
+  return 1.2
 }
 
 const getPartNumberFontSize = (value, compact = false) => {
   const len = String(value ?? '').trim().length
 
   if (compact) {
-    // Physical 50x20mm label. The font is deliberately reduced only
-    // when the part number is long enough to exceed the compact area.
-    if (len <= 6) return 3.0
-    if (len <= 9) return 2.7
-    if (len <= 12) return 2.35
-    if (len <= 15) return 2.1
-    if (len <= 18) return 1.9
-    return 1.7
+    // part number now has the full row width; kept slightly condensed
+    return fitFontMm(len, 26, 4.2, 1.6)
   }
 
-  if (len <= 8) return 44
-  if (len <= 10) return 40
-  if (len <= 12) return 36
-  if (len <= 14) return 32
-  if (len <= 18) return 28
-  return 24
+  if (len <= 8) return 40
+  if (len <= 10) return 37
+  if (len <= 12) return 33
+  if (len <= 14) return 30
+  if (len <= 18) return 26
+  return 22
 }
 
 const getPartNameFontSize = (value, compact = false) => {
   const len = String(value ?? '').trim().length
 
   if (compact) {
-    // 50x20mm: allow the description to wrap to two lines instead
-    // of clipping it. Long descriptions get progressively smaller.
-    if (len <= 18) return 1.55
-    if (len <= 24) return 1.45
-    if (len <= 32) return 1.30
-    if (len <= 42) return 1.18
-    return 1.08
+    // wraps onto up to 3 lines inside ~21mm
+    if (len <= 14) return 2.3
+    if (len <= 20) return 2.0
+    if (len <= 28) return 1.8
+    if (len <= 40) return 1.55
+    return 1.3
   }
 
   if (len <= 20) return 32
-  if (len <= 32) return 28
+  if (len <= 28) return 28
   if (len <= 48) return 23
   return 18
 }
@@ -146,20 +146,10 @@ const getQtyFontSize = (value, compact = false) => {
   const digits = String(value ?? '').replace(/[^0-9]/g, '').length
 
   if (compact) {
-    // Physical 50x20mm label. Keep the quantity readable while making
-    // sure even a 7-digit pallet quantity remains completely visible.
-    if (digits <= 2) return 3.0
-    if (digits <= 3) return 2.7
-    if (digits <= 4) return 2.35
-    if (digits <= 5) return 2.05
-    if (digits <= 6) return 1.80
-    if (digits <= 7) return 1.60
-    return 1.40
+    // qty column is 11mm wide (minus left shift) -> ~9.4mm for the digits
+    return fitFontMm(digits, 9.4, 4.0, 1.4)
   }
 
-  // Master 150x100mm card. The 100x75mm label scales this card down
-  // to 66.67%, so 4-7 digit quantities must use a size that still fits
-  // inside the quantity column after scaling.
   if (digits <= 2) return 50
   if (digits <= 3) return 42
   if (digits <= 4) return 34
@@ -169,61 +159,42 @@ const getQtyFontSize = (value, compact = false) => {
   return 19
 }
 
-// The three label sizes the user can pick before printing/downloading.
-// widthMm/heightMm drive the physical output size (preview + @page + PDF).
+// The label sizes the user can pick before printing/downloading.
+//   layout 'landscape' -> 150x100 master design, drawn 1:1
+//   layout 'compact'   -> 50x25 geometry, drawn 1:1
+//   layout 'compact2x' -> the same 50x25 card scaled exactly 2x = 100x50
 const LABEL_SIZE_OPTIONS = [
-  {
-    value: '',
-    label: 'Select Label Size',
-    widthMm: 0,
-    heightMm: 0,
-  },
-  {
-    value: '150x100',
-    label: 'Size (100 x 150mm)',
-    widthMm: 150,
-    heightMm: 100,
-  },
-  {
-    value: '50x20',
-    label: 'Size (50 x 20mm)',
-    widthMm: 50,
-    heightMm: 20,
-  },
-  {
-    value: '100x75',
-    label: 'Size (100 x 75mm)',
-    widthMm: 100,
-    heightMm: 75,
-  },
+  { value: '', label: 'Select Label Size', widthMm: 0, heightMm: 0, layout: '' },
+  { value: '150x100', label: 'Size (150 x 100mm)', widthMm: 150, heightMm: 100, layout: 'landscape' },
+  { value: '100x50', label: 'Size (100 x 50mm)', widthMm: 100, heightMm: 50, layout: 'compact2x' },
+  { value: '50x25', label: 'Size (50 x 25mm)', widthMm: 50, heightMm: 25, layout: 'compact' },
 ]
 
-// The FIFO card is always designed/laid out at this one "master" size.
-// Every label size option is produced by scaling this exact master design to the chosen physical label. The X/Y
-// scale is independent so every physical label is completely filled; this
-// is important for 100x75 because its aspect ratio differs from 150x100.
+const SIZE_CHIP_NOTES = {
+  '150x100': 'Large · full details',
+  '100x50': 'Medium · standard',
+  '50x25': 'Small · compact',
+}
+
 const BASE_CARD_WIDTH_MM = 150
 const BASE_CARD_HEIGHT_MM = 100
 
-// Shared scale-to-fit math used both by the single-label preview and the
-// bulk-label preview, so both stay pixel-for-pixel identical.
 const computeCardTransform = (activeSize) => {
-  if (!activeSize) {
+  if (!activeSize || !activeSize.widthMm) {
     return { scaleX: 0, scaleY: 0, offsetXmm: 0, offsetYmm: 0 }
   }
 
-  // IMPORTANT: 100x75 is a different aspect ratio from the 150x100
-  // master card. Uniform scaling leaves ~8.33mm of empty space at the
-  // bottom, which is exactly why the signature was disappearing and the
-  // label looked vertically incomplete in the browser print preview.
-  // Scale independently in X/Y so the card fills the COMPLETE physical
-  // label frame. 150x100 remains 1:1 and 50x20 uses its compact layout.
-  const scaleX = activeSize.widthMm / BASE_CARD_WIDTH_MM
-  const scaleY = activeSize.heightMm / BASE_CARD_HEIGHT_MM
+  if (
+    activeSize.layout === 'portrait' ||
+    activeSize.layout === 'compact' ||
+    activeSize.layout === 'compact2x'
+  ) {
+    return { scaleX: 1, scaleY: 1, offsetXmm: 0, offsetYmm: 0 }
+  }
 
   return {
-    scaleX,
-    scaleY,
+    scaleX: activeSize.widthMm / BASE_CARD_WIDTH_MM,
+    scaleY: activeSize.heightMm / BASE_CARD_HEIGHT_MM,
     offsetXmm: 0,
     offsetYmm: 0,
   }
@@ -232,28 +203,11 @@ const computeCardTransform = (activeSize) => {
 // =========================================================
 // PRINT HELPERS
 // =========================================================
-//
-// ★ FIX: printing used to open a popup window and dump HTML into it
-// with document.write(). That produced the blank "about:blank" print
-// preview you saw: window.print() could fire before the <link
-// rel="stylesheet"> tags copied into the popup had actually finished
-// downloading, so the card had no layout/box styling yet and nothing
-// visible got painted. Popups can also be throttled/paused by the
-// browser before they finish rendering.
-//
-// The fix below prints through a hidden <iframe> that lives on the
-// current page instead. It shares the page's resource cache (styles
-// load instantly) and we explicitly wait for every stylesheet AND every
-// image to finish loading before calling print() — not just for
-// "readyState === complete", which fires too early for external CSS.
 
 const waitForImages = async (doc) => {
   const images = Array.from(doc.images || [])
   await Promise.all(
     images.map((img) => {
-      // `complete` can be true even when a browser finished a failed
-      // external-image request. Check naturalWidth as well so the first
-      // bulk label does not get printed before its QR image is available.
       if (img.complete && img.naturalWidth > 0) return Promise.resolve()
 
       return new Promise((resolve) => {
@@ -266,18 +220,12 @@ const waitForImages = async (doc) => {
 
         img.addEventListener('load', done, { once: true })
         img.addEventListener('error', done, { once: true })
-
-        // Never block printing forever because of one image.
         setTimeout(done, 5000)
       })
     })
   )
 }
 
-// Convert external images to data URLs before cloning/printing/capturing.
-// This is especially important for the QR image because bulk printing moves
-// the label into a new iframe and html2canvas is stricter about external
-// images than the normal browser renderer.
 const blobToDataUrl = (blob) =>
   new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -309,9 +257,6 @@ const inlineImagesInElement = async (root) => {
         img.setAttribute('src', dataUrl)
         img.removeAttribute('crossorigin')
       } catch (error) {
-        // Same-origin/local images and already-renderable external images can
-        // still be printed normally. We deliberately do not break the whole
-        // print job if one remote image refuses CORS.
         console.warn('Could not inline FIFO label image:', src, error)
       }
     })
@@ -323,24 +268,19 @@ const waitForStylesheets = async (doc) => {
   await Promise.all(
     links.map((link) => {
       try {
-        // If the sheet is already parsed, cssRules is accessible without throwing.
         if (link.sheet && link.sheet.cssRules) return Promise.resolve()
       } catch {
-        // Still loading (or cross-origin) — fall through to waiting on events.
+        // still loading (or cross-origin)
       }
       return new Promise((resolve) => {
         link.addEventListener('load', resolve, { once: true })
         link.addEventListener('error', resolve, { once: true })
-        // Safety net so we never hang forever on a slow/broken stylesheet.
         setTimeout(resolve, 2000)
       })
     })
   )
 }
 
-// Builds the <head> markup shared by both the single and bulk print
-// jobs: a copy of every stylesheet/style tag from the live app, plus
-// whatever page-specific CSS the caller passes in.
 const buildPrintHead = (title, extraStyle) => {
   const styleLinks = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
     .map((link) => `<link rel="stylesheet" href="${link.href}">`)
@@ -356,15 +296,8 @@ const buildPrintHead = (title, extraStyle) => {
     ${styleTags}
     <style>${extraStyle}</style>
     <style>
-      /* ★ FIX: the copied app-wide stylesheets above can contain
-         unrelated "@media print" rules from OTHER features (e.g. a
-         global rule that hides the whole page and reveals only some
-         other print target by id/class). Those rules get duplicated
-         into this iframe's document too and were silently wiping out
-         the FIFO card, producing the blank pages. This block is
-         intentionally the LAST <style> in <head>, so the cascade
-         always gives it the final say, and !important protects
-         against any specificity fight from the copied rules. */
+      /* Last <style> in <head>: protects the label from unrelated
+         "@media print" rules copied from other features of the app. */
       html, body {
         visibility: visible !important;
         display: block !important;
@@ -375,202 +308,10 @@ const buildPrintHead = (title, extraStyle) => {
         visibility: visible !important;
         opacity: 1 !important;
       }
-
-      /* =========================================================
-         FINAL 50 x 20mm COMPACT OVERRIDE
-         ---------------------------------------------------------
-         This is intentionally the LAST print rule. Older copied
-         application styles may contain earlier compact dimensions;
-         these rules guarantee that 50x20 print uses the same
-         geometry as the live preview and keeps dynamic values.
-      ========================================================= */
-      .fifo-card-compact {
-        width: 50mm !important;
-        height: 20mm !important;
-        min-width: 50mm !important;
-        min-height: 20mm !important;
-        max-width: 50mm !important;
-        max-height: 20mm !important;
-        padding: 0.65mm !important;
-        border: 0.45mm solid #172033 !important;
-        box-sizing: border-box !important;
-        display: flex !important;
-        flex-direction: column !important;
-        overflow: hidden !important;
-        transform: none !important;
-      }
-
-      .fifo-card-compact .fifo-card-header {
-        flex: 0 0 3.15mm !important;
-        height: 3.15mm !important;
-        min-height: 3.15mm !important;
-        margin: 0 0 0.28mm !important;
-        padding: 0 0 0.22mm !important;
-        border-bottom: 0.32mm solid #172033 !important;
-      }
-
-      .fifo-card-compact .fifo-logo-img {
-        height: 2.05mm !important;
-      }
-
-      .fifo-card-compact .fifo-logo-text {
-        font-size: 1.75mm !important;
-        color: #000000 !important;
-      }
-
-      .fifo-card-compact .fifo-title {
-        font-size: 3.05mm !important;
-        color: #000000 !important;
-      }
-
-      .fifo-card-compact .fifo-card-main {
-        flex: 1 1 auto !important;
-        min-height: 0 !important;
-        height: auto !important;
-        display: flex !important;
-        gap: 0.55mm !important;
-        overflow: hidden !important;
-      }
-
-      .fifo-card-compact .fifo-left-col {
-        flex: 0 0 9.5mm !important;
-        width: 9.5mm !important;
-        min-width: 9.5mm !important;
-        gap: 0.25mm !important;
-        overflow: hidden !important;
-      }
-
-      .fifo-card-compact .fifo-box-label {
-        flex: 0 0 2mm !important;
-        width: 2mm !important;
-        min-width: 2mm !important;
-        max-width: 2mm !important;
-        font-size: 0.72mm !important;
-      }
-
-      .fifo-card-compact .fifo-box-value,
-      .fifo-card-compact .fifo-pallet-number-text {
-        font-size: var(--fifo-compact-pallet-font-size, 7px) !important;
-      }
-
-      .fifo-card-compact .fifo-qr-box {
-        flex: 0 0 4.25mm !important;
-        width: 100% !important;
-        height: 4.25mm !important;
-        min-height: 4.25mm !important;
-        max-height: 4.25mm !important;
-      }
-
-      .fifo-card-compact .fifo-qr-img {
-        width: 4mm !important;
-        height: 4mm !important;
-        max-width: 4mm !important;
-        max-height: 4mm !important;
-        padding: 0 !important;
-      }
-
-      .fifo-card-compact .fifo-right-col {
-        flex: 1 1 auto !important;
-        width: 0 !important;
-        min-width: 0 !important;
-        padding-left: 0.55mm !important;
-        overflow: hidden !important;
-      }
-
-      .fifo-card-compact .fifo-meta-grid {
-        flex: 0 0 4.15mm !important;
-        height: 4.15mm !important;
-        min-height: 4.15mm !important;
-        grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr) minmax(0, 0.95fr) !important;
-        grid-template-rows: repeat(2, 1.85mm) !important;
-        gap: 0.08mm 0.25mm !important;
-        font-size: 0.75mm !important;
-      }
-
-      .fifo-card-compact .fifo-meta-grid > div {
-        height: 1.85mm !important;
-        font-size: 0.75mm !important;
-      }
-
-      .fifo-card-compact .fifo-meta-icon,
-      .fifo-card-compact .fifo-meta-grid .fifo-meta-label,
-      .fifo-card-compact .fifo-meta-grid .fifo-meta-value {
-        font-size: 0.75mm !important;
-        color: #000000 !important;
-      }
-
-      .fifo-card-compact .fifo-part-row {
-        flex: 1 1 auto !important;
-        min-height: 0 !important;
-        gap: 0.45mm !important;
-        padding: 0.35mm 0 0 !important;
-        overflow: hidden !important;
-      }
-
-      .fifo-card-compact .fifo-part-info {
-        min-width: 0 !important;
-        overflow: hidden !important;
-      }
-
-      .fifo-card-compact .fifo-part-label {
-        font-size: 0.72mm !important;
-        margin: 0 0 0.18mm !important;
-      }
-
-      .fifo-card-compact .fifo-part-value {
-        font-size: var(--fifo-compact-part-number-font-size, 2.35mm) !important;
-        line-height: 0.95 !important;
-        max-width: 100% !important;
-        overflow: hidden !important;
-        white-space: nowrap !important;
-      }
-
-      .fifo-card-compact .fifo-part-name {
-        font-size: var(--fifo-compact-part-name-font-size, 1.3mm) !important;
-        line-height: 1.04 !important;
-        max-width: 100% !important;
-        max-height: 3.0mm !important;
-        overflow: hidden !important;
-        white-space: normal !important;
-        word-break: break-word !important;
-      }
-
-      .fifo-card-compact .fifo-pallet-qty {
-        flex: 0 0 9.7mm !important;
-        width: 9.7mm !important;
-        min-width: 9.7mm !important;
-        max-width: 9.7mm !important;
-        overflow: hidden !important;
-      }
-
-      .fifo-card-compact .fifo-pallet-qty .fifo-part-label {
-        font-size: 0.64mm !important;
-        line-height: 0.95 !important;
-      }
-
-      .fifo-card-compact .fifo-qty-value {
-        font-size: var(--fifo-compact-qty-font-size, 1.6mm) !important;
-        line-height: 1 !important;
-        white-space: nowrap !important;
-      }
-
-      .fifo-card-compact .fifo-card-footer {
-        flex: 0 0 1.35mm !important;
-        height: 1.35mm !important;
-        min-height: 1.35mm !important;
-        gap: 0.35mm !important;
-        padding: 0.08mm 0.25mm 0 !important;
-      }
-
-      .fifo-card-compact .fifo-sign {
-        font-size: 0.62mm !important;
-      }
     </style>
   `
 }
 
-// Writes bodyHtml/headHtml into a hidden iframe, waits for styles and
-// images to be ready, then triggers the browser print dialog on it.
 const printHtmlDocument = (bodyHtml, headHtml) =>
   new Promise((resolve) => {
     const iframe = document.createElement('iframe')
@@ -598,7 +339,6 @@ const printHtmlDocument = (bodyHtml, headHtml) =>
       try {
         await waitForStylesheets(doc)
         await waitForImages(doc)
-        // One more frame so layout/paint has definitely settled.
         await new Promise((r) => setTimeout(r, 300))
         iframe.contentWindow.focus()
         iframe.contentWindow.print()
@@ -615,10 +355,33 @@ const printHtmlDocument = (bodyHtml, headHtml) =>
       runPrint()
     } else {
       iframe.onload = runPrint
-      // Safety net in case the iframe's load event never fires.
       setTimeout(runPrint, 2500)
     }
   })
+
+// =========================================================
+// SMALL UI PIECES (label modals)
+// =========================================================
+
+// Label size picker — big tappable chips instead of a plain dropdown.
+const LabelSizePicker = ({ value, onChange }) => (
+  <div className="grn-size-picker">
+    <div className="grn-size-picker-title">Label Size</div>
+    <div className="grn-size-chips">
+      {LABEL_SIZE_OPTIONS.filter((s) => s.value).map((s) => (
+        <button
+          type="button"
+          key={s.value}
+          className={`grn-size-chip ${value === s.value ? 'active' : ''}`}
+          onClick={() => onChange(s.value)}
+        >
+          <span className="grn-size-chip-main">{s.widthMm} × {s.heightMm} mm</span>
+          <span className="grn-size-chip-sub">{SIZE_CHIP_NOTES[s.value]}</span>
+        </button>
+      ))}
+    </div>
+  </div>
+)
 
 const GRNPost = () => {
   const navigate = useNavigate()
@@ -629,27 +392,19 @@ const GRNPost = () => {
   const [detailsGrn, setDetailsGrn] = useState(null)
   const [showDetails, setShowDetails] = useState(false)
 
-  // Read-only "GRN Details" modal — this is what the eye/View icon on a
-  // line opens, instead of jumping straight to the printable FIFO label.
   const [viewLineTarget, setViewLineTarget] = useState(null)
   const [showLineDetails, setShowLineDetails] = useState(false)
 
-  const [labelGrn, setLabelGrn] = useState(null) // { grnNumber, supplierInvoiceNumber, supplierInvoiceDate, line: {...} }
+  const [labelGrn, setLabelGrn] = useState(null)
   const [showLabel, setShowLabel] = useState(false)
 
-  // Chosen label size, defaults to the first option.
   const [labelSize, setLabelSize] = useState('')
 
-  // Rows checked in the GRN Details items table, used to drive Bulk
-  // Post / Bulk Print. Reset (via toggleClearSelectedLines) after any
-  // bulk action so stale selections don't linger.
   const [selectedLines, setSelectedLines] = useState([])
   const [toggleClearSelectedLines, setToggleClearSelectedLines] = useState(false)
   const [bulkPosting, setBulkPosting] = useState(false)
 
-  // Bulk FIFO label modal — same card design as the single-label modal,
-  // one frame per selected line, sized/scaled together.
-  const [bulkLabelGrn, setBulkLabelGrn] = useState(null) // { grnNumber, supplierInvoiceNumber, supplierInvoiceDate, totalQuantity, lines: [...] }
+  const [bulkLabelGrn, setBulkLabelGrn] = useState(null)
   const [showBulkLabel, setShowBulkLabel] = useState(false)
   const [bulkLabelSize, setBulkLabelSize] = useState('')
 
@@ -733,19 +488,13 @@ const GRNPost = () => {
     setShowLabel(true)
   }
 
-  // Bulk GRN Post — posts every currently-unposted line the user has
-  // checked, in one API call. Successes and failures are reported back
-  // per-line (e.g. a part with no Store Master pallet config won't
-  // block the rest of the batch), then the freshly posted lines are
-  // offered straight into the Bulk Print view.
+  // Bulk GRN Post — posts every checked unposted line in one API call.
   const handleBulkPost = async () => {
-    // No checkbox selected
     if (selectedLines.length === 0) {
       toast.warning('Please select at least one record')
       return
     }
 
-    // Check if any selected record is already posted
     const alreadyPosted = selectedLines.filter((l) => l.isPosted)
 
     if (alreadyPosted.length > 0) {
@@ -755,7 +504,6 @@ const GRNPost = () => {
       return
     }
 
-    // Only unposted records can be posted
     const targets = selectedLines.filter((l) => !l.isPosted)
 
     if (targets.length === 0) {
@@ -775,9 +523,7 @@ const GRNPost = () => {
       const errorList = res.data?.errors || []
 
       if (postedList.length > 0) {
-        toast.success(
-          `${postedList.length} item(s) posted successfully`
-        )
+        toast.success(`${postedList.length} item(s) posted successfully`)
       }
 
       errorList.forEach((e) =>
@@ -794,43 +540,29 @@ const GRNPost = () => {
       setToggleClearSelectedLines((prev) => !prev)
 
       if (postedList.length > 0) {
-        const postedIds = new Set(
-          postedList.map((p) => p.id)
-        )
+        const postedIds = new Set(postedList.map((p) => p.id))
 
         const postedLines = refreshed.data.lines.filter(
           (l) => postedIds.has(l.id)
         )
 
-        openBulkLabel(
-          refreshed.data,
-          postedLines
-        )
+        openBulkLabel(refreshed.data, postedLines)
       }
-
     } catch (err) {
-      toast.error(
-        getErrorMessage(err, 'Bulk Post Failed')
-      )
+      toast.error(getErrorMessage(err, 'Bulk Post Failed'))
     } finally {
       setBulkPosting(false)
     }
   }
 
-  // Bulk GRN Print — opens the multi-label preview for every
-  // already-posted line the user has checked, without touching anything
-  // on the server (pure reprint of existing pallet/FIFO numbers).
+  // Bulk GRN Print — pure reprint of already-posted lines.
   const handleBulkPrint = () => {
-    // No checkbox selected
     if (selectedLines.length === 0) {
       toast.warning('Please select at least one record')
       return
     }
 
-    // Check if any selected record is not posted
-    const unposted = selectedLines.filter(
-      (l) => !l.isPosted
-    )
+    const unposted = selectedLines.filter((l) => !l.isPosted)
 
     if (unposted.length > 0) {
       toast.warning(
@@ -839,10 +571,7 @@ const GRNPost = () => {
       return
     }
 
-    // Only posted records can be printed
-    const targets = selectedLines.filter(
-      (l) => l.isPosted
-    )
+    const targets = selectedLines.filter((l) => l.isPosted)
 
     if (targets.length === 0) {
       toast.warning('Please select at least one posted record')
@@ -864,8 +593,6 @@ const GRNPost = () => {
     setShowBulkLabel(true)
   }
 
-  // The View/eye action opens the read-only GRN Details modal for this
-  // line, instead of jumping straight to the printable FIFO label.
   const handleViewLine = (line) => {
     setViewLineTarget(line)
     setShowLineDetails(true)
@@ -874,8 +601,6 @@ const GRNPost = () => {
   const handleEditGrn = () => {
     if (!detailsGrn) return
 
-    // The update API replaces all lines, so don't allow editing
-    // if any line has already been posted.
     if (detailsGrn.isPosted || detailsGrn.lines?.some((line) => line.isPosted)) {
       toast.info('A posted GRN cannot be edited')
       return
@@ -890,8 +615,6 @@ const GRNPost = () => {
     })
   }
 
-  // From inside the GRN Details modal, the user can still jump to the
-  // printable label explicitly (only meaningful once posted).
   const handleOpenLabelFromDetails = () => {
     if (!viewLineTarget?.isPosted) {
       toast.info('This item has not been posted yet — nothing to print')
@@ -935,6 +658,11 @@ const GRNPost = () => {
 
     const size = LABEL_SIZE_OPTIONS.find((s) => s.value === labelSize) || LABEL_SIZE_OPTIONS[0]
 
+    if (!size.widthMm) {
+      toast.warning('Please select a label size')
+      return
+    }
+
     try {
       await inlineImagesInElement(node)
 
@@ -946,9 +674,6 @@ const GRNPost = () => {
 
       const imgData = canvas.toDataURL('image/png')
 
-      // The PDF page is sized to the chosen label size (mm) rather than
-      // derived from the canvas pixel dimensions, so Download always
-      // matches what Print produces.
       const pdf = new jsPDF({
         orientation: size.widthMm >= size.heightMm ? 'landscape' : 'portrait',
         unit: 'mm',
@@ -961,6 +686,123 @@ const GRNPost = () => {
       toast.error('Failed to generate the label PDF for download')
     }
   }
+
+  // Page-level print CSS (page size, centering, page breaks only —
+  // ALL label geometry lives in grnPost.css).
+  const buildSinglePrintCss = (size) => `
+    @page {
+      size: ${size.widthMm}mm ${size.heightMm}mm;
+      margin: 0;
+    }
+    html, body {
+      margin: 0 !important;
+      padding: 0 !important;
+      width: ${size.widthMm}mm;
+      height: ${size.heightMm}mm;
+      background: #ffffff !important;
+      overflow: hidden !important;
+    }
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .print-container {
+      width: ${size.widthMm}mm;
+      height: ${size.heightMm}mm;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      position: relative;
+      background: #ffffff;
+    }
+    .fifo-label-frame {
+      width: ${size.widthMm}mm !important;
+      height: ${size.heightMm}mm !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      overflow: hidden !important;
+      position: relative !important;
+      background: #ffffff !important;
+    }
+    .fifo-card {
+      print-color-adjust: exact;
+      -webkit-print-color-adjust: exact;
+    }
+    @media print {
+      html, body {
+        width: ${size.widthMm}mm !important;
+        height: ${size.heightMm}mm !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+      }
+      .print-container {
+        width: ${size.widthMm}mm !important;
+        height: ${size.heightMm}mm !important;
+      }
+    }
+  `
+
+  const buildBulkPrintCss = (size) => `
+    @page {
+      size: ${size.widthMm}mm ${size.heightMm}mm;
+      margin: 0;
+    }
+    html, body {
+      margin: 0 !important;
+      padding: 0 !important;
+      background: #ffffff !important;
+    }
+    body {
+      width: ${size.widthMm}mm;
+      margin: 0;
+      padding: 0;
+    }
+    .bulk-print-page {
+      width: ${size.widthMm}mm;
+      height: ${size.heightMm}mm;
+      margin: 0 !important;
+      padding: 0 !important;
+      overflow: hidden;
+      position: relative;
+      page-break-after: always;
+      break-after: page;
+      background: #ffffff;
+    }
+    .bulk-print-page:last-child {
+      page-break-after: auto;
+      break-after: auto;
+    }
+    .fifo-label-frame {
+      width: ${size.widthMm}mm !important;
+      height: ${size.heightMm}mm !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      overflow: hidden !important;
+      position: relative !important;
+      background: #ffffff !important;
+    }
+    .fifo-card {
+      print-color-adjust: exact;
+      -webkit-print-color-adjust: exact;
+    }
+    @media print {
+      html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+      }
+      .bulk-print-page {
+        page-break-after: always;
+        break-after: page;
+      }
+      .bulk-print-page:last-child {
+        page-break-after: auto;
+        break-after: auto;
+      }
+    }
+  `
 
   // =========================================================
   // SINGLE LABEL PRINT
@@ -989,347 +831,7 @@ const GRNPost = () => {
     clonedLabel.removeAttribute('id')
     await inlineImagesInElement(clonedLabel)
 
-    const headHtml = buildPrintHead('FIFO GRN Label', `
-      @page {
-        size: ${size.widthMm}mm ${size.heightMm}mm;
-        margin: 0;
-      }
-
-      /* 50 x 20 mm compact label.
-         Match the customer sample: the FIFO PALLET NO strip stays
-         vertical, while BR-04 / pallet number stays horizontal. */
-      ${labelSize === '50x20' ? `
-      @page {
-        size: 50mm 20mm;
-        margin: 0;
-      }
-
-      /* FINAL 50x20 PRINT FIX: force the compact layout to win over any
-         copied application styles in the print window. */
-      .fifo-card-compact {
-        width: 50mm !important;
-        height: 20mm !important;
-        min-width: 50mm !important;
-        min-height: 20mm !important;
-        max-width: 50mm !important;
-        max-height: 20mm !important;
-        box-sizing: border-box !important;
-        overflow: hidden !important;
-        display: flex !important;
-        flex-direction: column !important;
-        transform: none !important;
-      }
-
-      .fifo-card-compact .fifo-card-header {
-        display: flex !important;
-        flex: 0 0 3.35mm !important;
-        height: 3.35mm !important;
-        min-height: 3.35mm !important;
-      }
-
-      .fifo-card-compact .fifo-card-main {
-        display: flex !important;
-        flex: 1 1 auto !important;
-        min-height: 0 !important;
-        height: auto !important;
-        overflow: hidden !important;
-      }
-
-      .fifo-card-compact .fifo-left-col {
-        display: flex !important;
-        flex-direction: column !important;
-        flex: 0 0 13mm !important;
-        width: 13mm !important;
-        min-width: 13mm !important;
-        min-height: 0 !important;
-      }
-
-      .fifo-card-compact .fifo-right-col {
-        display: flex !important;
-        flex: 1 1 auto !important;
-        min-width: 0 !important;
-        height: 100% !important;
-        overflow: hidden !important;
-      }
-
-      .fifo-card-compact .fifo-meta-grid {
-        display: grid !important;
-        flex: 0 0 4.25mm !important;
-        height: 4.25mm !important;
-        min-height: 4.25mm !important;
-        grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr) minmax(0, 0.95fr) !important;
-        grid-template-rows: repeat(2, 2mm) !important;
-        overflow: hidden !important;
-        font-size: 1.02mm !important;
-      }
-
-      .fifo-card-compact .fifo-meta-grid > div {
-        display: flex !important;
-        align-items: center !important;
-        min-width: 0 !important;
-        width: 100% !important;
-        height: 2mm !important;
-        overflow: hidden !important;
-        white-space: nowrap !important;
-        font-size: 1.02mm !important;
-      }
-
-      .fifo-card-compact .fifo-part-row {
-        display: flex !important;
-        flex: 1 1 auto !important;
-        min-height: 0 !important;
-        height: auto !important;
-        overflow: hidden !important;
-      }
-
-      .fifo-card-compact .fifo-part-row > div:first-child {
-        min-width: 0 !important;
-        overflow: hidden !important;
-      }
-
-      .fifo-card-compact .fifo-part-value {
-        font-size: var(--fifo-compact-part-number-font-size, 2.35mm) !important;
-        line-height: 0.95 !important;
-        max-width: 100% !important;
-        overflow: hidden !important;
-        white-space: nowrap !important;
-      }
-
-      .fifo-card-compact .fifo-part-name {
-        font-size: 1.45mm !important;
-        line-height: 1.05 !important;
-        max-height: 3.05mm !important;
-        overflow: hidden !important;
-        white-space: normal !important;
-        word-break: break-word !important;
-      }
-
-      .fifo-card-compact .fifo-pallet-qty {
-        flex: 0 0 6.6mm !important;
-        min-width: 6.6mm !important;
-        width: 6.6mm !important;
-        overflow: hidden !important;
-      }
-
-      .fifo-card-compact .fifo-qty-value {
-        font-size: var(--fifo-compact-qty-font-size, 1.6mm) !important;
-        line-height: 1 !important;
-        white-space: nowrap !important;
-      }
-
-      .fifo-card-compact .fifo-card-footer {
-        display: flex !important;
-        flex: 0 0 1.55mm !important;
-        height: 1.55mm !important;
-        min-height: 1.55mm !important;
-      }
-
-      .fifo-card-compact .fifo-pallet-number-text {
-        font-size: var(--fifo-pallet-font-size, 10px) !important;
-        transform: rotate(-90deg) scaleY(2.5) !important;
-        transform-origin: center center !important;
-        rotate: none !important;
-        scale: none !important;
-      }
-
-      /* 50x20 print: keep pallet value visible and center FIFO CARD. */
-      .fifo-card-compact .fifo-box-value {
-        display: flex !important;
-        visibility: visible !important;
-      }
-      .fifo-card-compact .fifo-card-header {
-        position: relative !important;
-      }
-      .fifo-card-compact .fifo-title-wrap {
-        position: absolute !important;
-        left: 50% !important;
-        top: 50% !important;
-        transform: translate(-50%, -50%) !important;
-        width: auto !important;
-        max-width: 60% !important;
-        gap: 0 !important;
-        justify-content: center !important;
-        overflow: visible !important;
-        z-index: 2 !important;
-      }
-      .fifo-card-compact .fifo-meta-grid .fifo-meta-label {
-        font-weight: 700 !important;
-        color: #64748b !important;
-      }
-      .fifo-card-compact .fifo-meta-grid .fifo-meta-value {
-        font-weight: 400 !important;
-        color: #1f2937 !important;
-      }
-
-      .fifo-card-compact .fifo-compact-label-text {
-        transform: rotate(-90deg) !important;
-        rotate: none !important;
-      }
-      ` : ''}
-
-      /* FINAL COMPACT GEOMETRY — same dimensions as the live preview */
-      ${labelSize === '50x20' ? `
-      .fifo-card-compact .fifo-card-header { flex-basis: 3.05mm !important; height: 3.05mm !important; min-height: 3.05mm !important; }
-      .fifo-card-compact .fifo-card-main { height: 0 !important; min-height: 0 !important; overflow: hidden !important; gap: 0.65mm !important; }
-      .fifo-card-compact .fifo-left-col { flex: 0 0 10.4mm !important; width: 10.4mm !important; min-width: 10.4mm !important; }
-      .fifo-card-compact .fifo-qr-box { flex-basis: 4.15mm !important; height: 4.15mm !important; min-height: 4.15mm !important; max-height: 4.15mm !important; }
-      .fifo-card-compact .fifo-qr-img { width: 3.85mm !important; height: 3.85mm !important; max-width: 3.85mm !important; max-height: 3.85mm !important; }
-      .fifo-card-compact .fifo-right-col { width: 0 !important; min-width: 0 !important; padding-left: 0.55mm !important; }
-      .fifo-card-compact .fifo-meta-grid { flex-basis: 3.65mm !important; height: 3.65mm !important; min-height: 3.65mm !important; grid-template-rows: repeat(2, 1.65mm) !important; font-size: 0.9mm !important; }
-      .fifo-card-compact .fifo-meta-grid > div { height: 1.65mm !important; font-size: 0.9mm !important; }
-      .fifo-card-compact .fifo-part-row { height: 0 !important; min-height: 0 !important; padding-top: 0.15mm !important; }
-      .fifo-card-compact .fifo-part-value { font-size: var(--fifo-compact-part-number-font-size, 2.35mm) !important; line-height: 0.95 !important; }
-      .fifo-card-compact .fifo-part-name { font-size: 1.45mm !important; line-height: 1.05 !important; max-height: 3.05mm !important; }
-      .fifo-card-compact .fifo-pallet-qty { flex-basis: 6.6mm !important; min-width: 6.6mm !important; width: 6.6mm !important; }
-      .fifo-card-compact .fifo-qty-value { font-size: var(--fifo-compact-qty-font-size, 1.6mm) !important; }
-      .fifo-card-compact .fifo-card-footer { flex-basis: 1.35mm !important; height: 1.35mm !important; min-height: 1.35mm !important; }
-      ` : ''}
-
-      /* =========================================================
-         100 x 75 BULK PRINT FIX
-         Keep the card inside the exact physical label and force the
-         signature footer to stay visible.
-         ========================================================= */
-      ${bulkLabelSize === '100x75' ? `
-      .fifo-bulk-label-frame-100x75 .fifo-card:not(.fifo-card-compact) {
-        overflow: hidden !important;
-        box-sizing: border-box !important;
-      }
-
-      .fifo-bulk-label-frame-100x75 .fifo-card-footer {
-        position: absolute !important;
-        left: 8px !important;
-        right: 8px !important;
-        bottom: 5px !important;
-        width: auto !important;
-        min-height: 12px !important;
-        height: auto !important;
-        margin: 0 !important;
-        padding: 4px 0 0 !important;
-        display: flex !important;
-        justify-content: flex-end !important;
-        align-items: center !important;
-        gap: 70px !important;
-        overflow: visible !important;
-        z-index: 20 !important;
-      }
-
-      .fifo-bulk-label-frame-100x75 .fifo-sign {
-        display: block !important;
-        width: 95px !important;
-        min-width: 95px !important;
-        font-size: 9px !important;
-        line-height: 1 !important;
-        font-weight: 700 !important;
-        text-align: center !important;
-        white-space: nowrap !important;
-        overflow: visible !important;
-      }
-
-      .fifo-bulk-label-frame-100x75 .fifo-qr-box {
-        display: flex !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-        align-items: center !important;
-        justify-content: center !important;
-      }
-
-      .fifo-bulk-label-frame-100x75 .fifo-qr-img {
-        display: block !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-      }
-      ` : ''}
-
-      /* =========================================================
-         100 x 75 SINGLE PRINT FIX
-         ========================================================= */
-      ${labelSize === '100x75' ? `
-      .fifo-label-frame-100x75 .fifo-card:not(.fifo-card-compact) {
-        overflow: hidden !important;
-        box-sizing: border-box !important;
-      }
-
-      .fifo-label-frame-100x75 .fifo-card-footer {
-        position: absolute !important;
-        left: 8px !important;
-        right: 8px !important;
-        bottom: 5px !important;
-        width: auto !important;
-        min-height: 12px !important;
-        height: auto !important;
-        margin: 0 !important;
-        padding: 4px 0 0 !important;
-        display: flex !important;
-        justify-content: flex-end !important;
-        align-items: center !important;
-        gap: 70px !important;
-        overflow: visible !important;
-        z-index: 20 !important;
-      }
-
-      .fifo-label-frame-100x75 .fifo-sign {
-        display: block !important;
-        width: 95px !important;
-        min-width: 95px !important;
-        font-size: 9px !important;
-        line-height: 1 !important;
-        font-weight: 700 !important;
-        text-align: center !important;
-        white-space: nowrap !important;
-        overflow: visible !important;
-      }
-      ` : ''}
-
-      html, body {
-        margin: 0 !important;
-        padding: 0 !important;
-        width: ${size.widthMm}mm;
-        height: ${size.heightMm}mm;
-        background: #ffffff !important;
-        overflow: hidden !important;
-      }
-      body {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-      .print-container {
-        width: ${size.widthMm}mm;
-        height: ${size.heightMm}mm;
-        margin: 0;
-        padding: 0;
-        overflow: hidden;
-        position: relative;
-        background: #ffffff;
-      }
-      .fifo-label-frame {
-        width: ${size.widthMm}mm !important;
-        height: ${size.heightMm}mm !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        overflow: hidden !important;
-        position: relative !important;
-        background: #ffffff !important;
-      }
-      .fifo-card {
-        print-color-adjust: exact;
-        -webkit-print-color-adjust: exact;
-      }
-      @media print {
-        html, body {
-          width: ${size.widthMm}mm !important;
-          height: ${size.heightMm}mm !important;
-          margin: 0 !important;
-          padding: 0 !important;
-          overflow: hidden !important;
-        }
-        .print-container {
-          width: ${size.widthMm}mm !important;
-          height: ${size.heightMm}mm !important;
-        }
-      }
-    `)
+    const headHtml = buildPrintHead('FIFO GRN Label', buildSinglePrintCss(size))
 
     await printHtmlDocument(`<div class="print-container">${clonedLabel.outerHTML}</div>`, headHtml)
   }
@@ -1370,139 +872,15 @@ const GRNPost = () => {
 
     const labelsHtml = labelHtmlParts.join('')
 
-    const headHtml = buildPrintHead(`FIFO GRN Labels - ${bulkLabelGrn.grnNumber}`, `
-      @page {
-        size: ${size.widthMm}mm ${size.heightMm}mm;
-        margin: 0;
-      }
-
-      ${bulkLabelSize === '50x20' ? `
-      /* FINAL 50x20 BULK PRINT FIX */
-      .fifo-card-compact {
-        width: 50mm !important;
-        height: 20mm !important;
-        min-width: 50mm !important;
-        min-height: 20mm !important;
-        max-width: 50mm !important;
-        max-height: 20mm !important;
-        box-sizing: border-box !important;
-        overflow: hidden !important;
-        display: flex !important;
-        flex-direction: column !important;
-        transform: none !important;
-      }
-      .fifo-card-compact .fifo-card-main {
-        display: flex !important;
-        flex: 1 1 auto !important;
-        min-height: 0 !important;
-        overflow: hidden !important;
-      }
-      .fifo-card-compact .fifo-meta-grid {
-        display: grid !important;
-        grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr) minmax(0, 0.95fr) !important;
-        grid-template-rows: repeat(2, 2mm) !important;
-        flex: 0 0 4.25mm !important;
-        height: 4.25mm !important;
-        min-height: 4.25mm !important;
-        overflow: hidden !important;
-      }
-      .fifo-card-compact .fifo-meta-grid > div {
-        min-width: 0 !important;
-        overflow: hidden !important;
-        white-space: nowrap !important;
-        font-size: 1.02mm !important;
-      }
-      .fifo-card-compact .fifo-part-row {
-        display: flex !important;
-        flex: 1 1 auto !important;
-        min-height: 0 !important;
-        overflow: hidden !important;
-      }
-      .fifo-card-compact .fifo-part-value {
-        font-size: var(--fifo-compact-part-number-font-size, 2.35mm) !important;
-        line-height: 0.95 !important;
-        overflow: hidden !important;
-        white-space: nowrap !important;
-      }
-      .fifo-card-compact .fifo-part-name {
-        font-size: var(--fifo-compact-part-name-font-size, 1.3mm) !important;
-        line-height: 1 !important;
-        max-height: 3.8mm !important;
-        overflow: hidden !important;
-      }
-      .fifo-card-compact .fifo-pallet-qty {
-        flex: 0 0 7.2mm !important;
-        width: 7.2mm !important;
-        min-width: 7.2mm !important;
-        overflow: hidden !important;
-      }
-      .fifo-card-compact .fifo-qty-value {
-        font-size: var(--fifo-compact-qty-font-size, 1.6mm) !important;
-        white-space: nowrap !important;
-      }
-      ` : ''}
-
-      html, body {
-        margin: 0 !important;
-        padding: 0 !important;
-        background: #ffffff !important;
-      }
-      body {
-        width: ${size.widthMm}mm;
-        margin: 0;
-        padding: 0;
-      }
-      .bulk-print-page {
-        width: ${size.widthMm}mm;
-        height: ${size.heightMm}mm;
-        margin: 0 !important;
-        padding: 0 !important;
-        overflow: hidden;
-        position: relative;
-        page-break-after: always;
-        break-after: page;
-        background: #ffffff;
-      }
-      .bulk-print-page:last-child {
-        page-break-after: auto;
-        break-after: auto;
-      }
-      .fifo-label-frame {
-        width: ${size.widthMm}mm !important;
-        height: ${size.heightMm}mm !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        overflow: hidden !important;
-        position: relative !important;
-        background: #ffffff !important;
-      }
-      .fifo-card {
-        print-color-adjust: exact;
-        -webkit-print-color-adjust: exact;
-      }
-      @media print {
-        html, body {
-          margin: 0 !important;
-          padding: 0 !important;
-          background: #ffffff !important;
-        }
-        .bulk-print-page {
-          page-break-after: always;
-          break-after: page;
-        }
-        .bulk-print-page:last-child {
-          page-break-after: auto;
-          break-after: auto;
-        }
-      }
-    `)
+    const headHtml = buildPrintHead(
+      `FIFO GRN Labels - ${bulkLabelGrn.grnNumber}`,
+      buildBulkPrintCss(size),
+    )
 
     await printHtmlDocument(labelsHtml, headHtml)
   }
 
-  // Bulk download — captures each label frame individually (by its own
-  // id) and stitches them into one multi-page PDF, one page per
-  // selected line, all at the chosen label size.
+  // Bulk download — one PDF page per selected line.
   const handleDownloadBulkLabel = async () => {
     if (!bulkLabelGrn?.lines?.length) {
       toast.error('No labels to download')
@@ -1510,6 +888,12 @@ const GRNPost = () => {
     }
 
     const size = LABEL_SIZE_OPTIONS.find((s) => s.value === bulkLabelSize) || LABEL_SIZE_OPTIONS[0]
+
+    if (!size.widthMm) {
+      toast.warning('Please select a label size')
+      return
+    }
+
     const orientation = size.widthMm >= size.heightMm ? 'landscape' : 'portrait'
 
     try {
@@ -1551,136 +935,129 @@ const GRNPost = () => {
 
   const firstLine = labelGrn?.line
 
-  // Current label size's mm dimensions, used for the live on-screen
-  // preview / print / download frame.
-  const activeSize = LABEL_SIZE_OPTIONS.find(
-    (s) => s.value === labelSize
-  )
-
-  // Scale the master card to completely fill the selected physical label.
-  // 100x75 uses independent X/Y scaling so no blank lower area remains.
+  const activeSize = LABEL_SIZE_OPTIONS.find((s) => s.value === labelSize)
   const { scaleX: cardScaleX, scaleY: cardScaleY, offsetXmm: cardOffsetXmm, offsetYmm: cardOffsetYmm } = computeCardTransform(activeSize)
 
-  // Same scale-to-fit math, driven by the bulk modal's own size selector
-  // so a user can pick a different label size for a bulk run than
-  // whatever was last used for a single reprint.
   const bulkActiveSize = LABEL_SIZE_OPTIONS.find((s) => s.value === bulkLabelSize)
   const { scaleX: bulkCardScaleX, scaleY: bulkCardScaleY, offsetXmm: bulkCardOffsetXmm, offsetYmm: bulkCardOffsetYmm } = computeCardTransform(bulkActiveSize)
 
-  // Renders the actual FIFO card markup for one line. Shared by both the
-  // single-label modal and the bulk-label modal so the design can never
-  // drift between the two — only the wrapping frame differs.
-  const renderFifoCard = (grnMeta, line, scaleX, scaleY, offsetXmm, offsetYmm, compact = false) => (
-    <div
-      className={`fifo-card ${compact ? 'fifo-card-compact' : ''}`}
-      style={
-        compact
-          ? {
-              width: '50mm',
-              height: '20mm',
-              transform: 'none',
-              transformOrigin: 'top left',
-              boxSizing: 'border-box',
-            }
-          : {
-              width: `${BASE_CARD_WIDTH_MM}mm`,
-              height: `${BASE_CARD_HEIGHT_MM}mm`,
-              // ★ FIX: transform-origin must be the top-left corner for the
-              // translate+scale offsets computed in computeCardTransform() to
-              // land correctly. Without this, the browser scales from the
-              // element's center by default, which can shift/clip the card
-              // for any label size other than the 150x100mm base size.
-              transformOrigin: 'top left',
-              transform: `translate(${offsetXmm}mm, ${offsetYmm}mm) scaleX(${scaleX}) scaleY(${scaleY})`,
-            }
-      }
-    >
-      <div className="fifo-card-header">
-        <div className="fifo-logo-wrap">
-          <img src="/GLOVIS.png" alt="Leewon" className="fifo-logo-img" crossOrigin="anonymous" />
-          <span className="fifo-logo-text">LEEWON</span>
-        </div>
-        <div className="fifo-title-wrap">
-         
-          <span className="fifo-title">FIFO CARD</span>
-         
-        </div>
-      </div>
+  // Renders the FIFO card markup for one line. Shared by the single and
+  // bulk modals so the design can never drift between the two.
+  // layout: 'landscape' | 'portrait' | 'compact' | 'compact2x'
+  const renderFifoCard = (grnMeta, line, scaleX, scaleY, offsetXmm, offsetYmm, layout = 'landscape') => {
+    const compact = layout === 'compact' || layout === 'compact2x'
+    const portrait = layout === 'portrait'
 
-      <div className="fifo-card-main">
-        <div className="fifo-left-col">
-          <div className="fifo-box">
-            <div className="fifo-box-label"><span className="fifo-compact-label-text">FIFO PALLET NO</span></div>
-            {/* ★ Bigger by default (see .fifo-box-value in grnPost.css).
-                In the 50x20mm compact label the number sits above a QR
-                code (getCompactPalletNoFontSize), so it has less room
-                than the full-size layouts (getPalletNoFontSize). */}
-            <div className="fifo-box-value">
-              <span
-                className="fifo-pallet-number-text"
-                style={{
-                  fontSize: compact
-                    ? `${getCompactPalletNoFontSize(line?.palletNo)}px`
-                    : `${getPalletNoFontSize(line?.palletNo)}px`,
-                  // Final CSS reads this variable for BOTH preview and print,
-                  // so the pallet code stays dynamic for values such as
-                  // TWN-04, TWEX-70, BR-01, etc.
-                  '--fifo-pallet-font-size': compact
-                    ? `${getCompactPalletNoFontSize(line?.palletNo)}px`
-                    : `${getPalletNoFontSize(line?.palletNo)}px`,
-                  '--fifo-pallet-scale-y': `${getPalletNoScaleY(line?.palletNo)}`,
-                  '--fifo-compact-pallet-font-size': compact
-                    ? `${getCompactPalletNoFontSize(line?.palletNo)}px`
-                    : undefined,
-                }}
-              >
-                {line?.palletNo || '—'}
-              </span>
+    const cardStyle = compact
+      ? {
+          width: '50mm',
+          height: '25mm',
+          // 100x50 = the 50x25 card scaled exactly 2x (same 2:1 shape)
+          transform: layout === 'compact2x' ? 'scale(2)' : 'none',
+          transformOrigin: 'top left',
+          boxSizing: 'border-box',
+        }
+      : portrait
+        ? {
+            width: '100mm',
+            height: '150mm',
+            transform: 'none',
+            transformOrigin: 'top left',
+            boxSizing: 'border-box',
+          }
+        : {
+            width: `${BASE_CARD_WIDTH_MM}mm`,
+            height: `${BASE_CARD_HEIGHT_MM}mm`,
+            transformOrigin: 'top left',
+            transform: `translate(${offsetXmm}mm, ${offsetYmm}mm) scaleX(${scaleX}) scaleY(${scaleY})`,
+          }
+
+    const palletFont = compact
+      ? `${getCompactPalletNoFontSize(line?.palletNo)}mm`
+      : `${getPalletNoFontSize(line?.palletNo)}px`
+
+    const qtyValue = line?.palletQuantity ?? line?.quantity ?? 0
+
+    return (
+      <div
+        className={`fifo-card ${compact ? 'fifo-card-compact' : ''} ${portrait ? 'fifo-card-portrait' : ''}`}
+        style={cardStyle}
+      >
+        <div className="fifo-card-header">
+          <div className="fifo-logo-wrap">
+            <img src="/GLOVIS.png" alt="Leewon" className="fifo-logo-img" crossOrigin="anonymous" />
+            <span className="fifo-logo-text">LEEWON</span>
+          </div>
+          <div className="fifo-title-wrap">
+            <span className="fifo-title">FIFO CARD</span>
+          </div>
+        </div>
+
+        <div className="fifo-card-main">
+          <div className="fifo-left-col">
+            <div className="fifo-box">
+              <div className="fifo-box-label">
+                <span className="fifo-compact-label-text">
+                  <span>FIFO</span>
+                  <span>PALLET NO</span>
+                </span>
+              </div>
+              <div className={`fifo-box-value ${compact ? 'fifo-compact-pallet-value' : ''}`}>
+                <span
+                  className="fifo-pallet-number-text"
+                  style={{
+                    fontSize: palletFont,
+                    '--fifo-pallet-font-size': palletFont,
+                    '--fifo-pallet-scale-y': `${getPalletNoScaleY(line?.palletNo)}`,
+                    '--fifo-compact-pallet-font-size': compact ? palletFont : undefined,
+                  }}
+                >
+                  {splitPalletNo(line?.palletNo).map((part, idx) =>
+                    part ? (
+                      <span key={idx} className="fifo-pallet-line">{part}</span>
+                    ) : null,
+                  )}
+                </span>
+              </div>
+            </div>
+
+            <div className="fifo-qr-box">
+              <img
+                className="fifo-qr-img"
+                alt="Scan for details"
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=0&data=${encodeURIComponent(
+                  JSON.stringify({
+                    grn: grnMeta.grnNumber,
+                    fifoPalletNo: line?.fifoPalletNo,
+                    palletNo: line?.palletNo,
+                    part: line?.partNumber,
+                    qty: line?.quantity ?? line?.palletQuantity ?? 0,
+                    location: line?.storeLocation || line?.location || '',
+                  }),
+                )}`}
+              />
             </div>
           </div>
-          {/* On the compact label this renders BELOW the pallet-number
-              box (fifo-left-col stacks them), giving the "pallet number
-              on top, QR underneath" layout. On the full-size labels it
-              keeps its original spot in the left column. */}
-          <div className="fifo-qr-box">
-            <img
-              className="fifo-qr-img"
-              alt="Scan for details"
-              src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&margin=0&data=${encodeURIComponent(
-                JSON.stringify({
-                  grn: grnMeta.grnNumber,
-                  fifoPalletNo: line?.fifoPalletNo,
-                  palletNo: line?.palletNo,
-                  part: line?.partNumber,
-                  qty: line?.quantity ?? line?.palletQuantity ?? 0,
-                  location: line?.storeLocation || line?.location || '',
-                }),
-              )}`}
-            />
-            {/* <div className="fifo-qr-caption">SCAN FOR DETAILS</div> */}
-          </div>
-        </div>
 
-        <div className="fifo-right-col">
-          <div className="fifo-meta-grid">
-            <div><FaRegFileAlt className="fifo-meta-icon" /><span className="fifo-meta-label">SUP.INV.NO:</span><span className="fifo-meta-value">{grnMeta.supplierInvoiceNumber || '—'}</span></div>
-            <div><FaRegCalendarAlt className="fifo-meta-icon" /><span className="fifo-meta-label">DATE:</span><span className="fifo-meta-value">{formatDate(grnMeta.supplierInvoiceDate) || '—'}</span></div>
-            <div><FaBoxOpen className="fifo-meta-icon" /><span className="fifo-meta-label">QTY:</span><span className="fifo-meta-value">{grnMeta.totalQuantity ?? 0} Nos.</span></div>
-            <div><FaRegFileAlt className="fifo-meta-icon" /><span className="fifo-meta-label">GRN NO:</span><span className="fifo-meta-value">{grnMeta.grnNumber || '—'}</span></div>
-            <div><FaRegCalendarAlt className="fifo-meta-icon" /><span className="fifo-meta-label">DATE:</span><span className="fifo-meta-value">{formatDate(line?.postedDate) || '—'}</span></div>
-            <div><FaBoxOpen className="fifo-meta-icon" /><span className="fifo-meta-label">PQTY:</span><span className="fifo-meta-value">{line?.palletQuantity ?? 0} Nos.</span></div>
-          </div>
+          <div className="fifo-right-col">
+            <div className="fifo-meta-grid">
+              <div><FaRegFileAlt className="fifo-meta-icon" /><span className="fifo-meta-label">SUP.INV.NO</span><span className="fifo-meta-colon">:</span><span className="fifo-meta-value">{grnMeta.supplierInvoiceNumber || '—'}</span></div>
+              <div><FaRegCalendarAlt className="fifo-meta-icon" /><span className="fifo-meta-label">DATE</span><span className="fifo-meta-colon">:</span><span className="fifo-meta-value">{formatDate(grnMeta.supplierInvoiceDate) || '—'}</span></div>
+              <div><FaBoxOpen className="fifo-meta-icon" /><span className="fifo-meta-label">QTY</span><span className="fifo-meta-colon">:</span><span className="fifo-meta-value">{grnMeta.totalQuantity ?? 0} Nos.</span></div>
+              <div><FaRegFileAlt className="fifo-meta-icon" /><span className="fifo-meta-label">GRN NO</span><span className="fifo-meta-colon">:</span><span className="fifo-meta-value">{grnMeta.grnNumber || '—'}</span></div>
+              <div><FaRegCalendarAlt className="fifo-meta-icon" /><span className="fifo-meta-label">DATE</span><span className="fifo-meta-colon">:</span><span className="fifo-meta-value">{formatDate(line?.postedDate) || '—'}</span></div>
+              <div><FaBoxOpen className="fifo-meta-icon" /><span className="fifo-meta-label">PQTY</span><span className="fifo-meta-colon">:</span><span className="fifo-meta-value">{line?.palletQuantity ?? 0} Nos.</span></div>
+            </div>
 
-          <div className="fifo-part-row">
-            <div className="fifo-part-info">
+            <div className="fifo-part-row">
               <div className="fifo-part-label">PART NUMBER &amp; NAME</div>
-              {/* ★ Bigger by default (see .fifo-part-value in grnPost.css). */}
               <div
                 className="fifo-part-value"
                 style={{
                   fontSize: compact
                     ? `${getPartNumberFontSize(line?.partNumber, true)}mm`
                     : `${getPartNumberFontSize(line?.partNumber, false)}px`,
+                  '--fifo-part-number-font-size': `${getPartNumberFontSize(line?.partNumber, false)}px`,
                   '--fifo-compact-part-number-font-size': compact
                     ? `${getPartNumberFontSize(line?.partNumber, true)}mm`
                     : undefined,
@@ -1688,52 +1065,53 @@ const GRNPost = () => {
               >
                 {line?.partNumber || '—'}
               </div>
-              <div
-                className="fifo-part-name"
-                style={{
-                  fontSize: compact
-                    ? `${getPartNameFontSize(line?.partName, true)}mm`
-                    : `${getPartNameFontSize(line?.partName, false)}px`,
-                  '--fifo-compact-part-name-font-size': compact
-                    ? `${getPartNameFontSize(line?.partName, true)}mm`
-                    : undefined,
-                }}
-              >
-                {line?.partName?.toUpperCase() || '—'}
-              </div>
-            </div>
-            <div className="fifo-pallet-qty">
-              <div className="fifo-part-label">PALLET QTY (Nos.)</div>
-              <div
-                className="fifo-qty-value"
-                style={{
-                  fontSize: compact
-                    ? `${getQtyFontSize(line?.palletQuantity ?? line?.quantity ?? 0, true)}mm`
-                    : `${getQtyFontSize(line?.palletQuantity ?? line?.quantity ?? 0, false)}px`,
-                  '--fifo-qty-font-size': compact
-                    ? `${getQtyFontSize(line?.palletQuantity ?? line?.quantity ?? 0, true)}mm`
-                    : `${getQtyFontSize(line?.palletQuantity ?? line?.quantity ?? 0, false)}px`,
-                  '--fifo-compact-qty-font-size': compact
-                    ? `${getQtyFontSize(line?.palletQuantity ?? line?.quantity ?? 0, true)}mm`
-                    : undefined,
-                }}
-              >
-                {line?.palletQuantity ?? line?.quantity ?? 0}
+
+              <div className="fifo-part-bottom">
+                <div
+                  className="fifo-part-name"
+                  style={{
+                    fontSize: compact
+                      ? `${getPartNameFontSize(line?.partName, true)}mm`
+                      : `${getPartNameFontSize(line?.partName, false)}px`,
+                    '--fifo-compact-part-name-font-size': compact
+                      ? `${getPartNameFontSize(line?.partName, true)}mm`
+                      : undefined,
+                  }}
+                >
+                  {line?.partName?.toUpperCase() || '—'}
+                </div>
+
+                <div className="fifo-pallet-qty">
+                  <div className="fifo-part-label">PALLET QTY (Nos.)</div>
+                  <div
+                    className="fifo-qty-value"
+                    style={{
+                      fontSize: compact
+                        ? `${getQtyFontSize(qtyValue, true)}mm`
+                        : `${getQtyFontSize(qtyValue, false)}px`,
+                      '--fifo-qty-font-size': compact
+                        ? `${getQtyFontSize(qtyValue, true)}mm`
+                        : `${getQtyFontSize(qtyValue, false)}px`,
+                      '--fifo-compact-qty-font-size': compact
+                        ? `${getQtyFontSize(qtyValue, true)}mm`
+                        : undefined,
+                    }}
+                  >
+                    {qtyValue}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="fifo-card-footer">
-        <div className="fifo-sign">STORES INCHARGE</div>
-        <div className="fifo-sign">QA APPROVED</div>
+        <div className="fifo-card-footer">
+          <div className="fifo-sign">STORES INCHARGE</div>
+          <div className="fifo-sign">QA APPROVED</div>
+        </div>
       </div>
-    </div>
-  )
-
-  const selectedUnpostedCount = selectedLines.filter((l) => !l.isPosted).length
-  const selectedPostedCount = selectedLines.filter((l) => l.isPosted).length
+    )
+  }
 
   return (
     <div className="grn-post-page">
@@ -1829,11 +1207,6 @@ const GRNPost = () => {
               >
                 <span>Items</span>
 
-                {/* Bulk Post / Bulk Print toolbar — driven by the
-                    checkboxes on the table below. Each button only acts on
-                    the subset of the current selection it applies to
-                    (unposted lines for Post, posted lines for Print), and
-                    is disabled when that subset is empty. */}
                 <div className="grn-bulk-actions" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   {selectedLines.length > 0 && (
                     <span className="text-muted small">{selectedLines.length} selected</span>
@@ -1886,10 +1259,7 @@ const GRNPost = () => {
                     cell: (row) => (
                       <div className="grn-post-actions">
 
-                        {/* =====================================================
-          VIEW
-          Available for both Posted and Unposted records
-      ===================================================== */}
+                        {/* VIEW — posted and unposted */}
                         {uPrivilege.canView && (
                           <button
                             className="icon-btn view-btn"
@@ -1903,14 +1273,9 @@ const GRNPost = () => {
                           </button>
                         )}
 
-
-                        {/* =====================================================
-          UNPOSTED ONLY
-          Edit + Delete + Post
-      ===================================================== */}
+                        {/* UNPOSTED ONLY — Edit + Delete + Post */}
                         {!row.isPosted && (
                           <>
-                            {/* EDIT */}
                             {uPrivilege.canEdit && (
                               <button
                                 className="icon-btn edit-btn"
@@ -1924,8 +1289,6 @@ const GRNPost = () => {
                               </button>
                             )}
 
-
-                            {/* DELETE */}
                             {uPrivilege.canDelete && (
                               <button
                                 className="icon-btn delete-btn"
@@ -1939,8 +1302,6 @@ const GRNPost = () => {
                               </button>
                             )}
 
-
-                            {/* POST */}
                             <button
                               className="post-btn"
                               title="Post GRN"
@@ -1955,11 +1316,7 @@ const GRNPost = () => {
                           </>
                         )}
 
-
-                        {/* =====================================================
-          POSTED ONLY
-          Reprint
-      ===================================================== */}
+                        {/* POSTED ONLY — Reprint */}
                         {row.isPosted && (
                           <button
                             className="reprint-btn"
@@ -2014,10 +1371,6 @@ const GRNPost = () => {
                 }}
               />
 
-              {/* Totals — summed across ALL lines, not just the current
-                  DataTable page. DataTable has no built-in tfoot, so this
-                  is a small summary bar below it instead of an in-table
-                  total row. */}
               <div
                 style={{
                   display: 'flex',
@@ -2159,63 +1512,61 @@ const GRNPost = () => {
             <CModalHeader>
               <div>
                 <CModalTitle><FaPrint size={16} /> FIFO GRN LABEL</CModalTitle>
-                <small className="text-muted">Review GRN details before printing</small>
+                <small className="text-muted">Choose a label size, review the preview, then print or download</small>
               </div>
             </CModalHeader>
 
             <CModalBody>
-              {/* Label size selector */}
-              <div className="grn-label-size-row">
-                <label className="grn-label-size-label">Label Size</label>
-                <CFormSelect
-                  value={labelSize}
-                  onChange={(e) => setLabelSize(e.target.value)}
-                  style={{ maxWidth: 260 }}
-                >
-                  {LABEL_SIZE_OPTIONS.map((s) => (
-                    <option key={s.value} value={s.value}>{s.label}</option>
-                  ))}
-                </CFormSelect>
+              <div className="grn-label-summary">
+                <span>GRN: <strong>{labelGrn.grnNumber || '—'}</strong></span>
+                <span>Part: <strong>{firstLine?.partNumber || '—'}</strong></span>
+                <span>Pallet: <strong>{firstLine?.palletNo || '—'}</strong></span>
+                <span>Pallet Qty: <strong>{firstLine?.palletQuantity ?? firstLine?.quantity ?? 0}</strong></span>
               </div>
 
-              {/* Outer frame = exact physical label size (this is what gets
-                  printed / captured for download). The card inside is always
-                  drawn at the master design size and uniformly scaled +
-                  centered to fit the frame, so the design never changes
-                  shape — it only shrinks or grows. */}
+              <LabelSizePicker value={labelSize} onChange={setLabelSize} />
+
               {!labelSize ? (
                 <div className="fifo-select-size-message">
-                  Please select a label size
+                  Please select a label size to see the preview
                 </div>
               ) : (
-                <div className="fifo-print-preview-wrap">
-                  <div
-                    className={`fifo-label-frame ${labelSize === '100x75' ? 'fifo-label-frame-100x75' : ''}`}
-                    id="fifo-print-area"
-                    style={{
-                      width: `${activeSize.widthMm}mm`,
-                      height: `${activeSize.heightMm}mm`,
-                    }}
-                  >
-                    {renderFifoCard(
-                      labelGrn,
-                      firstLine,
-                      cardScaleX,
-                      cardScaleY,
-                      cardOffsetXmm,
-                      cardOffsetYmm,
-                      labelSize === '50x20',
-                    )}
+                <>
+                  <div className="fifo-print-preview-wrap">
+                    <div
+                      className={`fifo-label-frame ${labelSize === '100x75' ? 'fifo-label-frame-100x75' : ''}`}
+                      id="fifo-print-area"
+                      style={{
+                        width: `${activeSize.widthMm}mm`,
+                        height: `${activeSize.heightMm}mm`,
+                      }}
+                    >
+                      {renderFifoCard(
+                        labelGrn,
+                        firstLine,
+                        cardScaleX,
+                        cardScaleY,
+                        cardOffsetXmm,
+                        cardOffsetYmm,
+                        activeSize.layout,
+                      )}
+                    </div>
                   </div>
-                </div>
+                  <p className="grn-label-hint">
+                    Preview is shown at the real print size ({activeSize.widthMm} × {activeSize.heightMm} mm).
+                  </p>
+                </>
               )}
             </CModalBody>
 
             <CModalFooter>
-              <CButton className="grn-modal-download-btn" onClick={handleDownloadLabel}>
+              <CButton className="grn-modal-close-btn" onClick={() => setShowLabel(false)}>
+                <FaTimes size={12} /> Close
+              </CButton>
+              <CButton className="grn-modal-download-btn" onClick={handleDownloadLabel} disabled={!labelSize}>
                 <FaDownload size={12} /> Download
               </CButton>
-              <CButton className="grn-modal-print-btn" onClick={handlePrintLabel}>
+              <CButton className="grn-modal-print-btn" onClick={handlePrintLabel} disabled={!labelSize}>
                 <FaPrint size={12} /> Print FIFO GRN Label
               </CButton>
             </CModalFooter>
@@ -2243,22 +1594,16 @@ const GRNPost = () => {
             </CModalHeader>
 
             <CModalBody>
-              <div className="grn-label-size-row">
-                <label className="grn-label-size-label">Label Size</label>
-                <CFormSelect
-                  value={bulkLabelSize}
-                  onChange={(e) => setBulkLabelSize(e.target.value)}
-                  style={{ maxWidth: 260 }}
-                >
-                  {LABEL_SIZE_OPTIONS.map((s) => (
-                    <option key={s.value} value={s.value}>{s.label}</option>
-                  ))}
-                </CFormSelect>
+              <div className="grn-label-summary">
+                <span>GRN: <strong>{bulkLabelGrn.grnNumber || '—'}</strong></span>
+                <span>Labels: <strong>{bulkLabelGrn.lines.length}</strong></span>
               </div>
+
+              <LabelSizePicker value={bulkLabelSize} onChange={setBulkLabelSize} />
 
               {!bulkLabelSize ? (
                 <div className="fifo-select-size-message">
-                  Please select a label size
+                  Please select a label size to see the preview
                 </div>
               ) : (
                 <div
@@ -2283,7 +1628,7 @@ const GRNPost = () => {
                         bulkCardScaleY,
                         bulkCardOffsetXmm,
                         bulkCardOffsetYmm,
-                        bulkLabelSize === '50x20',
+                        bulkActiveSize.layout,
                       )}
                     </div>
                   ))}
@@ -2292,6 +1637,9 @@ const GRNPost = () => {
             </CModalBody>
 
             <CModalFooter>
+              <CButton className="grn-modal-close-btn" onClick={() => setShowBulkLabel(false)}>
+                <FaTimes size={12} /> Close
+              </CButton>
               <CButton className="grn-modal-download-btn" onClick={handleDownloadBulkLabel} disabled={!bulkLabelSize}>
                 <FaDownload size={12} /> Download All ({bulkLabelGrn.lines.length})
               </CButton>

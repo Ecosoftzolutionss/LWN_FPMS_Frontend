@@ -41,6 +41,7 @@
     "html2canvas": "^1.4.1",
     "html5-qrcode": "^2.3.8",
     "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^4.4.168",
     "prop-types": "^15.8.1",

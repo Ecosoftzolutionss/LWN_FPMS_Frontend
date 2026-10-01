@@ -1,2158 +1,1096 @@
-import React, {
-    useEffect,
-    useMemo,
-    useState,
-    useCallback,
-    useRef,
-} from 'react'
-
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { CTooltip } from '@coreui/react'
 import DataTable from 'react-data-table-component'
 import Select from 'react-select'
-
-import {
-    FaSearch,
-    FaFileExcel,
-    FaSyncAlt,
-} from 'react-icons/fa'
-
+import { FaFileExcel, FaFilePdf, FaSearch, FaSyncAlt } from 'react-icons/fa'
+import { jsPDF } from 'jspdf'
+import { autoTable } from 'jspdf-autotable'
 import { toast } from 'react-toastify'
 import * as XLSX from 'xlsx'
-
 import API from '../../api.js'
 import '../../assets/CSS/stockReport.css'
-
-
-// ==========================================================
-// Helpers
-// ==========================================================
-
-const num = (value) =>
-    Number(value || 0).toLocaleString()
-
-
 const money = (value) =>
-    Number(value || 0).toLocaleString(undefined, {
-        style: 'currency',
-        currency: 'INR',
-        maximumFractionDigits: 0,
+  Number(value || 0).toLocaleString(undefined, {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 2,
+  })
+const num = (value) => Number(value || 0).toLocaleString()
+const CellTooltip = ({ value, children, align = 'left' }) => (
+  <CTooltip content={String(value ?? '—')} placement="top">
+    <span className={`sr-cell-tooltip sr-cell-tooltip-${align}`}>
+      {children}
+    </span>
+  </CTooltip>
+)
+const emptyFilters = {
+  fromDate: '',
+  toDate: '',
+  partNumber: '',
+  supplierId: '',
+  supplierGroupId: '',
+  itemGroupId: '',
+  customerId: '',
+  customerGroupId: '',
+}
+const selectStyles = {
+  control: (base, state) => ({
+    ...base,
+    minHeight: 40,
+    height: 40,
+    borderRadius: 6,
+    borderColor: state.isFocused ? '#3d7ff0' : '#c4d3ea',
+    boxShadow: state.isFocused ? '0 0 0 3px rgba(61,127,240,.18)' : 'none',
+    fontSize: 13,
+  }),
+  valueContainer: (base) => ({ ...base, height: 40, padding: '0 12px' }),
+  input: (base) => ({ ...base, margin: 0, padding: 0, fontSize: 13 }),
+  singleValue: (base) => ({ ...base, fontSize: 13, color: '#1f2937' }),
+  placeholder: (base) => ({ ...base, fontSize: 13, color: '#94a3b8' }),
+  indicatorsContainer: (base) => ({ ...base, height: 40 }),
+  menu: (base) => ({ ...base, zIndex: 9999, fontSize: 13 }),
+  menuList: (base) => ({ ...base, maxHeight: 220 }),
+  option: (base, state) => ({
+    ...base,
+    padding: '9px 12px',
+    color: state.isSelected ? '#fff' : '#1e293b',
+    backgroundColor: state.isSelected
+      ? '#2f5fdd'
+      : state.isFocused
+        ? '#f1f5f9'
+        : '#fff',
+  }),
+}
+const optionList = (items, valueKey = null, labelKey = null) =>
+  (Array.isArray(items) ? items : []).map((item) => {
+    if (valueKey) {
+      return {
+        value: item?.[valueKey],
+        label: item?.[labelKey] ?? item?.[valueKey],
+      }
+    }
+    return { value: item, label: item }
+  })
+const StockReport = () => {
+  const [inputFilters, setInputFilters] = useState(emptyFilters)
+  const [filters, setFilters] = useState(emptyFilters)
+  const [options, setOptions] = useState({
+    years: [],
+    months: [],
+    days: [],
+    partNumbers: [],
+    suppliers: [],
+    supplierGroups: [],
+    partGroups: [],
+    customers: [],
+    customerGroups: [],
+  })
+  const [customerFiltersAvailable, setCustomerFiltersAvailable] = useState(false)
+  const [rows, setRows] = useState([])
+  const [totalRows, setTotalRows] = useState(0)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(25)
+  const [loading, setLoading] = useState(false)
+  const [exporting, setExporting] = useState(false)
+  const [pdfExporting, setPdfExporting] = useState(false)
+  const [gridSearch, setGridSearch] = useState('')
+  const [showInwardRate, setShowInwardRate] = useState(false)
+  const [showInwardValue, setShowInwardValue] = useState(false)
+  const [showOutwardRate, setShowOutwardRate] = useState(false)
+  const [showOutwardValue, setShowOutwardValue] = useState(false)
+  // Optional grid columns; enabled by default to preserve the current report.
+  const buildParams = (currentFilters, currentPage = page, currentPageSize = pageSize, exportAll = false) => {
+    const params = {
+      page: currentPage,
+      pageSize: currentPageSize,
+      exportAll,
+    }
+    Object.entries(currentFilters).forEach(([key, value]) => {
+      if (value !== '' && value !== null && value !== undefined) {
+        params[key] = value
+      }
+    })
+    return params
+  }
+  const loadReport = useCallback(
+    async ({
+      currentPage = page,
+      currentPageSize = pageSize,
+      currentFilters = filters,
+      exportAll = false,
+    } = {}) => {
+      setLoading(true)
+      try {
+        const res = await API.get('/Reports/overall', {
+          params: buildParams(
+            currentFilters,
+            currentPage,
+            currentPageSize,
+            exportAll
+          ),
+        })
+        const result = res.data || {}
+        if (exportAll) {
+          return Array.isArray(result.data) ? result.data : []
+        }
+        setRows(Array.isArray(result.data) ? result.data : [])
+        setTotalRows(Number(result.totalRows) || 0)
+        const f = result.availableFilters || {}
+        setOptions({
+          years: f.years || [],
+          months: f.months || [],
+          days: f.days || [],
+          partNumbers: f.partNumbers || [],
+          suppliers: f.suppliers || [],
+          supplierGroups: f.supplierGroups || [],
+          partGroups: f.partGroups || [],
+          customers: f.customers || [],
+          customerGroups: f.customerGroups || [],
+        })
+        setCustomerFiltersAvailable(Boolean(result.customerFiltersAvailable))
+      } catch (err) {
+        console.error('Stock Report Error:', err)
+        toast.error(
+          err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          'Failed to load Stock Report'
+        )
+        if (!exportAll) {
+          setRows([])
+          setTotalRows(0)
+        }
+      } finally {
+        setLoading(false)
+      }
+    },
+    [filters, page, pageSize]
+  )
+  useEffect(() => {
+    loadReport({
+      currentPage: 1,
+      currentPageSize: pageSize,
+      currentFilters: emptyFilters,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  const partOptions = useMemo(
+    () => optionList(options.partNumbers),
+    [options.partNumbers]
+  )
+  const supplierOptions = useMemo(
+    () => optionList(options.suppliers, 'id', 'name'),
+    [options.suppliers]
+  )
+  const supplierGroupOptions = useMemo(
+    () => optionList(options.supplierGroups, 'id', 'name'),
+    [options.supplierGroups]
+  )
+  const partGroupOptions = useMemo(
+    () => optionList(options.partGroups, 'id', 'name'),
+    [options.partGroups]
+  )
+  const customerOptions = useMemo(
+    () => optionList(options.customers, 'id', 'name'),
+    [options.customers]
+  )
+  const customerGroupOptions = useMemo(
+    () => optionList(options.customerGroups, 'id', 'name'),
+    [options.customerGroups]
+  )
+  const setSelectValue = (key, selected) => {
+    setInputFilters((previous) => ({
+      ...previous,
+      [key]: selected?.value ?? '',
+    }))
+  }
+  const setInputValue = (key, value) => {
+    setInputFilters((previous) => ({
+      ...previous,
+      [key]: value,
+    }))
+  }
+  const handleSearch = async () => {
+    if (inputFilters.fromDate && inputFilters.toDate && inputFilters.fromDate > inputFilters.toDate) {
+      toast.error('From Date cannot be greater than To Date')
+      return
+    }
+    const applied = { ...inputFilters }
+    setFilters(applied)
+    setPage(1)
+    await loadReport({
+      currentPage: 1,
+      currentPageSize: pageSize,
+      currentFilters: applied,
+    })
+  }
+  const handleClear = async () => {
+    setInputFilters(emptyFilters)
+    setFilters(emptyFilters)
+    setGridSearch('')
+    setShowInwardRate(false)
+    setShowInwardValue(false)
+    setShowOutwardRate(false)
+    setShowOutwardValue(false)
+    setPage(1)
+    await loadReport({
+      currentPage: 1,
+      currentPageSize: pageSize,
+      currentFilters: emptyFilters,
+    })
+  }
+  const handleGridSearch = (event) => {
+    setGridSearch(event.target.value)
+  }
+  const exportReport = async () => {
+    setExporting(true)
+    try {
+      const exportRows = await loadReport({
+        currentPage: 1,
+        currentPageSize: 1000000,
+        currentFilters: filters,
+        exportAll: true,
+      })
+      if (!exportRows.length) {
+        toast.error('Nothing to export for the selected filters')
+        return
+      }
+      const exportData = exportRows.map((row, index) => ({
+        'S.No': index + 1,
+        Date: row.date
+          ? new Date(row.date).toLocaleDateString('en-GB')
+          : '',
+        Direction: row.direction,
+        'Part Number': row.partNumber,
+        'Part Name': row.partName,
+        UOM: row.uom ?? row.UOM ?? '—',
+        'Part Group': row.partGroupName,
+        Supplier: row.supplierName,
+        'Supplier Group': row.supplierGroupName,
+        Quantity: row.quantity,
+        Inward: row.inward,
+        Outward: row.outward,
+        Rate: row.rate,
+        Value: row.value,
+        Reference: row.reference,
+      }))
+      const worksheet = XLSX.utils.json_to_sheet(exportData)
+      const workbook = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(
+        workbook,
+        worksheet,
+        'Stock Report'
+      )
+      XLSX.writeFile(
+        workbook,
+        `Stock_Report_${new Date().toISOString().slice(0, 10)}.xlsx`
+      )
+      toast.success('Stock Report exported successfully')
+    } catch (err) {
+      console.error('Export Error:', err)
+      toast.error('Failed to export Stock Report')
+    } finally {
+      setExporting(false)
+    }
+  }
+const exportPdf = async () => {
+  setPdfExporting(true)
+
+  try {
+    const exportRows = await loadReport({
+      currentPage: 1,
+      currentPageSize: 1000000,
+      currentFilters: filters,
+      exportAll: true,
     })
 
-
-// ==========================================================
-// Status CSS
-// ==========================================================
-
-const STATUS_CLASS = {
-    Safety: 'sr-status-safety',
-    Reorder: 'sr-status-reorder',
-    Danger: 'sr-status-danger',
-}
-
-
-// ==========================================================
-// Status Badge
-// ==========================================================
-
-const StatusBadge = ({ status }) => (
-    <span
-        className={`sr-status-badge ${
-            STATUS_CLASS[status] || ''
-        }`}
-    >
-        {status || '—'}
-    </span>
-)
-
-
-// ==========================================================
-// Status Options
-// ==========================================================
-
-const statusOptions = [
-    {
-        value: 'Safety',
-        label: 'Safety',
-    },
-    {
-        value: 'Reorder',
-        label: 'Reorder',
-    },
-    {
-        value: 'Danger',
-        label: 'Danger',
-    },
-]
-
-
-// ==========================================================
-// React Select Styles
-// ==========================================================
-
-const selectStyles = {
-
-    control: (base, state) => ({
-        ...base,
-
-        minHeight: '40px',
-        height: '40px',
-
-        borderRadius: '6px',
-
-        borderColor:
-            state.isFocused
-                ? '#3d7ff0'
-                : '#c4d3ea',
-
-        boxShadow:
-            state.isFocused
-                ? '0 0 0 3px rgba(61, 127, 240, 0.18)'
-                : 'none',
-
-        '&:hover': {
-            borderColor: '#4d8df7',
-        },
-
-        fontSize: '13px',
-
-        cursor: 'pointer',
-    }),
-
-
-    valueContainer: (base) => ({
-        ...base,
-
-        height: '40px',
-        minHeight: '40px',
-
-        padding: '0 12px',
-    }),
-
-
-    input: (base) => ({
-        ...base,
-
-        margin: 0,
-        padding: 0,
-
-        fontSize: '13px',
-    }),
-
-
-    singleValue: (base) => ({
-        ...base,
-
-        color: '#1f2937',
-
-        fontSize: '13px',
-    }),
-
-
-    placeholder: (base) => ({
-        ...base,
-
-        color: '#94a9cf',
-
-        fontSize: '13px',
-    }),
-
-
-    indicatorsContainer: (base) => ({
-        ...base,
-
-        height: '40px',
-    }),
-
-
-    indicatorSeparator: (base) => ({
-        ...base,
-
-        backgroundColor: '#dfe4ee',
-    }),
-
-
-    dropdownIndicator: (base) => ({
-        ...base,
-
-        color: '#64748b',
-
-        padding: '8px',
-    }),
-
-
-    clearIndicator: (base) => ({
-        ...base,
-
-        color: '#94a3b8',
-
-        padding: '8px',
-
-        '&:hover': {
-            color: '#dc2626',
-        },
-    }),
-
-
-    menu: (base) => ({
-        ...base,
-
-        zIndex: 9999,
-
-        fontSize: '13px',
-
-        borderRadius: '8px',
-
-        boxShadow:
-            '0 8px 24px rgba(16, 24, 40, 0.12)',
-
-        overflow: 'hidden',
-    }),
-
-
-    menuList: (base) => ({
-        ...base,
-
-        padding: '4px',
-
-        maxHeight: '220px',
-    }),
-
-
-    option: (base, state) => ({
-        ...base,
-
-        padding: '10px 12px',
-
-        borderRadius: '5px',
-
-        cursor: 'pointer',
-
-        fontSize: '13px',
-
-        color:
-            state.isSelected
-                ? '#ffffff'
-                : '#1e293b',
-
-        backgroundColor:
-            state.isSelected
-                ? '#2f5fdd'
-                : state.isFocused
-                    ? '#f1f5f9'
-                    : '#ffffff',
-
-        ':active': {
-            backgroundColor: '#2650bd',
-            color: '#ffffff',
-        },
-    }),
-}
-
-
-// ==========================================================
-// Stock Report
-// ==========================================================
-
-const StockReport = () => {
-
-    // ========================================================
-    // FILTER INPUT VALUES
-    // Values selected before clicking Search
-    // ========================================================
-
-    const [
-        itemGroupIdInput,
-        setItemGroupIdInput,
-    ] = useState('')
-
-
-    const [
-        partNumberInput,
-        setPartNumberInput,
-    ] = useState('')
-
-
-    const [
-        statusInput,
-        setStatusInput,
-    ] = useState('')
-
-
-    // ========================================================
-    // APPLIED FILTER VALUES
-    // Values actually used for API request
-    // ========================================================
-
-    const [
-        itemGroupId,
-        setItemGroupId,
-    ] = useState('')
-
-
-    const [
-        partNumber,
-        setPartNumber,
-    ] = useState('')
-
-
-    const [
-        status,
-        setStatus,
-    ] = useState('')
-
-
-    // ========================================================
-    // TABLE SEARCH
-    // ========================================================
-
-    const [
-        search,
-        setSearch,
-    ] = useState('')
-
-
-    // ========================================================
-    // ITEM GROUPS
-    // ========================================================
-
-    const [
-        itemGroups,
-        setItemGroups,
-    ] = useState([])
-
-
-    // ========================================================
-    // PART NUMBERS
-    // ========================================================
-
-    const [
-        partNumbers,
-        setPartNumbers,
-    ] = useState([])
-
-
-    // ========================================================
-    // TABLE DATA
-    // ========================================================
-
-    const [
-        rows,
-        setRows,
-    ] = useState([])
-
-
-    const [
-        totalRows,
-        setTotalRows,
-    ] = useState(0)
-
-
-    // ========================================================
-    // PAGINATION
-    // ========================================================
-
-    const [
-        currentPage,
-        setCurrentPage,
-    ] = useState(1)
-
-
-    const [
-        rowsPerPage,
-        setRowsPerPage,
-    ] = useState(10)
-
-
-    // ========================================================
-    // LOADING
-    // ========================================================
-
-    const [
-        loading,
-        setLoading,
-    ] = useState(false)
-
-
-    const [
-        exporting,
-        setExporting,
-    ] = useState(false)
-
-
-    // ========================================================
-    // SEARCH TIMER
-    // ========================================================
-
-    const searchTimerRef =
-        useRef(null)
-
-
-    // ========================================================
-    // ITEM GROUP OPTIONS
-    // ========================================================
-
-    const itemGroupOptions =
-        useMemo(() => {
-
-            return itemGroups
-                .filter(
-                    (group) =>
-                        group != null
-                )
-                .map(
-                    (group) => ({
-                        value:
-                            group.id,
-
-                        label:
-                            group.groupName,
-                    })
-                )
-
-        }, [itemGroups])
-
-
-    // ========================================================
-    // PART NUMBER OPTIONS
-    // ========================================================
-
-    const partNumberOptions =
-        useMemo(() => {
-
-            const options = []
-
-
-            partNumbers.forEach(
-                (part) => {
-
-                    if (!part) {
-                        return
-                    }
-
-
-                    // ----------------------------------------
-                    // Backend returns string
-                    // ----------------------------------------
-
-                    if (
-                        typeof part ===
-                        'string'
-                    ) {
-
-                        options.push({
-                            value: part,
-                            label: part,
-                        })
-
-                        return
-                    }
-
-
-                    // ----------------------------------------
-                    // Backend returns object
-                    // ----------------------------------------
-
-                    const value =
-                        part.partNumber ??
-                        part.PartNumber ??
-                        part.value ??
-                        ''
-
-
-                    if (value) {
-
-                        options.push({
-                            value,
-
-                            label:
-                                part.partNumber ??
-                                part.PartNumber ??
-                                part.label ??
-                                value,
-                        })
-
-                    }
-
-                }
-            )
-
-
-            // --------------------------------------------
-            // Remove duplicates
-            // --------------------------------------------
-
-            const uniqueOptions = []
-
-            const seen =
-                new Set()
-
-
-            options.forEach(
-                (option) => {
-
-                    const key =
-                        String(
-                            option.value
-                        ).toLowerCase()
-
-
-                    if (
-                        !seen.has(key)
-                    ) {
-
-                        seen.add(key)
-
-                        uniqueOptions.push(
-                            option
-                        )
-
-                    }
-
-                }
-            )
-
-
-            return uniqueOptions
-
-        }, [partNumbers])
-
-
-    // ========================================================
-    // LOAD STOCK REPORT
-    // ========================================================
-
-    const loadReport =
-        useCallback(
-            async ({
-                page = currentPage,
-                pageSize = rowsPerPage,
-
-                itemGroup =
-                    itemGroupId,
-
-                partNumberValue =
-                    partNumber,
-
-                statusValue =
-                    status,
-
-                searchText =
-                    search,
-
-                exportAll = false,
-
-            } = {}) => {
-
-                setLoading(true)
-
-
-                try {
-
-                    // ========================================
-                    // API PARAMS
-                    // ========================================
-
-                    const params = {
-                        page,
-                        pageSize,
-                    }
-
-
-                    // ========================================
-                    // ITEM GROUP FILTER
-                    // ========================================
-
-                    if (
-                        itemGroup
-                    ) {
-
-                        params.itemGroupId =
-                            itemGroup
-
-                    }
-
-
-                    // ========================================
-                    // STATUS FILTER
-                    // ========================================
-
-                    if (
-                        statusValue
-                    ) {
-
-                        params.status =
-                            statusValue
-
-                    }
-
-
-                    // ========================================
-                    // SEARCH / PART NUMBER
-                    //
-                    // IMPORTANT:
-                    //
-                    // Part Number uses the existing
-                    // backend "search" parameter.
-                    //
-                    // If table search has a value,
-                    // table search gets priority.
-                    //
-                    // Otherwise selected Part Number
-                    // is sent through "search".
-                    // ========================================
-
-                    const finalSearch =
-                        searchText?.trim()
-                            ? searchText.trim()
-                            : partNumberValue?.trim()
-                                ? partNumberValue.trim()
-                                : ''
-
-
-                    if (
-                        finalSearch
-                    ) {
-
-                        params.search =
-                            finalSearch
-
-                    }
-
-
-                    // ========================================
-                    // EXPORT
-                    // ========================================
-
-                    if (
-                        exportAll
-                    ) {
-
-                        params.exportAll =
-                            true
-
-                    }
-
-
-                    // ========================================
-                    // DEBUG
-                    // ========================================
-
-                    console.log(
-                        'Stock Report API Params:',
-                        params
-                    )
-
-
-                    // ========================================
-                    // API CALL
-                    // ========================================
-
-                    const res =
-                        await API.get(
-                            '/Reports/stock',
-                            {
-                                params,
-                            }
-                        )
-
-
-                    // ========================================
-                    // EXPORT RESPONSE
-                    // ========================================
-
-                    if (
-                        exportAll
-                    ) {
-
-                        return Array.isArray(
-                            res.data?.data
-                        )
-                            ? res.data.data
-                            : []
-
-                    }
-
-
-                    // ========================================
-                    // NORMAL RESPONSE
-                    // ========================================
-
-                    const result =
-                        res.data || {}
-
-
-                    // ========================================
-                    // TABLE ROWS
-                    // ========================================
-
-                    setRows(
-                        Array.isArray(
-                            result.data
-                        )
-                            ? result.data
-                            : []
-                    )
-
-
-                    // ========================================
-                    // TOTAL ROWS
-                    // ========================================
-
-                    setTotalRows(
-                        Number(
-                            result.totalRows
-                        ) || 0
-                    )
-
-
-                    // ========================================
-                    // ITEM GROUPS
-                    // ========================================
-
-                    if (
-                        Array.isArray(
-                            result.itemGroups
-                        )
-                    ) {
-
-                        setItemGroups(
-                            result.itemGroups
-                        )
-
-                    }
-
-
-                    // ========================================
-                    // PART NUMBERS
-                    // ========================================
-
-                    if (
-                        Array.isArray(
-                            result.partNumbers
-                        )
-                    ) {
-
-                        setPartNumbers(
-                            result.partNumbers
-                        )
-
-                    }
-                    else {
-
-                        // ====================================
-                        // FALLBACK
-                        // Build part number list
-                        // from returned rows
-                        // ====================================
-
-                        const fallbackParts =
-                            Array.isArray(
-                                result.data
-                            )
-                                ? result.data
-                                    .map(
-                                        (row) =>
-                                            row.partNumber
-                                    )
-                                    .filter(Boolean)
-                                : []
-
-
-                        if (
-                            fallbackParts.length
-                        ) {
-
-                            setPartNumbers(
-                                (previous) => {
-
-                                    const combined = [
-                                        ...previous,
-                                        ...fallbackParts,
-                                    ]
-
-
-                                    return [
-                                        ...new Set(
-                                            combined
-                                        ),
-                                    ]
-
-                                }
-                            )
-
-                        }
-
-                    }
-
-                }
-                catch (err) {
-
-                    console.error(
-                        'Stock Report Error:',
-                        err
-                    )
-
-
-                    toast.error(
-                        err?.response?.data?.message ||
-                        err?.response?.data?.error ||
-                        'Failed to load Stock Report'
-                    )
-
-
-                    if (
-                        !exportAll
-                    ) {
-
-                        setRows([])
-
-                        setTotalRows(0)
-
-                    }
-
-                }
-                finally {
-
-                    setLoading(false)
-
-                }
-
-            },
-            [
-                currentPage,
-                rowsPerPage,
-                itemGroupId,
-                partNumber,
-                status,
-                search,
-            ]
-        )
-
-
-    // ========================================================
-    // INITIAL LOAD
-    // ========================================================
-
-    useEffect(() => {
-
-        loadReport({
-            page: 1,
-            pageSize: rowsPerPage,
-        })
-
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-
-    }, [])
-
-
-    // ========================================================
-    // SEARCH BUTTON
-    // ========================================================
-
-    const handleSearch =
-        async () => {
-
-            // --------------------------------------------
-            // Reset page
-            // --------------------------------------------
-
-            setCurrentPage(1)
-
-
-            // --------------------------------------------
-            // Apply Item Group
-            // --------------------------------------------
-
-            setItemGroupId(
-                itemGroupIdInput
-            )
-
-
-            // --------------------------------------------
-            // Apply Part Number
-            // --------------------------------------------
-
-            setPartNumber(
-                partNumberInput
-            )
-
-
-            // --------------------------------------------
-            // Apply Status
-            // --------------------------------------------
-
-            setStatus(
-                statusInput
-            )
-
-
-            // --------------------------------------------
-            // Load filtered data
-            // --------------------------------------------
-
-            await loadReport({
-
-                page: 1,
-
-                pageSize:
-                    rowsPerPage,
-
-                itemGroup:
-                    itemGroupIdInput,
-
-                partNumberValue:
-                    partNumberInput,
-
-                statusValue:
-                    statusInput,
-
-                searchText:
-                    search,
-
-            })
-
-        }
-
-
-    // ========================================================
-    // CLEAR
-    // ========================================================
-
-    const handleClear =
-        async () => {
-
-            // --------------------------------------------
-            // Clear debounce timer
-            // --------------------------------------------
-
-            if (
-                searchTimerRef.current
-            ) {
-
-                clearTimeout(
-                    searchTimerRef.current
-                )
-
-            }
-
-
-            // --------------------------------------------
-            // Clear filter inputs
-            // --------------------------------------------
-
-            setItemGroupIdInput('')
-
-            setPartNumberInput('')
-
-            setStatusInput('')
-
-
-            // --------------------------------------------
-            // Clear applied filters
-            // --------------------------------------------
-
-            setItemGroupId('')
-
-            setPartNumber('')
-
-            setStatus('')
-
-
-            // --------------------------------------------
-            // Clear table search
-            // --------------------------------------------
-
-            setSearch('')
-
-
-            // --------------------------------------------
-            // Reset page
-            // --------------------------------------------
-
-            setCurrentPage(1)
-
-
-            // --------------------------------------------
-            // Reload all data
-            // --------------------------------------------
-
-            await loadReport({
-
-                page: 1,
-
-                pageSize:
-                    rowsPerPage,
-
-                itemGroup: '',
-
-                partNumberValue: '',
-
-                statusValue: '',
-
-                searchText: '',
-
-            })
-
-        }
-
-
-    // ========================================================
-    // TABLE SEARCH
-    // ========================================================
-
-    const handleSearchChange =
-        (e) => {
-
-            const value =
-                e.target.value
-
-
-            setSearch(value)
-
-
-            // --------------------------------------------
-            // Clear old timer
-            // --------------------------------------------
-
-            if (
-                searchTimerRef.current
-            ) {
-
-                clearTimeout(
-                    searchTimerRef.current
-                )
-
-            }
-
-
-            // --------------------------------------------
-            // Debounce
-            // --------------------------------------------
-
-            searchTimerRef.current =
-                setTimeout(
-                    () => {
-
-                        setCurrentPage(1)
-
-
-                        loadReport({
-
-                            page: 1,
-
-                            pageSize:
-                                rowsPerPage,
-
-                            itemGroup:
-                                itemGroupId,
-
-                            partNumberValue:
-                                partNumber,
-
-                            statusValue:
-                                status,
-
-                            searchText:
-                                value,
-
-                        })
-
-                    },
-                    400
-                )
-
-        }
-
-
-    // ========================================================
-    // CLEANUP SEARCH TIMER
-    // ========================================================
-
-    useEffect(() => {
-
-        return () => {
-
-            if (
-                searchTimerRef.current
-            ) {
-
-                clearTimeout(
-                    searchTimerRef.current
-                )
-
-            }
-
-        }
-
-    }, [])
-
-
-    // ========================================================
-    // SERVER PAGINATION
-    // ========================================================
-
-    const handlePageChange =
-        async (page) => {
-
-            setCurrentPage(page)
-
-
-            await loadReport({
-
-                page,
-
-                pageSize:
-                    rowsPerPage,
-
-                itemGroup:
-                    itemGroupId,
-
-                partNumberValue:
-                    partNumber,
-
-                statusValue:
-                    status,
-
-                searchText:
-                    search,
-
-            })
-
-        }
-
-
-    // ========================================================
-    // ROWS PER PAGE
-    // ========================================================
-
-    const handleRowsPerPageChange =
-        async (
-            newPerPage,
-            page
-        ) => {
-
-            setRowsPerPage(
-                newPerPage
-            )
-
-
-            setCurrentPage(
-                page
-            )
-
-
-            await loadReport({
-
-                page,
-
-                pageSize:
-                    newPerPage,
-
-                itemGroup:
-                    itemGroupId,
-
-                partNumberValue:
-                    partNumber,
-
-                statusValue:
-                    status,
-
-                searchText:
-                    search,
-
-            })
-
-        }
-
-
-    // ========================================================
-    // EXPORT EXCEL
-    // ========================================================
-
-    const handleExportExcel =
-        async () => {
-
-            if (
-                totalRows === 0
-            ) {
-
-                toast.error(
-                    'Nothing to export — run a search first'
-                )
-
-                return
-
-            }
-
-
-            setExporting(true)
-
-
-            try {
-
-                // ========================================
-                // Get ALL filtered records
-                // ========================================
-
-                const exportRows =
-                    await loadReport({
-
-                        page: 1,
-
-                        pageSize:
-                            1000000,
-
-                        itemGroup:
-                            itemGroupId,
-
-                        partNumberValue:
-                            partNumber,
-
-                        statusValue:
-                            status,
-
-                        searchText:
-                            search,
-
-                        exportAll:
-                            true,
-
-                    })
-
-
-                // ========================================
-                // No records
-                // ========================================
-
-                if (
-                    !exportRows.length
-                ) {
-
-                    toast.error(
-                        'Nothing to export for the selected filters'
-                    )
-
-                    return
-
-                }
-
-
-                // ========================================
-                // Excel data
-                // ========================================
-
-                const exportData =
-                    exportRows.map(
-                        (row, index) => ({
-
-                            'S.No':
-                                index + 1,
-
-                            'Part Number':
-                                row.partNumber,
-
-                            'Part Name':
-                                row.partName,
-
-                            'Item Group':
-                                row.itemGroupName,
-
-                            'Received':
-                                row.receivedQty,
-
-                            'Issued':
-                                row.issuedQty,
-
-                            'On Hand':
-                                row.onHandQty,
-
-                            'Safety Level':
-                                row.safetyLevel,
-
-                            'Reorder Level':
-                                row.reorderLevel,
-
-                            'Unit Price':
-                                row.unitPrice,
-
-                            'Stock Value':
-                                row.stockValue,
-
-                            'Status':
-                                row.status,
-
-                        })
-                    )
-
-
-                // ========================================
-                // Worksheet
-                // ========================================
-
-                const worksheet =
-                    XLSX.utils.json_to_sheet(
-                        exportData
-                    )
-
-
-                // ========================================
-                // Workbook
-                // ========================================
-
-                const workbook =
-                    XLSX.utils.book_new()
-
-
-                XLSX.utils.book_append_sheet(
-                    workbook,
-                    worksheet,
-                    'Stock Report'
-                )
-
-
-                // ========================================
-                // Download
-                // ========================================
-
-                XLSX.writeFile(
-                    workbook,
-                    `Stock_Report_${new Date()
-                        .toISOString()
-                        .slice(0, 10)}.xlsx`
-                )
-
-
-                toast.success(
-                    'Stock Report exported successfully'
-                )
-
-            }
-            catch (err) {
-
-                console.error(
-                    'Export Error:',
-                    err
-                )
-
-
-                toast.error(
-                    'Failed to export Stock Report'
-                )
-
-            }
-            finally {
-
-                setExporting(false)
-
-            }
-
-        }
-
-
-    // ========================================================
-    // TABLE COLUMNS
-    // ========================================================
-
-    const columns =
-        useMemo(
-            () => [
-
-                // =========================================
-                // S.NO
-                // =========================================
-
-                {
-                    name: 'S.NO',
-
-                    width: '70px',
-
-                    center: true,
-
-                    cell: (
-                        row,
-                        index
-                    ) => (
-
-                        <span>
-                            {
-                                (currentPage - 1) *
-                                rowsPerPage +
-                                index +
-                                1
-                            }
-                        </span>
-
-                    ),
-                },
-
-
-                // =========================================
-                // PART NUMBER
-                // =========================================
-
-                {
-                    name: 'PART NUMBER',
-
-                    selector:
-                        (row) =>
-                            row.partNumber ??
-                            '—',
-
-                    sortable: true,
-
-                    width: '140px',
-                },
-
-
-                // =========================================
-                // PART NAME
-                // =========================================
-
-                {
-                    name: 'PART NAME',
-
-                    selector:
-                        (row) =>
-                            row.partName ??
-                            '—',
-
-                    sortable: true,
-
-                    minWidth: '180px',
-                },
-
-
-                // =========================================
-                // ITEM GROUP
-                // =========================================
-
-                {
-                    name: 'ITEM GROUP',
-
-                    selector:
-                        (row) =>
-                            row.itemGroupName ??
-                            '—',
-
-                    sortable: true,
-
-                    minWidth: '140px',
-                },
-
-
-                // =========================================
-                // RECEIVED
-                // =========================================
-
-                {
-                    name: 'RECEIVED',
-
-                    selector:
-                        (row) =>
-                            row.receivedQty ??
-                            0,
-
-                    sortable: true,
-
-                    center: true,
-
-                    width: '110px',
-
-                    cell:
-                        (row) => (
-
-                            <span>
-                                {
-                                    num(
-                                        row.receivedQty
-                                    )
-                                }
-                            </span>
-
-                        ),
-                },
-
-
-                // =========================================
-                // ISSUED
-                // =========================================
-
-                {
-                    name: 'ISSUED',
-
-                    selector:
-                        (row) =>
-                            row.issuedQty ??
-                            0,
-
-                    sortable: true,
-
-                    center: true,
-
-                    width: '100px',
-
-                    cell:
-                        (row) => (
-
-                            <span>
-                                {
-                                    num(
-                                        row.issuedQty
-                                    )
-                                }
-                            </span>
-
-                        ),
-                },
-
-
-                // =========================================
-                // ON HAND
-                // =========================================
-
-                {
-                    name: 'ON HAND',
-
-                    selector:
-                        (row) =>
-                            row.onHandQty ??
-                            0,
-
-                    sortable: true,
-
-                    center: true,
-
-                    width: '110px',
-
-                    cell:
-                        (row) => (
-
-                            <span>
-                                {
-                                    num(
-                                        row.onHandQty
-                                    )
-                                }
-                            </span>
-
-                        ),
-                },
-
-
-                // =========================================
-                // STOCK VALUE
-                // =========================================
-
-                {
-                    name: 'STOCK VALUE',
-
-                    selector:
-                        (row) =>
-                            row.stockValue ??
-                            0,
-
-                    sortable: true,
-
-                    right: true,
-
-                    width: '140px',
-
-                    cell:
-                        (row) => (
-
-                            <span>
-                                {
-                                    money(
-                                        row.stockValue
-                                    )
-                                }
-                            </span>
-
-                        ),
-                },
-
-
-                // =========================================
-                // STATUS
-                // =========================================
-
-                {
-                    name: 'STATUS',
-
-                    width: '120px',
-
-                    center: true,
-
-                    cell:
-                        (row) => (
-
-                            <StatusBadge
-                                status={
-                                    row.status
-                                }
-                            />
-
-                        ),
-                },
-
-            ],
-            [
-                currentPage,
-                rowsPerPage,
-            ]
-        )
-
-
-    // ========================================================
-    // CUSTOM DATATABLE STYLES
-    // ========================================================
-
-    const customStyles = {
-
-        table: {
-
-            style: {
-                width: '100%',
-            },
-
-        },
-
-
-        rows: {
-
-            style: {
-                minHeight: '44px',
-            },
-
-        },
-
-
-        headRow: {
-
-            style: {
-
-                minHeight: '46px',
-
-                backgroundColor:
-                    '#f1f4fa',
-
-                borderBottom:
-                    '1px solid #d8deea',
-
-            },
-
-        },
-
-
-        headCells: {
-
-            style: {
-
-                justifyContent:
-                    'center',
-
-                textAlign:
-                    'center',
-
-                fontSize:
-                    '12px',
-
-                fontWeight:
-                    700,
-
-                color:
-                    '#23395d',
-
-                textTransform:
-                    'uppercase',
-
-                backgroundColor:
-                    '#f1f4fa',
-
-            },
-
-        },
-
-
-        cells: {
-
-            style: {
-
-                justifyContent:
-                    'center',
-
-                textAlign:
-                    'center',
-
-                fontSize:
-                    '13px',
-
-                color:
-                    '#1f2937',
-
-            },
-
-        },
-
-
-        pagination: {
-
-            style: {
-
-                borderTop:
-                    'none',
-
-                minHeight:
-                    '52px',
-
-                paddingRight:
-                    '10px',
-
-            },
-
-        },
-
+    if (!exportRows.length) {
+      toast.error('Nothing to export for the selected filters')
+      return
     }
 
-
-    // ========================================================
-    // RENDER
-    // ========================================================
-
-    return (
-
-        <div className="sr-page">
-
-            {/* ==================================================
-                FILTER CARD
-            ================================================== */}
-
-            <div className="sr-filter-card">
-
-                {/* ==============================================
-                    TITLE
-                ============================================== */}
-
-                <div className="sr-filter-title">
-
-                    Stock Report
-
-                </div>
-
-
-                {/* ==============================================
-                    FILTER GRID
-                    ITEM GROUP | PART NUMBER | STATUS
-                ============================================== */}
-
-                <div className="sr-filter-grid">
-
-
-                    {/* ==========================================
-                        ITEM GROUP
-                    ========================================== */}
-
-                    <div className="sr-field">
-
-                        <label>
-                            PART GROUP
-                        </label>
-
-
-                        <Select
-
-                            className="sr-react-select"
-
-                            classNamePrefix="sr-select"
-
-                            styles={
-                                selectStyles
-                            }
-
-                            placeholder="Select Item Group"
-
-                            options={
-                                itemGroupOptions
-                            }
-
-                            value={
-
-                                itemGroupOptions.find(
-                                    (option) =>
-                                        String(
-                                            option.value
-                                        ) ===
-                                        String(
-                                            itemGroupIdInput
-                                        )
-                                ) || null
-
-                            }
-
-                            onChange={
-                                (selected) => {
-
-                                    setItemGroupIdInput(
-                                        selected?.value ||
-                                        ''
-                                    )
-
-                                }
-                            }
-
-                            isClearable
-
-                            isSearchable
-
-                        />
-
-                    </div>
-
-
-                    {/* ==========================================
-                        PART NUMBER
-                    ========================================== */}
-
-                    <div className="sr-field">
-
-                        <label>
-                            PART NUMBER
-                        </label>
-
-
-                        <Select
-
-                            className="sr-react-select"
-
-                            classNamePrefix="sr-select"
-
-                            styles={
-                                selectStyles
-                            }
-
-                            placeholder="Select Part Number"
-
-                            options={
-                                partNumberOptions
-                            }
-
-                            value={
-
-                                partNumberOptions.find(
-                                    (option) =>
-                                        String(
-                                            option.value
-                                        ) ===
-                                        String(
-                                            partNumberInput
-                                        )
-                                ) || null
-
-                            }
-
-                            onChange={
-                                (selected) => {
-
-                                    setPartNumberInput(
-                                        selected?.value ||
-                                        ''
-                                    )
-
-                                }
-                            }
-
-                            isClearable
-
-                            isSearchable
-
-                            noOptionsMessage={() =>
-                                'No Part Number found'
-                            }
-
-                        />
-
-                    </div>
-
-
-                    {/* ==========================================
-                        STATUS
-                    ========================================== */}
-
-                    <div className="sr-field">
-
-                        <label>
-                            STATUS
-                        </label>
-
-
-                        <Select
-
-                            className="sr-react-select"
-
-                            classNamePrefix="sr-select"
-
-                            styles={
-                                selectStyles
-                            }
-
-                            placeholder="All Statuses"
-
-                            options={
-                                statusOptions
-                            }
-
-                            value={
-
-                                statusOptions.find(
-                                    (option) =>
-                                        option.value ===
-                                        statusInput
-                                ) || null
-
-                            }
-
-                            onChange={
-                                (selected) => {
-
-                                    setStatusInput(
-                                        selected?.value ||
-                                        ''
-                                    )
-
-                                }
-                            }
-
-                            isClearable
-
-                        />
-
-                    </div>
-
-                </div>
-
-
-                {/* ==============================================
-                    FILTER BUTTONS
-                ============================================== */}
-
-                <div className="sr-filter-actions">
-
-
-                    {/* SEARCH */}
-
-                    <button
-
-                        type="button"
-
-                        className="
-                            sr-btn
-                            sr-btn-search
-                        "
-
-                        onClick={
-                            handleSearch
-                        }
-
-                        disabled={
-                            loading
-                        }
-
-                    >
-
-                        <FaSearch
-                            size={12}
-                        />
-
-                        Search
-
-                    </button>
-
-
-                    {/* CLEAR */}
-
-                    <button
-
-                        type="button"
-
-                        className="
-                            sr-btn
-                            sr-btn-clear
-                        "
-
-                        onClick={
-                            handleClear
-                        }
-
-                        disabled={
-                            loading
-                        }
-
-                    >
-
-                        <FaSyncAlt
-                            size={12}
-                        />
-
-                        Clear
-
-                    </button>
-
-                </div>
-
-            </div>
-
-
-            {/* ==================================================
-                RESULT CARD
-            ================================================== */}
-
-            <div className="sr-table-card">
-
-
-                {/* ==================================================
-                    TOOLBAR
-                ================================================== */}
-
-                <div className="sr-table-toolbar">
-
-
-                    {/* EXPORT */}
-
-                    <button
-
-                        type="button"
-
-                        className="
-                            sr-btn
-                            sr-btn-export
-                        "
-
-                        onClick={
-                            handleExportExcel
-                        }
-
-                        disabled={
-                            exporting ||
-                            loading
-                        }
-
-                    >
-
-                        <FaFileExcel
-                            size={13}
-                        />
-
-                        {
-                            exporting
-                                ? 'Exporting...'
-                                : 'Export'
-                        }
-
-                    </button>
-
-
-                    {/* TABLE SEARCH */}
-
-                    <div className="sr-search-box">
-
-                        <FaSearch />
-
-
-                        <input
-
-                            type="text"
-
-                            value={
-                                search
-                            }
-
-                            onChange={
-                                handleSearchChange
-                            }
-
-                            placeholder="Search by Part No, Part Name..."
-
-                        />
-
-                    </div>
-
-                </div>
-
-
-                {/* ==================================================
-                    DATA TABLE
-                ================================================== */}
-
-                <DataTable
-
-                    columns={
-                        columns
-                    }
-
-                    data={
-                        rows
-                    }
-
-                    customStyles={
-                        customStyles
-                    }
-
-                    pagination
-
-                    paginationServer
-
-                    paginationTotalRows={
-                        totalRows
-                    }
-
-                    paginationPerPage={
-                        rowsPerPage
-                    }
-
-                    paginationRowsPerPageOptions={[
-                        10,
-                        25,
-                        50,
-                        100,
-                    ]}
-
-                    onChangePage={
-                        handlePageChange
-                    }
-
-                    onChangeRowsPerPage={
-                        handleRowsPerPageChange
-                    }
-
-                    progressPending={
-                        loading
-                    }
-
-                    persistTableHead
-
-                    striped
-
-                    responsive
-
-                    highlightOnHover
-
-                    noDataComponent={
-
-                        <div className="sr-empty">
-
-                            No stock records found
-
-                        </div>
-
-                    }
-
-                />
-
-            </div>
-
-        </div>
-
+    // A4 Portrait
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4',
+    })
+
+    const pageWidth = doc.internal.pageSize.getWidth()
+    const margin = 10
+
+    // ---------------------------------------------------------
+    // HEADER
+    // ---------------------------------------------------------
+
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(13)
+    doc.text('Stock Report', margin, 12)
+
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(7.5)
+
+    doc.text(
+      `Generated: ${new Date().toLocaleString('en-GB')}`,
+      margin,
+      17
     )
+
+    // ---------------------------------------------------------
+    // TOTAL FORMAT
+    // No ₹ symbol so the value fits properly.
+    // Example: 345,000,000.00
+    // ---------------------------------------------------------
+
+    const formatPdfTotal = (value) => {
+      return Number(value || 0).toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })
+    }
+
+    // ---------------------------------------------------------
+    // TABLE
+    // ---------------------------------------------------------
+
+    autoTable(doc, {
+      startY: 22,
+
+      margin: {
+        left: margin,
+        right: margin,
+      },
+
+      // A4 width = 210
+      // 210 - 10 - 10 = 190mm available
+      tableWidth: pageWidth - margin * 2,
+
+      head: [
+        ['CODE', 'PRODUCT', 'QUANTITY', 'UOM', 'TOTAL'],
+      ],
+
+      body: exportRows.map((row) => {
+        const partNumber = row?.partNumber ?? '—'
+        const partName = row?.partName ?? '—'
+        const quantity = row?.quantity ?? 0
+        const uom = row?.uom ?? row?.UOM ?? '—'
+
+        const total =
+          row?.total ??
+          row?.Total ??
+          row?.value ??
+          row?.Value ??
+          0
+
+        return [
+          String(partNumber),
+          String(partName),
+          num(quantity),
+          String(uom),
+          formatPdfTotal(total),
+        ]
+      }),
+
+      // -------------------------------------------------------
+      // TABLE STYLE
+      // -------------------------------------------------------
+
+      theme: 'grid',
+
+      styles: {
+        font: 'helvetica',
+        fontSize: 7,
+
+        textColor: [55, 55, 55],
+
+        lineColor: [175, 175, 175],
+        lineWidth: 0.25,
+
+        cellPadding: {
+          top: 2,
+          right: 2,
+          bottom: 2,
+          left: 2,
+        },
+
+        minCellHeight: 7,
+
+        valign: 'middle',
+
+        overflow: 'hidden',
+      },
+
+      // -------------------------------------------------------
+      // HEADER COLOR
+      // -------------------------------------------------------
+
+      headStyles: {
+        font: 'helvetica',
+        fontStyle: 'bold',
+        fontSize: 7,
+
+        textColor: [40, 40, 40],
+
+        fillColor: [225, 225, 225],
+
+        lineColor: [160, 160, 160],
+        lineWidth: 0.25,
+
+        valign: 'middle',
+      },
+
+      // -------------------------------------------------------
+      // SECOND ROW / FOURTH ROW / SIXTH ROW...
+      // LIGHT GRAY
+      // FIRST ROW / THIRD ROW / FIFTH ROW...
+      // WHITE
+      // -------------------------------------------------------
+
+      alternateRowStyles: {
+        fillColor: [245, 245, 245],
+      },
+
+      // -------------------------------------------------------
+      // COLUMN WIDTHS
+      //
+      // TOTAL = 34 + 77 + 25 + 18 + 36 = 190mm
+      // Exactly fits A4 printable width.
+      // -------------------------------------------------------
+
+      columnStyles: {
+        0: {
+          cellWidth: 34,
+          halign: 'left',
+        },
+
+        1: {
+          cellWidth: 77,
+          halign: 'left',
+        },
+
+        2: {
+          cellWidth: 25,
+          halign: 'right',
+        },
+
+        3: {
+          cellWidth: 18,
+          halign: 'center',
+        },
+
+        4: {
+          cellWidth: 36,
+          halign: 'right',
+        },
+      },
+
+      // -------------------------------------------------------
+      // HEADER ALIGNMENT
+      // -------------------------------------------------------
+
+      didParseCell: (data) => {
+        if (data.section === 'head') {
+          if (data.column.index === 2) {
+            data.cell.styles.halign = 'right'
+          }
+
+          if (data.column.index === 3) {
+            data.cell.styles.halign = 'center'
+          }
+
+          if (data.column.index === 4) {
+            data.cell.styles.halign = 'right'
+          }
+        }
+      },
+    })
+
+    // ---------------------------------------------------------
+    // PAGE NUMBER
+    // ---------------------------------------------------------
+
+    const pageCount = doc.getNumberOfPages()
+
+    for (let pageNo = 1; pageNo <= pageCount; pageNo += 1) {
+      doc.setPage(pageNo)
+
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(7)
+
+      doc.text(
+        `Page ${pageNo} of ${pageCount}`,
+        pageWidth - margin,
+        doc.internal.pageSize.getHeight() - 6,
+        {
+          align: 'right',
+        }
+      )
+    }
+
+    // ---------------------------------------------------------
+    // SAVE
+    // ---------------------------------------------------------
+
+    doc.save(
+      `Stock_Report_${new Date().toISOString().slice(0, 10)}.pdf`
+    )
+
+    toast.success('Stock Report PDF exported successfully')
+  } catch (err) {
+    console.error('PDF Export Error:', err)
+    toast.error('Failed to export Stock Report PDF')
+  } finally {
+    setPdfExporting(false)
+  }
 }
 
-
-export default StockReport
+  const filteredGridRows = useMemo(() => {
+    const search = gridSearch.trim().toLowerCase()
+    if (!search) return rows
+    return rows.filter((row) =>
+      [
+        row.partNumber,
+        row.partName,
+        row.partGroupName,
+        row.supplierName,
+        row.supplierGroupName,
+        row.uom,
+        row.UOM,
+        row.direction,
+        row.reference,
+      ]
+        .filter(Boolean)
+        .some((value) =>
+          String(value).toLowerCase().includes(search)
+        )
+    )
+  }, [rows, gridSearch])
+  const columns = useMemo(
+    () => [
+      {
+        name: 'S.NO',
+        width: '70px',
+        center: true,
+        cell: (_, index) => {
+          const value = (page - 1) * pageSize + index + 1
+          return <CellTooltip value={value} align="center">{value}</CellTooltip>
+        },
+      },
+      {
+        name: 'PART NUMBER',
+        width: '145px',
+        sortable: true,
+        selector: (row) => row.partNumber ?? '—',
+        cell: (row) => {
+          const value = row.partNumber ?? '—'
+          return <CellTooltip value={value} align="left">{value}</CellTooltip>
+        },
+      },
+      {
+        name: 'PART NAME',
+        minWidth: '180px',
+        sortable: true,
+        selector: (row) => row.partName ?? '—',
+        cell: (row) => {
+          const value = row.partName ?? '—'
+          return <CellTooltip value={value} align="left">{value}</CellTooltip>
+        },
+      },
+      {
+        name: 'PART GROUP',
+        minWidth: '145px',
+        sortable: true,
+        selector: (row) => row.partGroupName ?? '—',
+        cell: (row) => {
+          const value = row.partGroupName ?? '—'
+          return <CellTooltip value={value} align="left">{value}</CellTooltip>
+        },
+      },
+      {
+        name: 'SUPPLIER',
+        minWidth: '150px',
+        sortable: true,
+        selector: (row) => row.supplierName ?? '—',
+        cell: (row) => {
+          const value = row.supplierName ?? '—'
+          return <CellTooltip value={value} align="left">{value}</CellTooltip>
+        },
+      },
+      {
+        name: 'SUPPLIER GROUP',
+        minWidth: '155px',
+        sortable: true,
+        selector: (row) => row.supplierGroupName ?? '—',
+        cell: (row) => {
+          const value = row.supplierGroupName ?? '—'
+          return <CellTooltip value={value} align="left">{value}</CellTooltip>
+        },
+      },
+      {
+        name: 'QUANTITY',
+        width: '110px',
+        right: true,
+        sortable: true,
+        selector: (row) => row.quantity ?? 0,
+        cell: (row) => {
+          const value = num(row.quantity)
+          return <CellTooltip value={value} align="right">{value}</CellTooltip>
+        },
+      },
+      {
+        name: 'UOM',
+        width: '80px',
+        center: true,
+        sortable: true,
+        selector: (row) => row.uom ?? row.UOM ?? '—',
+        cell: (row) => {
+          const value = row.uom ?? row.UOM ?? '—'
+          return <CellTooltip value={value} align="center">{value}</CellTooltip>
+        },
+      },
+      {
+        name: (
+          <div
+            className="sr-movement-column-header"
+            title="INWARD quantity. Select RATE or VALUE to display the complete column."
+          >
+            <div className="sr-movement-column-title">INWARD</div>
+            <div className="sr-movement-column-options">
+              <label title="Show / hide the complete INWARD RATE column">
+                <input
+                  type="checkbox"
+                  checked={showInwardRate}
+                  onChange={(event) => setShowInwardRate(event.target.checked)}
+                />
+                <span>RATE</span>
+              </label>
+              <label title="Show / hide the complete INWARD VALUE column">
+                <input
+                  type="checkbox"
+                  checked={showInwardValue}
+                  onChange={(event) => setShowInwardValue(event.target.checked)}
+                />
+                <span>VALUE</span>
+              </label>
+            </div>
+          </div>
+        ),
+        width: '190px',
+        minWidth: '190px',
+        grow: 0,
+        right: true,
+        sortable: true,
+        selector: (row) => row.inward ?? 0,
+        cell: (row) => {
+          const value = num(row.inward)
+          return <CellTooltip value={`INWARD QUANTITY: ${value}`} align="right">{value}</CellTooltip>
+        },
+      },
+      ...(showInwardRate
+        ? [
+          {
+            name: <span title="INWARD RATE">INWARD RATE</span>,
+            width: '150px',
+            minWidth: '150px',
+            grow: 0,
+            right: true,
+            sortable: true,
+            selector: (row) =>
+              Number(row.inward) > 0 ? row.rate ?? 0 : 0,
+            cell: (row) => {
+              const value =
+                Number(row.inward) > 0 ? money(row.rate) : money(0)
+              return <CellTooltip value={`INWARD RATE: ${value}`} align="right">{value}</CellTooltip>
+            },
+          },
+        ]
+        : []),
+      ...(showInwardValue
+        ? [
+          {
+            name: <span title="INWARD VALUE">INWARD VALUE</span>,
+            width: '160px',
+            minWidth: '160px',
+            grow: 0,
+            right: true,
+            sortable: true,
+            selector: (row) =>
+              Number(row.inward) > 0 ? row.value ?? 0 : 0,
+            cell: (row) => {
+              const value =
+                Number(row.inward) > 0 ? money(row.value) : money(0)
+              return <CellTooltip value={`INWARD VALUE: ${value}`} align="right">{value}</CellTooltip>
+            },
+          },
+        ]
+        : []),
+      {
+        name: (
+          <div
+            className="sr-movement-column-header"
+            title="OUTWARD quantity. Select RATE or VALUE to display the complete column."
+          >
+            <div className="sr-movement-column-title">OUTWARD</div>
+            <div className="sr-movement-column-options">
+              <label title="Show / hide the complete OUTWARD RATE column">
+                <input
+                  type="checkbox"
+                  checked={showOutwardRate}
+                  onChange={(event) => setShowOutwardRate(event.target.checked)}
+                />
+                <span>RATE</span>
+              </label>
+              <label title="Show / hide the complete OUTWARD VALUE column">
+                <input
+                  type="checkbox"
+                  checked={showOutwardValue}
+                  onChange={(event) => setShowOutwardValue(event.target.checked)}
+                />
+                <span>VALUE</span>
+              </label>
+            </div>
+          </div>
+        ),
+        width: '190px',
+        minWidth: '190px',
+        grow: 0,
+        right: true,
+        sortable: true,
+        selector: (row) => row.outward ?? 0,
+        cell: (row) => {
+          const value = num(row.outward)
+          return <CellTooltip value={`OUTWARD QUANTITY: ${value}`} align="right">{value}</CellTooltip>
+        },
+      },
+      ...(showOutwardRate
+        ? [
+          {
+            name: <span title="OUTWARD RATE">OUTWARD RATE</span>,
+            width: '150px',
+            minWidth: '150px',
+            grow: 0,
+            right: true,
+            sortable: true,
+            selector: (row) =>
+              Number(row.outward) > 0 ? row.rate ?? 0 : 0,
+            cell: (row) => {
+              const value =
+                Number(row.outward) > 0 ? money(row.rate) : money(0)
+              return <CellTooltip value={`OUTWARD RATE: ${value}`} align="right">{value}</CellTooltip>
+            },
+          },
+        ]
+        : []),
+      ...(showOutwardValue
+        ? [
+          {
+            name: <span title="OUTWARD VALUE">OUTWARD VALUE</span>,
+            width: '160px',
+            minWidth: '160px',
+            grow: 0,
+            right: true,
+            sortable: true,
+            selector: (row) =>
+              Number(row.outward) > 0 ? row.value ?? 0 : 0,
+            cell: (row) => {
+              const value =
+                Number(row.outward) > 0 ? money(row.value) : money(0)
+              return <CellTooltip value={`OUTWARD VALUE: ${value}`} align="right">{value}</CellTooltip>
+            },
+          },
+        ]
+        : []),
+      {
+        name: 'REFERENCE',
+        minWidth: '150px',
+        sortable: true,
+        selector: (row) => row.reference ?? '—',
+        cell: (row) => {
+          const value = row.reference ?? '—'
+          return <CellTooltip value={value} align="left">{value}</CellTooltip>
+        },
+      },
+      {
+        name: 'DATE',
+        width: '110px',
+        sortable: true,
+        selector: (row) => row.date ?? '',
+        cell: (row) => {
+          const value = row.date
+            ? new Date(row.date).toLocaleDateString('en-GB')
+            : '—'
+          return <CellTooltip value={value} align="center">{value}</CellTooltip>
+        },
+      },
+    ],
+    [
+      page,
+      pageSize,
+      showInwardRate,
+      showInwardValue,
+      showOutwardRate,
+      showOutwardValue,
+    ]
+  )
+  const tableStyles = useMemo(
+    () => ({
+      headCells: {
+        style: {
+          fontSize: '12px',
+          fontWeight: 700,
+          color: '#23395d',
+          textTransform: 'uppercase',
+          backgroundColor: '#f1f4fa',
+          overflow: 'visible',
+          whiteSpace: 'nowrap',
+          textOverflow: 'clip',
+          paddingLeft: '8px',
+          paddingRight: '8px',
+        },
+      },
+      cells: {
+        style: {
+          fontSize: '13px',
+          color: '#1f2937',
+          paddingLeft: '10px',
+          paddingRight: '10px',
+          overflow: 'hidden',
+          whiteSpace: 'nowrap',
+        },
+      },
+      pagination: {
+        style: {
+          borderTop: 'none',
+          minHeight: '52px',
+        },
+      },
+    }),
+    []
+  )
+  const renderDateInput = (label, value, key) => (
+    <div className="sr-field sr-date-field">
+      <CTooltip content={label} placement="top">
+        <label>{label}</label>
+      </CTooltip>
+      <input
+        type="date"
+        className="sr-date-input"
+        value={value}
+        onChange={(event) =>
+          setInputValue(key, event.target.value)
+        }
+      />
+    </div>
+  )
+  const renderSelect = (
+    label,
+    value,
+    optionsList,
+    onChange,
+    placeholder,
+    disabled = false
+  ) => (
+    <div className="sr-field">
+      <label>{label}</label>
+      <Select
+        className="sr-react-select"
+        classNamePrefix="sr-select"
+        styles={selectStyles}
+        options={optionsList}
+        value={
+          optionsList.find(
+            (option) => String(option.value) === String(value)
+          ) || null
+        }
+        onChange={onChange}
+        placeholder={placeholder}
+        isClearable
+        isSearchable
+        isDisabled={disabled}
+      />
+    </div>
+  )
+  return (
+    <div className="sr-page">
+      <div className="sr-filter-card">
+        <div className="sr-filter-title">
+          Stock Report
+        </div>
+        <div className="sr-overall-filter-grid">
+          {renderDateInput(
+            'FROM DATE',
+            inputFilters.fromDate,
+            'fromDate'
+          )}
+          {renderDateInput(
+            'TO DATE',
+            inputFilters.toDate,
+            'toDate'
+          )}
+          {renderSelect(
+            'PART NUMBER',
+            inputFilters.partNumber,
+            partOptions,
+            (selected) =>
+              setSelectValue('partNumber', selected),
+            'All Part Numbers'
+          )}
+          {renderSelect(
+            'SUPPLIER',
+            inputFilters.supplierId,
+            supplierOptions,
+            (selected) =>
+              setSelectValue('supplierId', selected),
+            'All Suppliers'
+          )}
+          {renderSelect(
+            'SUPPLIER GROUP',
+            inputFilters.supplierGroupId,
+            supplierGroupOptions,
+            (selected) =>
+              setSelectValue('supplierGroupId', selected),
+            'All Supplier Groups'
+          )}
+          {renderSelect(
+            'PART GROUP',
+            inputFilters.itemGroupId,
+            partGroupOptions,
+            (selected) =>
+              setSelectValue('itemGroupId', selected),
+            'All Part Groups'
+          )}
+          {renderSelect(
+            'CUSTOMER',
+            inputFilters.customerId,
+            customerOptions,
+            (selected) =>
+              setSelectValue('customerId', selected),
+            customerFiltersAvailable
+              ? 'All Customers'
+              : 'Customer mapping unavailable',
+            !customerFiltersAvailable
+          )}
+          {renderSelect(
+            'CUSTOMER GROUP',
+            inputFilters.customerGroupId,
+            customerGroupOptions,
+            (selected) =>
+              setSelectValue('customerGroupId', selected),
+            customerFiltersAvailable
+              ? 'All Customer Groups'
+              : 'Customer group mapping unavailable',
+            !customerFiltersAvailable
+          )}
+        </div>
+        <div className="sr-filter-actions">
+          <CTooltip content="Apply the selected filters and load the Stock Report" placement="top">
+            <button
+              type="button"
+              className="sr-btn sr-btn-search"
+              onClick={handleSearch}
+              disabled={loading}
+            >
+              <FaSearch size={12} />
+              Search
+            </button>
+          </CTooltip>
+          <CTooltip content="Clear all filters and reset the Stock Report" placement="top">
+            <button
+              type="button"
+              className="sr-btn sr-btn-clear"
+              onClick={handleClear}
+              disabled={loading}
+            >
+              <FaSyncAlt size={12} />
+              Clear
+            </button>
+          </CTooltip>
+        </div>
+      </div>
+      <div className="sr-table-card">
+        <div className="sr-table-toolbar">
+          <CTooltip content="Export the current Stock Report to Excel" placement="top">
+            <button
+              type="button"
+              className="sr-btn sr-btn-export"
+              onClick={exportReport}
+              disabled={exporting || loading}
+            >
+              <FaFileExcel size={13} />
+              {exporting ? 'Exporting...' : 'Export'}
+            </button>
+          </CTooltip>
+          <CTooltip
+            content="Export the Stock Report as a PDF with Part Number, Part Name, Qty, UOM and Total"
+            placement="top"
+          >
+            <button
+              type="button"
+              className="sr-btn sr-btn-export"
+              onClick={exportPdf}
+              disabled={pdfExporting || exporting || loading}
+            >
+              <FaFilePdf size={13} />
+              {pdfExporting ? 'Generating PDF...' : 'PDF'}
+            </button>
+          </CTooltip>
+          <div className="sr-search-box">
+            <FaSearch />
+            <CTooltip content="Search within the loaded Stock Report rows" placement="top">
+              <input
+                type="text"
+                value={gridSearch}
+                onChange={handleGridSearch}
+                placeholder="Search by Part No, Part Name..."
+              />
+            </CTooltip>
+          </div>
+        </div>
+        <DataTable
+          columns={columns}
+          data={filteredGridRows}
+          customStyles={tableStyles}
+          pagination
+          paginationServer
+          paginationTotalRows={
+            gridSearch ? filteredGridRows.length : totalRows
+          }
+          paginationPerPage={pageSize}
+          paginationRowsPerPageOptions={[
+            25,
+            50,
+            100,
+            200,
+          ]}
+          onChangePage={(nextPage) => {
+            setPage(nextPage)
+            loadReport({
+              currentPage: nextPage,
+              currentPageSize: pageSize,
+              currentFilters: filters,
+            })
+          }}
+          onChangeRowsPerPage={(size) => {
+            setPageSize(size)
+            setPage(1)
+            loadReport({
+              currentPage: 1,
+              currentPageSize: size,
+              currentFilters: filters,
+            })
+          }}
+          progressPending={loading}
+          persistTableHead
+          striped
+          responsive
+          highlightOnHover
+          noDataComponent={
+            <div className="sr-empty">
+              No stock records found
+            </div>
+          }
+        />
+      </div>
+    </div>
+  )
+}
+export default StockReport;

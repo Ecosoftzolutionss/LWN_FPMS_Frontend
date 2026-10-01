@@ -1,4 +1,9 @@
-import React, { useEffect, useState, useRef } from 'react'
+import React, {
+  useEffect,
+  useState,
+  useRef,
+} from 'react'
+
 import DataTable from 'react-data-table-component'
 
 import {
@@ -23,10 +28,14 @@ import {
 } from 'react-icons/fa'
 
 import { toast } from 'react-toastify'
+
 import Select from 'react-select'
+import CreatableSelect from 'react-select/creatable'
 
 import API from '../../api.js'
+
 import '../../assets/CSS/storeMaster.css'
+
 import usePrivilege from '../hooks/usePrivilege.js'
 
 
@@ -36,10 +45,11 @@ import usePrivilege from '../hooks/usePrivilege.js'
 
 const DEFAULT_COLOUR = '#1E88E5'
 
+
 const EMPTY_FORM = {
   storeLocation: '',
-  palletTypeId: '',
-  colourCode: '#1E88E5',
+  palletTypeName: '',
+  colourCode: DEFAULT_COLOUR,
   partNumberId: '',
 }
 
@@ -63,8 +73,12 @@ const getErrorMessage = (err, fallback) => {
     return data.message || data.error
   }
 
-  if (data.errors && typeof data.errors === 'object') {
-    const firstField = Object.keys(data.errors)[0]
+  if (
+    data.errors &&
+    typeof data.errors === 'object'
+  ) {
+    const firstField =
+      Object.keys(data.errors)[0]
 
     const firstMessage =
       data.errors[firstField]?.[0]
@@ -86,13 +100,15 @@ const StoreMaster = () => {
 
   const locationRef = useRef(null)
 
-  // ----------------------------------------------------------
+
+  // ==========================================================
   // State
-  // ----------------------------------------------------------
+  // ==========================================================
 
   const [stores, setStores] = useState([])
 
-  const [palletTypes, setPalletTypes] = useState([])
+  const [palletTypes, setPalletTypes] =
+    useState([])
 
   const [parts, setParts] = useState([])
 
@@ -102,22 +118,43 @@ const StoreMaster = () => {
 
   const [errors, setErrors] = useState({
     storeLocation: '',
-    palletTypeId: '',
+    palletTypeName: '',
     colourCode: '',
   })
 
-  const [showForm, setShowForm] = useState(false)
-  const [editId, setEditId] = useState(null)
-  const [search, setSearch] = useState('')
-  const [deleteId, setDeleteId] = useState(null)
-  const [deleteStore, setDeleteStore] = useState(null)
-  const [showDeleteModal, setShowDeleteModal] = useState(false)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [rowsPerPage, setRowsPerPage] = useState(10)
+  const [showForm, setShowForm] =
+    useState(false)
+
+  const [editId, setEditId] =
+    useState(null)
+
+  const [search, setSearch] =
+    useState('')
+
+  const [deleteId, setDeleteId] =
+    useState(null)
+
+  const [deleteStore, setDeleteStore] =
+    useState(null)
+
+  const [showDeleteModal, setShowDeleteModal] =
+    useState(false)
+
+  const [currentPage, setCurrentPage] =
+    useState(1)
+
+  const [rowsPerPage, setRowsPerPage] =
+    useState(10)
+
+
+  // ==========================================================
+  // Privilege
+  // ==========================================================
 
   const {
     privileges: userPrivileges = [],
   } = usePrivilege()
+
 
   const uPrivilege =
     userPrivileges.find(
@@ -141,6 +178,7 @@ const StoreMaster = () => {
   // ==========================================================
 
   const loadStores = async () => {
+
     try {
 
       const res =
@@ -153,7 +191,7 @@ const StoreMaster = () => {
       console.error(err)
 
       toast.error(
-        'Failed to load store list'
+        'Failed to load pallet list'
       )
     }
   }
@@ -164,25 +202,17 @@ const StoreMaster = () => {
   // ==========================================================
 
   const loadPalletTypes = async () => {
+
     try {
 
-      /*
-       * This API returns:
-       *   Id
-       *   PalletName
-       *   CurrentSequence
-       *   RangeFrom
-       *   RangeTo
-       *
-       * Pallet Type is only used to generate/display
-       * the pallet number. Colour is entered separately
-       * by the user in this form.
-       */
-
       const res =
-        await API.get('/StoreMaster/pallet-types')
+        await API.get(
+          '/StoreMaster/pallet-types'
+        )
 
-      setPalletTypes(res.data || [])
+      setPalletTypes(
+        res.data || []
+      )
 
     } catch (err) {
 
@@ -203,12 +233,17 @@ const StoreMaster = () => {
   // ==========================================================
 
   const loadParts = async () => {
+
     try {
 
       const res =
-        await API.get('/StoreMaster/parts-list')
+        await API.get(
+          '/StoreMaster/parts-list'
+        )
 
-      setParts(res.data || [])
+      setParts(
+        res.data || []
+      )
 
     } catch (err) {
 
@@ -253,53 +288,56 @@ const StoreMaster = () => {
 
 
   // ==========================================================
-  // Pallet Type Dropdown Options
+  // Pallet Type Options
   // ==========================================================
 
   const palletTypeOptions =
     palletTypes.map((p) => {
 
       const currentSequence =
-        Number(p.currentSequence || 0)
+        Number(
+          p.currentSequence || 0
+        )
 
       const rangeFrom =
-        Number(p.rangeFrom || 1)
+        Number(
+          p.rangeFrom || 1
+        )
 
       const rangeTo =
-        Number(p.rangeTo || 0)
+        Number(
+          p.rangeTo || 0
+        )
 
-      /*
-       * If sequence is still 0,
-       * start from RangeFrom.
-       *
-       * Example:
-       * RangeFrom = 1
-       * CurrentSequence = 0
-       * Next = 1
-       */
 
       const nextSequence =
         currentSequence === 0
           ? rangeFrom
           : currentSequence + 1
 
+
       const isRangeCompleted =
         nextSequence > rangeTo
+
 
       const palletName =
         p.palletName ||
         p.label ||
         ''
 
+
       return {
-        value:
-          p.value ??
-          p.id,
+
+        value: palletName,
 
         label:
           isRangeCompleted
             ? `${palletName} (Range Completed)`
-            : `${palletName} (Next: ${palletName}-${String(nextSequence).padStart(2, '0')})`,
+            : `${palletName} (Next: ${palletName}-${String(
+                nextSequence
+              ).padStart(2, '0')})`,
+
+        palletName,
 
         disabled:
           isRangeCompleted,
@@ -318,10 +356,12 @@ const StoreMaster = () => {
       value,
     } = e.target
 
+
     setForm((prev) => ({
       ...prev,
       [name]: value,
     }))
+
 
     clearError(name)
   }
@@ -346,22 +386,28 @@ const StoreMaster = () => {
   // Pallet Type Change
   // ==========================================================
 
-  const handlePalletTypeChange = (selected) => {
+  const handlePalletTypeChange =
+    (selected) => {
 
-    /*
-     * Pallet Type only controls the pallet type/sequence.
-     * Colour is entered separately by the user.
-     */
+      const value =
+        selected?.value || ''
 
-    setForm((prev) => ({
-      ...prev,
 
-      palletTypeId:
-        selected?.value || '',
-    }))
+      setForm((prev) => ({
+        ...prev,
 
-    clearError('palletTypeId')
-  }
+        palletTypeName:
+          value
+            .toString()
+            .trim()
+            .toUpperCase(),
+      }))
+
+
+      clearError(
+        'palletTypeName'
+      )
+    }
 
 
   // ==========================================================
@@ -371,16 +417,21 @@ const StoreMaster = () => {
   const validate = () => {
 
     const temp = {
+
       storeLocation: '',
-      palletTypeId: '',
+
+      palletTypeName: '',
+
       colourCode: '',
     }
 
 
+    // --------------------------------------------------------
     // Store Location
+    // --------------------------------------------------------
 
     if (
-      !form.storeLocation.trim()
+      !form.storeLocation?.trim()
     ) {
 
       temp.storeLocation =
@@ -388,21 +439,26 @@ const StoreMaster = () => {
     }
 
 
+    // --------------------------------------------------------
     // Pallet Type
+    // --------------------------------------------------------
 
     if (
-      !editId &&
-      !form.palletTypeId
+      !form.palletTypeName?.trim()
     ) {
 
-      temp.palletTypeId =
+      temp.palletTypeName =
         'Pallet Type is required'
     }
 
 
+    // --------------------------------------------------------
     // Pallet Colour
+    // --------------------------------------------------------
 
-    if (!form.colourCode?.trim()) {
+    if (
+      !form.colourCode?.trim()
+    ) {
 
       temp.colourCode =
         'Pallet Colour is required'
@@ -420,6 +476,7 @@ const StoreMaster = () => {
 
     setErrors(temp)
 
+
     return !Object.values(temp)
       .some((x) => x)
   }
@@ -435,6 +492,7 @@ const StoreMaster = () => {
       return
     }
 
+
     try {
 
       // ========================================================
@@ -446,21 +504,27 @@ const StoreMaster = () => {
         await API.put(
           `/StoreMaster/${editId}`,
           {
+
             storeLocation:
               form.storeLocation.trim(),
 
             colourCode:
-              form.colourCode.trim().toUpperCase(),
+              form.colourCode
+                .trim()
+                .toUpperCase(),
 
             partNumberId:
               form.partNumberId
-                ? Number(form.partNumberId)
+                ? Number(
+                    form.partNumberId
+                  )
                 : null,
           }
         )
 
+
         toast.success(
-          'Store Updated Successfully'
+          'Pallet Updated Successfully'
         )
       }
 
@@ -471,32 +535,35 @@ const StoreMaster = () => {
 
       else {
 
-        /*
-         * Pallet Type and Pallet Colour are independent.
-         * ColourCode is entered manually by the user.
-         */
-
         await API.post(
           '/StoreMaster',
           {
+
             storeLocation:
               form.storeLocation.trim(),
 
-            palletTypeId:
-              Number(form.palletTypeId),
+            palletTypeName:
+              form.palletTypeName
+                .trim()
+                .toUpperCase(),
 
             colourCode:
-              form.colourCode.trim().toUpperCase(),
+              form.colourCode
+                .trim()
+                .toUpperCase(),
 
             partNumberId:
               form.partNumberId
-                ? Number(form.partNumberId)
+                ? Number(
+                    form.partNumberId
+                  )
                 : null,
           }
         )
 
+
         toast.success(
-          'Store Saved Successfully'
+          'Pallet Saved Successfully'
         )
       }
 
@@ -510,6 +577,8 @@ const StoreMaster = () => {
       await loadPalletTypes()
 
       resetForm()
+
+      setShowForm(false)
 
     } catch (err) {
 
@@ -538,35 +607,42 @@ const StoreMaster = () => {
           `/StoreMaster/${row.id}`
         )
 
+
       const d = res.data
+
 
       setEditId(row.id)
 
       setShowForm(true)
 
-      /*
-       * ColourCode is intentionally NOT placed in form.
-       *
-       * Existing pallet type determines the colour.
-       */
+
+      // --------------------------------------------------------
+      // Existing pallet type is not changed during edit.
+      // --------------------------------------------------------
 
       setForm({
+
         storeLocation:
           d.storeLocation || '',
 
-        palletTypeId:
-          d.palletTypeId || '',
+        palletTypeName:
+          d.palletTypeName || '',
 
         colourCode:
-          d.colourCode || '#1E88E5',
+          d.colourCode ||
+          DEFAULT_COLOUR,
 
         partNumberId:
           d.partNumberId || '',
       })
 
+
       setErrors({
+
         storeLocation: '',
-        palletTypeId: '',
+
+        palletTypeName: '',
+
         colourCode: '',
       })
 
@@ -575,7 +651,7 @@ const StoreMaster = () => {
       console.error(err)
 
       toast.error(
-        'Failed to load store record'
+        'Failed to load pallet record'
       )
     }
   }
@@ -591,13 +667,19 @@ const StoreMaster = () => {
       ...EMPTY_FORM,
     })
 
+
     setErrors({
+
       storeLocation: '',
-      palletTypeId: '',
+
+      palletTypeName: '',
+
       colourCode: '',
     })
 
+
     setEditId(null)
+
 
     setTimeout(() => {
 
@@ -643,15 +725,19 @@ const StoreMaster = () => {
         `/StoreMaster/${deleteId}`
       )
 
+
       toast.success(
         'Deleted Successfully'
       )
+
 
       resetForm()
 
       await loadStores()
 
     } catch (err) {
+
+      console.error(err)
 
       toast.error(
         getErrorMessage(
@@ -681,27 +767,40 @@ const StoreMaster = () => {
       const searchText =
         search.toLowerCase()
 
+
       return (
 
-        (s.storeLocation || '')
+        (
+          s.storeLocation ||
+          ''
+        )
           .toLowerCase()
           .includes(searchText)
 
         ||
 
-        (s.palletNumber || '')
+        (
+          s.palletNumber ||
+          ''
+        )
           .toLowerCase()
           .includes(searchText)
 
         ||
 
-        (s.palletTypeName || '')
+        (
+          s.palletTypeName ||
+          ''
+        )
           .toLowerCase()
           .includes(searchText)
 
         ||
 
-        (s.partNumberCode || '')
+        (
+          s.partNumberCode ||
+          ''
+        )
           .toLowerCase()
           .includes(searchText)
       )
@@ -720,10 +819,18 @@ const StoreMaster = () => {
 
     {
       name: 'SL.NO',
+
       width: '90px',
+
       center: true,
+
       cell: (row, index) =>
-        (currentPage - 1) * rowsPerPage + index + 1,
+        (
+          currentPage - 1
+        ) *
+          rowsPerPage +
+        index +
+        1,
     },
 
 
@@ -749,7 +856,8 @@ const StoreMaster = () => {
       name: 'PART NUMBER',
 
       selector: (row) =>
-        row.partNumberCode || '-',
+        row.partNumberCode ||
+        '-',
 
       wrap: true,
     },
@@ -795,10 +903,15 @@ const StoreMaster = () => {
       cell: (row) => (
 
         <span
-          title={row.palletTypeName || 'Pallet Colour'}
+          title={
+            row.palletTypeName ||
+            'Pallet Colour'
+          }
 
           style={{
+
             width: '24px',
+
             height: '24px',
 
             borderRadius: '5px',
@@ -843,9 +956,10 @@ const StoreMaster = () => {
                 handleEdit(row)
               }
             >
-              <FaEdit />
-            </button>
 
+              <FaEdit />
+
+            </button>
           )}
 
 
@@ -858,17 +972,23 @@ const StoreMaster = () => {
 
               onClick={() => {
 
-                setDeleteId(row.id)
+                setDeleteId(
+                  row.id
+                )
 
-                setDeleteStore(row)
+                setDeleteStore(
+                  row
+                )
 
-                setShowDeleteModal(true)
-
+                setShowDeleteModal(
+                  true
+                )
               }}
             >
-              <FaTrash />
-            </button>
 
+              <FaTrash />
+
+            </button>
           )}
 
         </div>
@@ -884,32 +1004,49 @@ const StoreMaster = () => {
   const customStyles = {
 
     rows: {
+
       style: {
-        minHeight: '34px',
+
+        minHeight:
+          '34px',
       },
     },
+
 
     headCells: {
+
       style: {
-        justifyContent: 'center',
 
-        fontSize: '14px',
+        justifyContent:
+          'center',
 
-        paddingTop: '2px',
+        fontSize:
+          '14px',
 
-        paddingBottom: '2px',
+        paddingTop:
+          '2px',
+
+        paddingBottom:
+          '2px',
       },
     },
 
+
     cells: {
+
       style: {
-        justifyContent: 'center',
 
-        fontSize: '13px',
+        justifyContent:
+          'center',
 
-        paddingTop: '0px',
+        fontSize:
+          '13px',
 
-        paddingBottom: '0px',
+        paddingTop:
+          '0px',
+
+        paddingBottom:
+          '0px',
       },
     },
   }
@@ -922,6 +1059,7 @@ const StoreMaster = () => {
   return (
 
     <div className="store-master-page">
+
 
       {/* ======================================================
           SUMMARY
@@ -941,10 +1079,13 @@ const StoreMaster = () => {
                 Total Pallets
               </div>
 
+
               <div className="summary-value">
+
                 {String(
                   stores.length
                 ).padStart(2, '0')}
+
               </div>
 
             </div>
@@ -953,17 +1094,20 @@ const StoreMaster = () => {
             <button
               className="round-icon-btn add-item-btn"
 
-              title="Add Store"
+              title="Add Pallet"
 
-              onClick={handleAddNew}
+              onClick={
+                handleAddNew
+              }
             >
+
               <FaPlus size={16} />
+
             </button>
 
           </CCardBody>
 
         </CCard>
-
       )}
 
 
@@ -981,6 +1125,7 @@ const StoreMaster = () => {
             className="store-master-form-card-body"
           >
 
+
             {/* Back */}
 
             <button
@@ -988,23 +1133,32 @@ const StoreMaster = () => {
 
               title="Back"
 
-              onClick={handleBack}
+              onClick={
+                handleBack
+              }
             >
-              <FaArrowLeft size={14} />
+
+              <FaArrowLeft
+                size={14}
+              />
+
             </button>
 
 
             {/* Section Title */}
 
             <div className="section-title">
+
               Basic Information
+
             </div>
 
 
             <CRow className="g-3">
 
+
               {/* =================================================
-                  PALLET LOCATION
+                  STORE LOCATION
               ================================================= */}
 
               <CCol md={3}>
@@ -1029,7 +1183,9 @@ const StoreMaster = () => {
 
                   placeholder="Enter Store Location"
 
-                  value={form.storeLocation}
+                  value={
+                    form.storeLocation
+                  }
 
                   className={
                     errors.storeLocation
@@ -1037,16 +1193,21 @@ const StoreMaster = () => {
                       : ''
                   }
 
-                  onChange={handleChange}
+                  onChange={
+                    handleChange
+                  }
                 />
 
 
                 {errors.storeLocation && (
 
                   <small className="text-danger">
-                    {errors.storeLocation}
-                  </small>
 
+                    {
+                      errors.storeLocation
+                    }
+
+                  </small>
                 )}
 
               </CCol>
@@ -1076,11 +1237,17 @@ const StoreMaster = () => {
                   options={parts}
 
                   value={
+
                     parts.find(
                       (x) =>
-                        String(x.value) ===
-                        String(form.partNumberId)
+                        String(
+                          x.value
+                        ) ===
+                        String(
+                          form.partNumberId
+                        )
                     ) || null
+
                   }
 
                   onChange={
@@ -1121,28 +1288,33 @@ const StoreMaster = () => {
 
                   <div
                     className={
-                      errors.palletTypeId
+                      errors.palletTypeName
                         ? 'react-select-error'
                         : ''
                     }
                   >
 
-                    <Select
+                    <CreatableSelect
 
                       classNamePrefix="react-select"
 
-                      placeholder="Select Pallet Type"
+                      placeholder="Select or enter Pallet Type"
 
                       options={
                         palletTypeOptions
                       }
+
                       value={
 
-                        palletTypeOptions.find(
-                          (x) =>
-                            String(x.value) ===
-                            String(form.palletTypeId)
-                        ) || null
+                        form.palletTypeName
+                          ? {
+                              value:
+                                form.palletTypeName,
+
+                              label:
+                                form.palletTypeName,
+                            }
+                          : null
 
                       }
 
@@ -1157,10 +1329,15 @@ const StoreMaster = () => {
 
                       isClearable
 
+                      formatCreateLabel={
+                        (inputValue) =>
+                          `Create "${inputValue
+                            .toUpperCase()}"`
+                      }
+
                     />
 
                   </div>
-
                 )}
 
 
@@ -1171,28 +1348,39 @@ const StoreMaster = () => {
                 {editId && (
 
                   <CFormInput
+
                     value={
+
                       stores.find(
                         (s) =>
-                          s.id === editId
-                      )?.palletNumber || ''
+                          s.id ===
+                          editId
+                      )?.palletTypeName ||
+                      form.palletTypeName ||
+                      ''
+
                     }
 
                     disabled
+
                   />
 
                 )}
 
 
-                {errors.palletTypeId && (
+                {errors.palletTypeName && (
 
                   <small className="text-danger">
-                    {errors.palletTypeId}
-                  </small>
 
+                    {
+                      errors.palletTypeName
+                    }
+
+                  </small>
                 )}
 
               </CCol>
+
 
               {/* =================================================
                   PALLET COLOUR
@@ -1212,6 +1400,7 @@ const StoreMaster = () => {
 
                 </label>
 
+
                 <div
                   style={{
                     display: 'flex',
@@ -1221,82 +1410,141 @@ const StoreMaster = () => {
                 >
 
                   <input
+
                     type="color"
+
                     value={
+
                       /^#[0-9A-Fa-f]{6}$/.test(
-                        form.colourCode || ''
+                        form.colourCode ||
+                        ''
                       )
+
                         ? form.colourCode
-                        : '#1E88E5'
+
+                        : DEFAULT_COLOUR
                     }
+
                     onChange={(e) => {
+
                       setForm((prev) => ({
                         ...prev,
+
                         colourCode:
-                          e.target.value.toUpperCase(),
+                          e.target.value
+                            .toUpperCase(),
                       }))
 
-                      clearError('colourCode')
+                      clearError(
+                        'colourCode'
+                      )
                     }}
+
                     style={{
+
                       width: '46px',
+
                       height: '38px',
+
                       padding: '2px',
-                      border: '1px solid #ced4da',
-                      borderRadius: '5px',
-                      cursor: 'pointer',
-                      background: '#fff',
+
+                      border:
+                        '1px solid #ced4da',
+
+                      borderRadius:
+                        '5px',
+
+                      cursor:
+                        'pointer',
+
+                      background:
+                        '#fff',
                     }}
+
                     title="Select Pallet Colour"
                   />
 
+
                   <CFormInput
+
                     name="colourCode"
+
                     value={
-                      form.colourCode || ''
+                      form.colourCode ||
+                      ''
                     }
+
                     placeholder="#1E88E5"
+
                     maxLength={7}
+
                     className={
                       errors.colourCode
                         ? 'error-input'
                         : ''
                     }
+
                     onChange={(e) => {
+
                       let value =
-                        e.target.value.toUpperCase()
+                        e.target.value
+                          .toUpperCase()
+
 
                       if (
                         value &&
                         !value.startsWith('#')
                       ) {
-                        value = `#${value}`
+
+                        value =
+                          `#${value}`
                       }
+
 
                       value =
                         '#' +
                         value
-                          .replace(/#/g, '')
-                          .replace(/[^0-9A-F]/g, '')
-                          .slice(0, 6)
+                          .replace(
+                            /#/g,
+                            ''
+                          )
+                          .replace(
+                            /[^0-9A-F]/g,
+                            ''
+                          )
+                          .slice(
+                            0,
+                            6
+                          )
+
 
                       setForm((prev) => ({
                         ...prev,
-                        colourCode: value,
+
+                        colourCode:
+                          value,
                       }))
 
-                      clearError('colourCode')
+
+                      clearError(
+                        'colourCode'
+                      )
                     }}
+
                   />
 
                 </div>
 
+
                 {errors.colourCode && (
 
                   <small className="text-danger">
-                    {errors.colourCode}
-                  </small>
 
+                    {
+                      errors.colourCode
+                    }
+
+                  </small>
                 )}
 
               </CCol>
@@ -1311,13 +1559,16 @@ const StoreMaster = () => {
             <div className="form-button-area">
 
               <CButton
+
                 className={
                   editId
                     ? 'update-btn'
                     : 'save-btn'
                 }
 
-                onClick={handleSubmit}
+                onClick={
+                  handleSubmit
+                }
               >
 
                 {editId
@@ -1328,11 +1579,16 @@ const StoreMaster = () => {
 
 
               <CButton
+
                 className="clear-btn"
 
-                onClick={resetForm}
+                onClick={
+                  resetForm
+                }
               >
+
                 Clear
+
               </CButton>
 
             </div>
@@ -1340,7 +1596,6 @@ const StoreMaster = () => {
           </CCardBody>
 
         </CCard>
-
       )}
 
 
@@ -1355,33 +1610,49 @@ const StoreMaster = () => {
           <div className="table-header">
 
             <div className="table-title">
+
               Pallet List
+
             </div>
 
 
             <CFormInput
+
               placeholder="Search..."
+
               className="search-box"
+
               style={{
                 width: '320px',
               }}
+
               value={search}
+
               onChange={(e) => {
-                setSearch(e.target.value)
+
+                setSearch(
+                  e.target.value
+                )
+
                 setCurrentPage(1)
               }}
+
             />
 
           </div>
 
 
           <DataTable
+
             columns={columns}
+
             data={filteredStores}
 
             pagination
 
-            paginationPerPage={rowsPerPage}
+            paginationPerPage={
+              rowsPerPage
+            }
 
             paginationRowsPerPageOptions={[
               10,
@@ -1392,20 +1663,40 @@ const StoreMaster = () => {
             ]}
 
             onChangePage={(page) => {
-              setCurrentPage(page)
+
+              setCurrentPage(
+                page
+              )
             }}
 
-            onChangeRowsPerPage={(newPerPage, page) => {
-              setRowsPerPage(newPerPage)
-              setCurrentPage(page)
+            onChangeRowsPerPage={(
+              newPerPage,
+              page
+            ) => {
+
+              setRowsPerPage(
+                newPerPage
+              )
+
+              setCurrentPage(
+                page
+              )
             }}
 
             striped
+
             responsive
+
             highlightOnHover
-            customStyles={customStyles}
+
+            customStyles={
+              customStyles
+            }
+
           />
+
         </CCardBody>
+
       </CCard>
 
 
@@ -1426,7 +1717,9 @@ const StoreMaster = () => {
         alignment="center"
 
         backdrop="static"
+
       >
+
         <CModalHeader
           className="border-0"
         >
@@ -1434,67 +1727,105 @@ const StoreMaster = () => {
           <CModalTitle
             className="w-100 text-center text-danger fw-bold"
           >
+
             ⚠ Confirm Delete
+
           </CModalTitle>
+
         </CModalHeader>
+
 
         <CModalBody
           className="text-center"
         >
+
           <p>
+
             Are you sure you want
-            to delete this Store record?
+            to delete this Pallet
+            record?
+
           </p>
 
 
           <div
             style={{
-              background: '#f8f9fa',
-              padding: '12px',
-              borderRadius: '8px',
-              marginTop: '10px',
+
+              background:
+                '#f8f9fa',
+
+              padding:
+                '12px',
+
+              borderRadius:
+                '8px',
+
+              marginTop:
+                '10px',
             }}
           >
 
             <div>
+
               <strong>
                 Pallet Number :
               </strong>{' '}
+
               <span
                 className="text-primary fw-bold"
               >
+
                 {
-                  deleteStore?.palletNumber
+                  deleteStore
+                    ?.palletNumber
                 }
+
               </span>
+
             </div>
+
           </div>
+
         </CModalBody>
 
 
         <CModalFooter
           className="border-0 d-flex justify-content-center"
         >
+
           <CButton
+
             color="secondary"
 
             onClick={() =>
-              setShowDeleteModal(false)
+              setShowDeleteModal(
+                false
+              )
             }
           >
+
             Cancel
+
           </CButton>
+
+
           <CButton
+
             color="danger"
 
             onClick={
               confirmDelete
             }
           >
+
             Delete
+
           </CButton>
+
         </CModalFooter>
+
       </CModal>
+
     </div>
   )
 }
