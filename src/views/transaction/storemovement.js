@@ -202,6 +202,8 @@ const StoreMovement = () => {
   // slot has become free for them.
   const [groundPallets, setGroundPallets] = useState([])
   const [isGroundBusy, setIsGroundBusy] = useState(false)
+  const [showGroundConfirm, setShowGroundConfirm] = useState(false)
+  const [groundConfirmQueue, setGroundConfirmQueue] = useState([])
   const notifiedGroundRef = useRef(new Set())
 
   const { privileges: userPrivileges = [] } = usePrivilege()
@@ -634,19 +636,20 @@ const StoreMovement = () => {
   // Used only when the rack is full. All remaining pallets of the part are kept
   // on the ground (FIFO / pallet-number order). They are listed in the
   // "Pallets on Ground" panel and the user is notified when a rack slot is free.
-  const storeOnGround = async () => {
+  // Open an in-page confirmation dialog instead of the browser's window.confirm().
+  const storeOnGround = () => {
     if (!activePallet) {
-      toast.error('Pick a pallet from the left first')
+      toast.error('Please select a pallet first.')
       return
     }
 
     if (pendingMoves.length > 0 || selectedSlot) {
-      toast.error('Save or remove the pending rack movements first')
+      toast.error('Please save or clear the pending rack movements before storing pallets on the ground.')
       return
     }
 
     const queue = pallets
-      .filter((p) => p.itemId === activePallet.itemId)
+      .filter((p) => Number(p.itemId) === Number(activePallet.itemId))
       .map((p) => ({
         pallet: p,
         qty: Number(p.quantity || 0) - Number(p.stuffedQty || 0),
@@ -654,20 +657,21 @@ const StoreMovement = () => {
       .filter((x) => x.qty > 0)
 
     if (queue.length === 0) {
-      toast.error('No pallet with remaining quantity')
+      toast.info('There are no remaining pallets to store on the ground.')
       return
     }
 
-    const ok = window.confirm(
-      `All rack locations are full.\n\nStore ${queue.length} pallet${queue.length > 1 ? 's' : ''} on the ground?\n` +
-        'You will be notified when a rack location becomes free (FIFO order).',
-    )
-    if (!ok) return
+    setGroundConfirmQueue(queue)
+    setShowGroundConfirm(true)
+  }
+
+  const confirmStoreOnGround = async () => {
+    if (groundConfirmQueue.length === 0 || isGroundBusy) return
 
     setIsGroundBusy(true)
     try {
       let saved = 0
-      for (const { pallet, qty } of queue) {
+      for (const { pallet, qty } of groundConfirmQueue) {
         await API.post('/StoreMovement/store-ground', {
           grnPalletId: pallet.id,
           quantity: Number(qty),
@@ -676,10 +680,12 @@ const StoreMovement = () => {
         saved++
       }
 
-      toast.success(`${saved} pallet${saved > 1 ? 's' : ''} stored on the ground`)
+      setShowGroundConfirm(false)
+      setGroundConfirmQueue([])
+      toast.success(`${saved} pallet${saved === 1 ? '' : 's'} stored on the ground successfully.`)
       await afterGroundChange()
     } catch (err) {
-      toast.error(getErrorMessage(err, 'Store on ground failed'))
+      toast.error(getErrorMessage(err, 'Unable to store the pallets on the ground. Please try again.'))
       await afterGroundChange()
     } finally {
       setIsGroundBusy(false)
@@ -1689,6 +1695,157 @@ const StoreMovement = () => {
           )}
         </div>
       </div>
+
+      {showGroundConfirm && (
+        <div
+          role="presentation"
+          onClick={() => {
+            if (!isGroundBusy) {
+              setShowGroundConfirm(false)
+              setGroundConfirmQueue([])
+            }
+          }}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 99999,
+            background: 'rgba(15, 23, 42, 0.58)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 16,
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="ground-confirm-title"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: '100%',
+              maxWidth: 460,
+              background: '#ffffff',
+              borderRadius: 14,
+              boxShadow: '0 20px 60px rgba(0,0,0,0.28)',
+              overflow: 'hidden',
+              fontFamily: 'inherit',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                padding: '18px 22px',
+                background: '#f0f7ff',
+                borderBottom: '1px solid #dbeafe',
+              }}
+            >
+              <span
+                style={{
+                  width: 42,
+                  height: 42,
+                  borderRadius: '50%',
+                  background: '#dbeafe',
+                  color: '#1d4ed8',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                <FaWarehouse size={18} />
+              </span>
+              <div>
+                <h3 id="ground-confirm-title" style={{ margin: 0, fontSize: 18, color: '#172554', fontWeight: 700 }}>
+                  Store Pallets on Ground
+                </h3>
+                <div style={{ marginTop: 3, fontSize: 12, color: '#64748b' }}>
+                  Rack capacity reached
+                </div>
+              </div>
+            </div>
+
+            <div style={{ padding: '22px', color: '#334155', fontSize: 14, lineHeight: 1.65 }}>
+              <p style={{ margin: '0 0 12px' }}>
+                All rack locations for this part are currently full.
+              </p>
+              <p style={{ margin: '0 0 12px' }}>
+                Do you want to store <strong>{groundConfirmQueue.length} pallet{groundConfirmQueue.length === 1 ? '' : 's'}</strong> on the ground?
+              </p>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 9,
+                  padding: 12,
+                  borderRadius: 8,
+                  background: '#fff7ed',
+                  border: '1px solid #fed7aa',
+                  color: '#9a3412',
+                  fontSize: 13,
+                }}
+              >
+                <FaBell size={14} style={{ marginTop: 3, flexShrink: 0 }} />
+                <span>
+                  The pallets will remain in FIFO order. You will receive an in-app notification when a rack location becomes available.
+                </span>
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: 10,
+                padding: '14px 22px',
+                background: '#f8fafc',
+                borderTop: '1px solid #e2e8f0',
+              }}
+            >
+              <button
+                type="button"
+                disabled={isGroundBusy}
+                onClick={() => {
+                  setShowGroundConfirm(false)
+                  setGroundConfirmQueue([])
+                }}
+                style={{
+                  padding: '9px 17px',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: 8,
+                  background: '#ffffff',
+                  color: '#334155',
+                  fontWeight: 600,
+                  cursor: isGroundBusy ? 'not-allowed' : 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isGroundBusy}
+                onClick={confirmStoreOnGround}
+                style={{
+                  padding: '9px 17px',
+                  border: '1px solid #1d4ed8',
+                  borderRadius: 8,
+                  background: isGroundBusy ? '#93c5fd' : '#1d4ed8',
+                  color: '#ffffff',
+                  fontWeight: 600,
+                  cursor: isGroundBusy ? 'not-allowed' : 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                }}
+              >
+                <FaWarehouse size={12} />
+                {isGroundBusy ? 'Storing...' : 'Yes, Store on Ground'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

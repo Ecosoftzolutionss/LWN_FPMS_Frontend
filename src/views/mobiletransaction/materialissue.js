@@ -39,10 +39,6 @@ import {
   getAllCustomers,
 } from './offlineDb';
 
-// NOTE: createIssueNumber() below uses `API` (your axios instance).
-// Make sure it is imported in your project, e.g.
-//   import API from '../../api';
-
 // ==========================================
 // Constants & helpers
 // ==========================================
@@ -110,9 +106,7 @@ const createIssueNumber = async () => {
     console.warn('Unable to read pending Material Issue numbers:', error);
   }
 
-  // 3. Last number used on THIS device today. This keeps numbers unique
-  //    even when the server cannot be reached and earlier slips have
-  //    already been synced (and so are gone from the pending queue).
+  // 3. Last number used on THIS device today.
   const localKey = `miLastSeq:${datePrefix}`;
   try {
     const localSeq = Number(localStorage.getItem(localKey) || 0);
@@ -143,8 +137,6 @@ const createIdempotencyKey = (deviceId, issueNumber, palletId) => {
   return `${deviceId}-${issueNumber}-${palletId}-${stamp}-${random}`;
 };
 
-// Quantity is the requested issue quantity for the CURRENT part.
-// The actual pallet quantity always comes from synced data.
 const EMPTY_FORM = {
   itemId: '',
   quantity: '',
@@ -199,7 +191,6 @@ const searchConditionalRowStyles = [
 ];
 
 // partLabel comes through as "PKG-005 - Self Adhesive Packaging".
-// Split on the first " - " to get the part code and the description.
 const splitPartLabel = (label) => {
   if (!label) return { itemNo: '', itemName: '' };
   const idx = label.indexOf(' - ');
@@ -216,7 +207,7 @@ const getSessionUser = () => {
 };
 
 // Defined OUTSIDE the component so DataTable does not remount every
-// cell on each render (which caused flicker / lost tooltips).
+// cell on each render.
 const GridTooltipCell = ({ value, id }) => {
   const displayValue =
     value === undefined || value === null || value === '' ? '—' : String(value);
@@ -240,8 +231,16 @@ const GridTooltipCell = ({ value, id }) => {
 
 const TOOLTIP_ID = 'material-issue-grid-tooltip';
 
-const formatDate = (value) =>
-  value ? new Date(value).toLocaleDateString() : '—';
+// DD/MM/YYYY, independent of the device / browser locale.
+const formatDate = (value) => {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '—';
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yyyy = d.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+};
 
 const partGridColumns = [
   {
@@ -305,10 +304,11 @@ const partGridColumns = [
 //   1. REGULAR is selected by default. Select a Part + Quantity ->
 //      Search lists all unused pallets for that part in FIFO order;
 //      the pallets needed to satisfy the quantity are highlighted.
-//   2. Click a Search Parts row (or scan a label) -> enter Issue Qty
-//      -> the pallet goes to Confirmed Parts.
+//      The Search Parts grid is DISPLAY ONLY (rows are not clickable).
+//   2. SCAN the pallet label -> enter Issue Qty -> the pallet goes to
+//      Confirmed Parts. Scanning is the ONLY way to add a pallet.
 //   3. Once that part is complete, select ANOTHER part + Quantity and
-//      repeat steps 1-2. Confirmed Parts can hold many parts.
+//      repeat steps 1-2.
 //   4. Click "Issue Material" -> every part's pallets are saved to the
 //      local offline queue under ONE issue number (one slip).
 // ==========================================
@@ -329,14 +329,11 @@ const MaterialIssue = () => {
   const [confirmedRows, setConfirmedRows] = useState([]);
 
   // Requested quantity per part for this slip: { [itemId]: qty }
-  // Recorded when pallets are confirmed for that part.
   const [requestedByPart, setRequestedByPart] = useState({});
 
   const [changePartCount, setChangePartCount] = useState(0);
 
-  // Pallets fully exhausted by issues saved on this device. Keyed by the
-  // pallet's real unique `id` (palletNo / fifoPalletNo labels get recycled
-  // across GRNs, so labels are NOT safe as identity).
+  // Pallets fully exhausted by issues saved on this device (keyed by real id).
   const [issuedPalletIds, setIssuedPalletIds] = useState(new Set());
 
   const sessionUser = useMemo(() => getSessionUser(), []);
@@ -346,9 +343,7 @@ const MaterialIssue = () => {
   const issuedBy = sessionUser?.name || sessionUser?.username || sessionUser?.userName || 'Unknown';
 
   // "Issued To" is limited to the Supplier / Customer of the GRN(s) the
-  // confirmed pallets belong to (GRN_HEADER.SupplierId / CustomerId).
-  // - Nothing confirmed yet  -> no options (add a GRN pallet first)
-  // - Pallet data has no party info (old sync) -> falls back to all
+  // confirmed pallets belong to.
   const issuedToOptions = useMemo(() => {
     if (confirmedRows.length === 0) return [];
 
@@ -391,8 +386,6 @@ const MaterialIssue = () => {
     return all.filter((o) => allowed.has(o.value));
   }, [supplierOptions, customerOptions, confirmedRows, pallets]);
 
-  // One party on the GRN -> pre-select it. Drop a selection that is no
-  // longer valid (e.g. a pallet was removed).
   useEffect(() => {
     if (issuedToOptions.length === 1) {
       setIssuedTo((cur) => (cur === issuedToOptions[0].label ? cur : issuedToOptions[0].label));
@@ -428,6 +421,10 @@ const MaterialIssue = () => {
 
   const scanInputRef = useRef(null);
 
+  // Prevents the same scan from being processed twice (scanner sends the
+  // JSON AND an Enter key -> modal used to open twice).
+  const scanBusyRef = useRef(false);
+
   // ------------------------------------------
   // Initial load
   // ------------------------------------------
@@ -439,7 +436,6 @@ const MaterialIssue = () => {
           getAllPendingIssues(),
         ]);
 
-        // Quantity already queued for issue on this device, per pallet.
         const pendingMap = new Map();
         (pending || []).forEach((p) => {
           const palletId = p.palletId ?? p.grnPalletId;
@@ -450,8 +446,6 @@ const MaterialIssue = () => {
           }
         });
 
-        // Cached quantity minus pending offline issues = quantity
-        // currently available on this device.
         const adjusted = (cached || [])
           .map((p) => {
             const originalQty = Number(p.quantity || 0);
@@ -467,15 +461,13 @@ const MaterialIssue = () => {
 
         setPallets(adjusted);
 
-        // REGULAR card is selected by default.
         setActiveType(pickDefaultType(adjusted));
 
-        // Supplier / Customer masters (refreshed by Data Sync).
         const [cachedSuppliers, cachedCustomers] = await Promise.all([
           getAllSuppliers(),
           getAllCustomers(),
         ]);
-        // Only parties that appear on a GRN (ids saved by Data Sync).
+
         let grnParties = null;
         try {
           grnParties = JSON.parse(localStorage.getItem('grnParties') || 'null');
@@ -539,15 +531,12 @@ const MaterialIssue = () => {
     return totals;
   }, [pallets, usedPalletIds]);
 
-  // Pallets of a part + type that can still be issued (same rules
-  // used by Search and by the "available stock" hint).
   const getPartPool = (type, itemId) =>
     pallets.filter(
       (p) =>
         typeOf(p) === type &&
         String(p.itemId) === String(itemId) &&
         !usedPalletIds.has(p.id) &&
-        // Edited Regular pallets are skipped from FIFO
         !(type === 'REGULAR' && p.fifoSkipped === true)
     );
 
@@ -566,7 +555,6 @@ const MaterialIssue = () => {
 
     setActiveType(typeKey);
 
-    // The user must pick the part manually.
     setForm((f) => ({ ...f, itemId: '', quantity: '' }));
     setSearchResults([]);
     setRequestedByPart({});
@@ -592,9 +580,6 @@ const MaterialIssue = () => {
     }));
   }, [pallets, activeType, usedPalletIds]);
 
-  // Selecting a part (any time — also while other parts are already
-  // confirmed). If this part already has a requested quantity in this
-  // slip, it is restored so the user can continue it.
   const handlePartSelect = (itemId) => {
     setForm((f) => ({
       ...f,
@@ -643,7 +628,6 @@ const MaterialIssue = () => {
       if (usedPalletIds.has(p.id)) return false;
       if (p.fifoSkipped === true) return false;
 
-      // FIFO is PART-WISE. Another part must never block this part.
       if (itemId !== null && itemId !== undefined && itemId !== '') {
         if (String(p.itemId) !== String(itemId)) return false;
       }
@@ -694,7 +678,6 @@ const MaterialIssue = () => {
       return;
     }
 
-    // ---- STOCK VALIDATION ----
     const availableTotal = matches.reduce((sum, p) => sum + Number(p.quantity || 0), 0);
     const maxIssuable = round3(availableTotal + confirmedQtyForPart);
 
@@ -707,10 +690,8 @@ const MaterialIssue = () => {
       return;
     }
 
-    // FIFO order = oldest Store Movement date first.
     const ordered = [...matches].sort(byMovementDate);
 
-    // Highlight the pallets needed to satisfy the still-pending quantity.
     const pendingQty = round3(requestedQty - confirmedQtyForPart);
     let cumulativeQty = 0;
     let quantitySatisfied = pendingQty <= 0;
@@ -734,6 +715,7 @@ const MaterialIssue = () => {
     });
 
     setSearchResults(highlightedRows);
+    refocusScanInput();
   };
 
   const handleClearSearch = () => {
@@ -750,7 +732,6 @@ const MaterialIssue = () => {
     setDetailsRow(null);
     setEditForm(EMPTY_EDIT_FORM);
 
-    // Go back to the default card (REGULAR).
     setActiveType(pickDefaultType(pallets));
 
     toast.info('Search and Confirmed Parts cleared.');
@@ -763,7 +744,6 @@ const MaterialIssue = () => {
   const handleRemoveConfirmed = (row) => {
     setConfirmedRows((rows) => rows.filter((r) => r.id !== row.id));
 
-    // Drop the part's requested quantity if nothing is left for it.
     setRequestedByPart((prev) => {
       const stillHasRows = confirmedRows.some(
         (r) => r.id !== row.id && String(r.itemId) === String(row.itemId)
@@ -818,7 +798,6 @@ const MaterialIssue = () => {
       return false;
     }
 
-    // FIFO enforcement (compared by id — labels can repeat).
     if ((type || 'REGULAR').toUpperCase() === 'REGULAR') {
       const nextAllowed = getNextRegularPallet(itemId);
       if (nextAllowed && nextAllowed.id !== palletId) {
@@ -855,9 +834,8 @@ const MaterialIssue = () => {
   };
 
   // ------------------------------------------
-  // ISSUE QUANTITY MODAL
+  // ISSUE QUANTITY MODAL (opened ONLY by a label scan)
   // ------------------------------------------
-  // Remaining quantity for the CURRENT part only.
   const getRemainingRequestedQty = (itemId) => {
     const requested = Number(form.quantity);
 
@@ -873,20 +851,19 @@ const MaterialIssue = () => {
   const openIssueQtyModal = (row) => {
     if (!row) return;
 
-    // The part and quantity must be chosen first — they define
-    // how much is still needed.
+    // Never open a second modal on top of an open one.
+    if (issueQtyModalOpen) return;
+
     if (!form.itemId) {
-      toast.warning('Please select a part first, then pick or scan a pallet.');
+      toast.warning('Please select a part first, then scan the pallet label.');
       return;
     }
 
     if (!requestedValid) {
-      toast.warning('Please enter the Quantity first, then pick or scan a pallet.');
+      toast.warning('Please enter the Quantity first, then scan the pallet label.');
       return;
     }
 
-    // A pallet of another part cannot be added to the part being worked on.
-    // To add another part, select it in "Select Part" first.
     if (String(row.itemId) !== String(form.itemId)) {
       const picked = splitPartLabel(row.partLabel).itemNo || row.itemId;
       const selected =
@@ -898,13 +875,13 @@ const MaterialIssue = () => {
       return;
     }
 
-    // Manual clicks / scans must not bypass FIFO.
-    if (typeOf(row) === 'REGULAR' && row.fifoMatched !== true) {
+    // Scans must not bypass FIFO.
+    if (typeOf(row) === 'REGULAR') {
       const nextAllowed = getNextRegularPallet(row.itemId);
 
       if (nextAllowed && nextAllowed.id !== row.id) {
         toast.error(
-          `FIFO order required — select pallet ${nextAllowed.palletNo} ` +
+          `FIFO order required — scan pallet ${nextAllowed.palletNo} ` +
           `(GRN ${nextAllowed.grnNo || '—'}) first.`
         );
         return;
@@ -927,7 +904,6 @@ const MaterialIssue = () => {
       return;
     }
 
-    // Default never exceeds the pallet stock or the remaining request.
     setIssueQtyTarget(row);
     setIssueQty(String(round3(Math.min(availableQty, remainingQty))));
     setIssueQtyModalOpen(true);
@@ -977,7 +953,6 @@ const MaterialIssue = () => {
     });
 
     if (added) {
-      // Remember what was requested for this part in this slip.
       setRequestedByPart((prev) => ({
         ...prev,
         [String(issueQtyTarget.itemId)]: round3(requestedQtyNumber),
@@ -999,11 +974,20 @@ const MaterialIssue = () => {
 
   const resetScanInput = () => {
     setForm((f) => ({ ...f, grnNo: '' }));
+    if (scanInputRef.current) scanInputRef.current.value = '';
     refocusScanInput();
   };
 
   const applyScannedPallet = (raw) => {
     if (!raw) return;
+
+    // Ignore duplicate triggers for the same scan (JSON arrival + Enter key),
+    // and ignore scans while the quantity modal is open.
+    if (scanBusyRef.current || issueQtyModalOpen) return;
+    scanBusyRef.current = true;
+    setTimeout(() => {
+      scanBusyRef.current = false;
+    }, 600);
 
     let parsed;
     let wasRepaired = false;
@@ -1120,7 +1104,6 @@ const MaterialIssue = () => {
       return;
     }
 
-    // Already used / issued?
     if (usedPalletIds.has(match.id)) {
       toast.error(`Pallet ${match.palletNo} (GRN ${match.grnNo || '—'}) has already been added.`);
       resetScanInput();
@@ -1135,7 +1118,6 @@ const MaterialIssue = () => {
       return;
     }
 
-    // Label GRN must agree with the matched pallet's GRN.
     if (scannedGrn && match.grnNo && String(match.grnNo) !== String(scannedGrn)) {
       toast.error(
         `Pallet ${match.palletNo} belongs to GRN ${match.grnNo}, not ${scannedGrn}. Scan rejected — please check the label.`
@@ -1185,7 +1167,8 @@ const MaterialIssue = () => {
   const handleScanInputKeyDown = (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      applyScannedPallet(e.target.value.trim());
+      const value = e.target.value.trim();
+      if (value) applyScannedPallet(value);
     }
   };
 
@@ -1209,7 +1192,6 @@ const MaterialIssue = () => {
     });
 
     return Array.from(byPart.entries()).map(([key, entry]) => {
-      // The part currently in the form uses the live Quantity field.
       let requested = requestedByPart[key];
       if (key === String(form.itemId) && requestedValid) {
         requested = round3(requestedQtyNumber);
@@ -1221,18 +1203,15 @@ const MaterialIssue = () => {
 
   // ------------------------------------------
   // ISSUE MATERIAL — ONE click = ONE slip.
-  // All confirmed pallets (of ALL parts) share the same IssueNumber;
-  // IdempotencyKey stays unique per pallet.
   // ------------------------------------------
   const handleIssueMaterial = async () => {
     if (saving) return;
 
     if (confirmedRows.length === 0) {
-      toast.error('Please add the required quantity to Confirmed Parts before issuing.');
+      toast.error('Please scan and confirm the required quantity before issuing.');
       return;
     }
 
-    // Every part in the slip must be exactly complete.
     for (const part of slipSummary) {
       const partName = splitPartLabel(part.label).itemNo || part.itemId;
 
@@ -1245,7 +1224,7 @@ const MaterialIssue = () => {
         const shortage = round3(part.requested - part.confirmed);
         toast.warning(
           `Part ${partName}: requested ${part.requested}, but only ${part.confirmed} is confirmed. ` +
-          `Please add ${shortage} more (select the part, then pick or scan pallets).`
+          `Please add ${shortage} more (select the part, then scan pallet labels).`
         );
         return;
       }
@@ -1264,7 +1243,6 @@ const MaterialIssue = () => {
       return;
     }
 
-    // Lock the button immediately so a double tap cannot create two slips.
     setSaving(true);
 
     try {
@@ -1298,10 +1276,8 @@ const MaterialIssue = () => {
           grnNumber: row.grnNo && row.grnNo !== '—' ? String(row.grnNo).trim() : null,
           remarks: row.remarks || form.remarks || null,
 
-          // Same for every pallet / part in this operation.
           issueNumber,
 
-          // Unique per queued transaction.
           idempotencyKey: createIdempotencyKey(deviceId, issueNumber, palletId),
 
           deviceId,
@@ -1318,14 +1294,12 @@ const MaterialIssue = () => {
         });
       }
 
-      // Quantity issued now, per pallet.
       const issuedNowByPallet = new Map();
       confirmedRows.forEach((row) => {
         const qty = Number(row.qty || row.quantity || 0);
         issuedNowByPallet.set(row.palletId, round3((issuedNowByPallet.get(row.palletId) || 0) + qty));
       });
 
-      // Reduce local stock; pallets that reach zero disappear.
       const updatedPallets = pallets
         .map((p) => {
           const issuedQty = Number(issuedNowByPallet.get(p.id) || 0);
@@ -1365,7 +1339,6 @@ const MaterialIssue = () => {
         `${isOnline ? '' : ' offline — will sync when online'}.`
       );
 
-      // Reset the screen and keep REGULAR selected by default.
       setForm(EMPTY_FORM);
       setConfirmedRows([]);
       setRequestedByPart({});
@@ -1461,7 +1434,6 @@ const MaterialIssue = () => {
   // ------------------------------------------
   const searchColumns = partGridColumns;
 
-  // Confirmed grid = same columns + a Remove button per row.
   const confirmedColumns = useMemo(
     () => [
       ...partGridColumns,
@@ -1500,7 +1472,7 @@ const MaterialIssue = () => {
     return searchResults.filter((row) => {
       const values = [
         row.grnNo,
-        row.movementDate,
+        formatDate(row.movementDate),
         row.palletNo,
         row.fifoPalletNo,
         row.itemId,
@@ -1687,14 +1659,14 @@ const MaterialIssue = () => {
           </button>
         </div>
 
-        {/* SEARCH PARTS GRID */}
+        {/* SEARCH PARTS GRID (display only — pallets are added by scanning) */}
         <div className="mi-grid-header">
           <div>
             <div className="mi-section-title">Search Parts</div>
 
             {searchResults.length > 0 && (
               <div className="mi-search-hint">
-                Green rows are the FIFO pallets needed. Tap a row to enter the Issue Qty
+                Green rows are the FIFO pallets needed. Scan the pallet label to add it.
               </div>
             )}
           </div>
@@ -1729,9 +1701,6 @@ const MaterialIssue = () => {
             data={filteredSearchResults}
             customStyles={tableCustomStyles}
             conditionalRowStyles={searchConditionalRowStyles}
-            onRowClicked={(row) => openIssueQtyModal(row)}
-            pointerOnHover
-            highlightOnHover
             noHeader
             dense
             noDataComponent={
@@ -1837,7 +1806,7 @@ const MaterialIssue = () => {
             <label className="mi-label">Issued To <span className="mi-req">*</span></label>
             <Select
               classNamePrefix="react-select"
-              placeholder={hasConfirmed ? 'Select Supplier / Customer' : 'Add GRN pallets first'}
+              placeholder={hasConfirmed ? 'Select Supplier / Customer' : 'Scan GRN pallets first'}
               options={issuedToOptions}
               value={issuedToOptions.find((option) => option.label === issuedTo) || null}
               onChange={(selected) => setIssuedTo(selected?.label || '')}
@@ -1878,14 +1847,6 @@ const MaterialIssue = () => {
               <div className="mi-total-value">{totalPallets}</div>
             </div>
           </div>
-
-          {/* <div className="mi-total-card mi-total-green">
-            <div className="mi-total-icon"><FaClipboardCheck /></div>
-            <div>
-              <div className="mi-total-label">Total Quantity</div>
-              <div className="mi-total-value">{totalQuantity}</div>
-            </div>
-          </div> */}
         </div>
 
         <div className="mi-body-spacer" />
@@ -1903,7 +1864,7 @@ const MaterialIssue = () => {
         </button>
       </div>
 
-      {/* ISSUE QUANTITY MODAL */}
+      {/* ISSUE QUANTITY MODAL (opens only after a label scan) */}
       <CModal
         visible={issueQtyModalOpen}
         onClose={closeIssueQtyModal}
