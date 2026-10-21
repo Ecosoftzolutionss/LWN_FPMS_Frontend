@@ -545,7 +545,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  font-family: "Segoe UI", "Inter", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: Arial, "Segoe UI", "Helvetica Neue", Helvetica, sans-serif;
   transform-origin: 0 0;
   print-color-adjust: exact;
   -webkit-print-color-adjust: exact;
@@ -569,8 +569,8 @@
   display: flex;
   align-items: center;
   flex: 0 0 auto;
-  height: 44px;
-  padding: 0 2px 7px;
+  height: 52px;
+  padding: 0 2px 8px;
   margin: 0 0 8px;
   border-bottom: 3px solid #172033;
 }
@@ -584,17 +584,18 @@
 }
 
 .fifo-logo-img {
-  height: 30px;
+  height: 36px;
   width: auto;
   object-fit: contain;
 }
 
 .fifo-logo-text {
   color: #000000;
-  font-size: 22px;
+  font-family: "Arial Black", "Segoe UI Black", "Helvetica Neue", Arial, sans-serif;
+  font-size: 24px;
   line-height: 1;
-  font-weight: 700;
-  letter-spacing: 0.01em;
+  font-weight: 900;
+  letter-spacing: 0;
   white-space: nowrap;
 }
 
@@ -612,9 +613,10 @@
 
 .fifo-title {
   margin: 0;
-  font-size: 30px;
+  font-family: "Arial Black", "Segoe UI Black", "Helvetica Neue", Arial, sans-serif;
+  font-size: 34px;
   line-height: 1;
-  font-weight: 700;
+  font-weight: 900;
   color: #000000;
   letter-spacing: 0.01em;
   white-space: nowrap;
@@ -678,9 +680,10 @@
   text-align: center;
   white-space: nowrap;
   color: #000000;
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 700;
   line-height: 1.2;
+  -webkit-text-stroke: 0.25px #000000;
   transform: rotate(-90deg);
   transform-origin: center center;
 }
@@ -715,11 +718,11 @@
   margin: 0;
   padding: 0;
   color: #000000;
-  font-family: "Segoe UI", "Inter", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: "Arial Black", "Segoe UI Black", "Helvetica Neue", Arial, sans-serif;
   font-size: var(--fifo-pallet-font-size, 36px) !important;
   line-height: 1;
-  font-weight: 700;
-  letter-spacing: 0.01em;
+  font-weight: 900;
+  letter-spacing: 0;
   white-space: nowrap;
   text-align: center;
   transform: rotate(-90deg);
@@ -779,27 +782,33 @@
   overflow: hidden;
 }
 
-/* ---------- Meta grid ---------- */
+/* ---------- Meta grid ----------
+   Top information area: 2 columns x 3 rows, larger text.
+   Column 1 = supplier invoice info, column 2 = GRN info.
+   Every label has the same fixed width, so all colons line up. */
 
 .fifo-meta-grid {
   flex: 0 0 auto;
   width: 100%;
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(138px, 1.35fr) minmax(106px, 1fr) minmax(126px, 1.1fr);
-  grid-auto-rows: minmax(17px, auto);
-  gap: 4px 4px;
-  padding: 0 0 7px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: repeat(3, auto);
+  grid-auto-flow: column;
+  gap: 4px 14px;
+  padding: 0 0 8px;
   margin: 0;
-  border-bottom: 1px solid #cbd5e1;
+  border-bottom: 1px solid #94a3b8;
   color: #000000;
-  font-size: 9.5px;
-  line-height: 1.1;
+  font-size: 12px;
+  line-height: 1.3;
+  -webkit-text-stroke: 0.2px #000000;
 }
 
 .fifo-meta-grid > div {
   min-width: 0;
   width: 100%;
+  min-height: 19px;
   display: flex;
   align-items: center;
   gap: 3px;
@@ -810,28 +819,25 @@
 .fifo-meta-icon {
   flex: 0 0 auto;
   color: #000000;
-  font-size: 9.5px;
+  font-size: 11px;
 }
 
 .fifo-meta-grid .fifo-meta-label {
-  flex: 0 0 26px;
-  text-align: justify;
-  text-align-last: justify;
+  flex: 0 0 76px;
+  text-align: left;
   color: #000000;
-  font-size: 9.5px;
+  font-size: 12px;
+  line-height: 1.3;
   font-weight: 700;
   white-space: nowrap;
 }
 
-.fifo-meta-grid > div:nth-child(3n + 1) .fifo-meta-label {
-  flex-basis: 54px;
-}
-
 .fifo-meta-grid .fifo-meta-colon {
   flex: 0 0 auto;
-  margin-right: 3px;
+  margin-right: 4px;
   color: #000000;
-  font-size: 9.5px;
+  font-size: 12px;
+  line-height: 1.3;
   font-weight: 700;
 }
 
@@ -839,10 +845,11 @@
   flex: 1 1 auto;
   min-width: 0;
   color: #000000;
-  font-size: 9.5px;
+  font-size: 12px;
+  line-height: 1.3;
   font-weight: 700;
   white-space: nowrap;
-  overflow: hidden;
+  overflow: visible;
 }
 
 /* ---------- Part section ----------
@@ -855,7 +862,7 @@
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  padding: 20px 0 7px;
+  padding: 14px 0 6px;
   margin: 0;
   overflow: hidden;
 }
@@ -863,24 +870,26 @@
 .fifo-part-label {
   margin: 0 0 8px;
   color: #000000;
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1;
   font-weight: 700;
   letter-spacing: 0.02em;
   white-space: nowrap;
+  -webkit-text-stroke: 0.25px #000000;
 }
 
 .fifo-part-value {
-  min-height: 44px;
+  min-height: 40px;
   display: flex;
   align-items: center;
   max-width: 100%;
   margin: 0;
   color: #000000;
-  font-size: 40px;
-  line-height: 1;
-  font-weight: 700;
-  letter-spacing: -0.01em;
+  font-family: "Arial Black", "Segoe UI Black", "Helvetica Neue", Arial, sans-serif;
+  font-size: 36px;
+  line-height: 1.1;
+  font-weight: 900;
+  letter-spacing: 0;
   white-space: nowrap;
   overflow: hidden;
 }
@@ -901,10 +910,11 @@
   min-width: 0;
   margin: 0;
   color: #000000;
-  font-size: 22px;
+  font-family: "Arial Black", "Segoe UI Black", "Helvetica Neue", Arial, sans-serif;
+  font-size: 26px;
   line-height: 1.12;
-  font-weight: 700;
-  letter-spacing: 0.005em;
+  font-weight: 900;
+  letter-spacing: 0;
   white-space: normal;
   word-break: break-word;
   overflow-wrap: anywhere;
@@ -941,9 +951,10 @@
   margin: 0;
   padding: 0;
   color: #000000;
+  font-family: "Arial Black", "Segoe UI Black", "Helvetica Neue", Arial, sans-serif;
   font-size: clamp(16px, var(--fifo-qty-font-size, 22px), 34px) !important;
-  line-height: 1;
-  font-weight: 700;
+  line-height: 1.1;
+  font-weight: 900;
   white-space: nowrap;
   overflow: hidden;
 }
@@ -963,17 +974,50 @@
 }
 
 .fifo-sign {
-  width: 105px;
-  min-width: 105px;
+  width: 120px;
+  min-width: 120px;
   color: #000000;
-  font-size: 9px;
+  font-size: 11px;
   line-height: 1;
   font-weight: 700;
   text-align: center;
   white-space: nowrap;
+  -webkit-text-stroke: 0.25px #000000;
 }
 
-/* ---------- 100 x 75 mm (master card scaled by JS) ---------- */
+/* ---------- 2-across sheet (50 x 25 labels, two side by side) ---------- */
+
+.fifo-sheet-frame {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: flex-start;
+  margin: 0 auto;
+  background: #ffffff;
+  overflow: hidden;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.fifo-sheet-cell {
+  position: relative;
+  flex: 0 0 50mm;
+  width: 50mm;
+  height: 25mm;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.grn-sheet-gap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  justify-content: center;
+  margin-left: 6px;
+}
+
+/* ---------- 100 x 75 mm (master card 150 x 112.5mm, scaled 2/3 by JS) ---------- */
 
 .fifo-label-frame-100x75,
 .fifo-bulk-label-frame-100x75 {
@@ -982,10 +1026,6 @@
   overflow: hidden !important;
 }
 
-.fifo-label-frame-100x75 .fifo-part-name,
-.fifo-bulk-label-frame-100x75 .fifo-part-name {
-  font-size: 22px !important;
-}
 
 /* =========================================================
    100 x 150 mm  (portrait layout, kept for compatibility)
@@ -1011,6 +1051,8 @@
 
 .fifo-card.fifo-card-portrait .fifo-meta-grid {
   grid-template-columns: 1fr;
+  grid-template-rows: none;
+  grid-auto-flow: row;
   grid-auto-rows: 20px;
   gap: 4px 0;
 }
@@ -1074,16 +1116,16 @@
   height: 25mm;
   padding: 0.55mm;
   border: 0.35mm solid #172033;
-  border-radius: 0.9mm;
+  border-radius: 2mm;
   transform: none;
 }
 
 /* ---- header ---- */
 .fifo-card-compact .fifo-card-header {
   position: absolute;
-  left: 0.55mm;
-  right: 0.55mm;
-  top: 0.55mm;
+  left: 0.95mm;
+  right: 0.95mm;
+  top: 0.6mm;
   height: 3mm;
   margin: 0;
   padding: 0 0 0.18mm;
@@ -1202,27 +1244,30 @@
 /* ---- right side ---- */
 .fifo-card-compact .fifo-right-col {
   display: grid;
-  grid-template-rows: 5.4mm minmax(0, 1fr);
+  grid-template-rows: 5.7mm minmax(0, 1fr);
   width: auto;
   height: 100%;
   padding: 0 0 0 0.35mm;
   border-left: 0.1mm solid #94a3b8;
 }
 
-/* meta rows: no icons, fixed label widths -> colons aligned, dates fit */
+/* meta rows: 2 columns x 3 rows, larger text, fixed label width so colons align */
 .fifo-card-compact .fifo-meta-grid {
-  height: 5.4mm;
-  grid-template-columns: minmax(0, 12mm) minmax(0, 9.6mm) minmax(0, 1fr);
-  grid-template-rows: repeat(2, 2.5mm);
+  height: 5.7mm;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: repeat(3, 1.7mm);
+  grid-auto-flow: column;
   grid-auto-rows: unset;
-  gap: 0.1mm 0.2mm;
+  gap: 0.1mm 0.5mm;
   padding: 0 0 0.15mm;
-  border-bottom: 0.12mm solid #cbd5e1;
-  font-size: 0.85mm;
+  border-bottom: 0.12mm solid #94a3b8;
+  font-size: 1.1mm;
+  line-height: 1.2;
 }
 
 .fifo-card-compact .fifo-meta-grid > div {
-  height: 2.5mm;
+  height: 1.7mm;
+  min-height: 0;
   gap: 0;
 }
 
@@ -1233,44 +1278,36 @@
 .fifo-card-compact .fifo-meta-grid .fifo-meta-label,
 .fifo-card-compact .fifo-meta-grid .fifo-meta-colon,
 .fifo-card-compact .fifo-meta-grid .fifo-meta-value {
-  font-size: 0.85mm;
-  line-height: 1;
+  font-size: 1.1mm;
+  line-height: 1.2;
 }
 
-.fifo-card-compact .fifo-meta-grid > div:nth-child(3n + 1) .fifo-meta-label {
-  flex: 0 0 5.3mm;
-}
-
-.fifo-card-compact .fifo-meta-grid > div:nth-child(3n + 2) .fifo-meta-label {
-  flex: 0 0 2.6mm;
-  text-align: left;
-  text-align-last: left;
-}
-
-.fifo-card-compact .fifo-meta-grid > div:nth-child(3n) .fifo-meta-label {
-  flex: 0 0 3.1mm;
-  text-align: left;
-  text-align-last: left;
+.fifo-card-compact .fifo-meta-grid .fifo-meta-label {
+  flex: 0 0 7.8mm;
 }
 
 .fifo-card-compact .fifo-meta-grid .fifo-meta-colon {
   margin-right: 0.35mm;
-  margin-left: 0.1mm;
+  margin-left: 0.05mm;
+}
+
+.fifo-card-compact .fifo-meta-grid .fifo-meta-value {
+  overflow: visible;
 }
 
 /* part number full width, name left, pallet qty lower right (shifted left) */
 .fifo-card-compact .fifo-part-row {
   display: block;
-  padding: 0.9mm 0 0;
+  padding: 0.7mm 0 0;
 }
 
 .fifo-card-compact .fifo-part-label {
   margin: 0 0 0.6mm;
-  font-size: 0.8mm;
+  font-size: 0.9mm;
 }
 
 .fifo-card-compact .fifo-part-value {
-  min-height: 4mm;
+  min-height: 3.8mm;
   font-size: var(--fifo-compact-part-number-font-size, 2.35mm) !important;
   line-height: 1;
 }
@@ -1298,17 +1335,17 @@
 }
 
 .fifo-card-compact .fifo-pallet-qty {
-  flex: 0 0 11mm;
-  width: 11mm;
-  min-width: 11mm;
-  max-width: 11mm;
+  flex: 0 0 12.5mm;
+  width: 12.5mm;
+  min-width: 12.5mm;
+  max-width: 12.5mm;
   margin-right: 0.6mm;
   height: auto;
 }
 
 .fifo-card-compact .fifo-pallet-qty .fifo-part-label {
   margin: 0 0 0.5mm;
-  font-size: 0.8mm;
+  font-size: 0.9mm;
   line-height: 1;
 }
 
@@ -1335,7 +1372,7 @@
 .fifo-card-compact .fifo-sign {
   width: auto;
   min-width: 0;
-  font-size: 1mm;
+  font-size: 1.15mm;
   line-height: 1;
 }
 

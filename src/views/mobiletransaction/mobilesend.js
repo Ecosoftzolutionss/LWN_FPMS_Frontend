@@ -102,18 +102,14 @@ const Mobility = () => {
     }
 
 
-    sessionStorage.clear();
+    sessionStorage.removeItem('user');
+    localStorage.removeItem('user');
 
-    window.dispatchEvent(
-      new Event('authChange')
-    );
+    window.dispatchEvent(new Event('authChange'));
 
-    navigate(
-      '/login',
-      {
-        replace: true,
-      }
-    );
+    navigate('/login', { replace: true });
+
+
 
   };
 
@@ -156,42 +152,6 @@ const Mobility = () => {
 
       for (const issue of pendingIssues) {
 
-        // Refresh the broader pallet-status cache (in-stock + issued), used
-// by Store Verification to give an accurate reason when a scanned
-// pallet isn't in the "available" list — e.g. because it was
-// already issued out, rather than never existing at all.
-try {
-
-  const statusRes = await API.get(
-    '/StoreMovement/all-pallets-status'
-  );
-
-  const statusPallets =
-    Array.isArray(statusRes.data)
-      ? statusRes.data
-      : [];
-
-  console.log(
-    '[DATA SYNC] Downloaded pallet status records:',
-    statusPallets.length
-  );
-
-  await replacePalletStatusCache(statusPallets);
-
-} catch (err) {
-
-  console.error(
-    '[DATA SYNC] Pallet status download failed:',
-    {
-      status: err?.response?.status,
-      responseData: err?.response?.data,
-      message: err?.message
-    }
-  );
-
-  // Same reasoning as the other downloads — don't let this failure
-  // undo successfully uploaded/downloaded data.
-}
         try {
 
           const {
@@ -325,7 +285,7 @@ try {
           }
 
           if (!Number.isInteger(payload.itemId) ||
-              payload.itemId <= 0) {
+            payload.itemId <= 0) {
 
             throw new Error(
               `Invalid ItemId: ${itemId}`
@@ -445,32 +405,112 @@ try {
 
       // ============================================================
       // 3. DOWNLOAD SUPPLIER + CUSTOMER MASTER DATA
-      //    Cached locally for Material Issue Issued To dropdown.
+      //    Cached locally for the Material Issue "Issued To" dropdown.
+      //    ONLY the suppliers / customers that appear on a GRN header
+      //    (GRN_HEADER.SupplierId / CustomerId) are cached, so the
+      //    dropdown lists just those parties.
       // ============================================================
       try {
-        const [supplierRes, customerRes] = await Promise.all([
+        const [supplierRes, customerRes, partyRes] = await Promise.all([
           API.get('/SupplierMaster'),
           API.get('/CustomerMaster'),
+          API.get('/MaterialIssue/grn-parties'),
         ]);
 
-        const suppliers = Array.isArray(supplierRes.data) ? supplierRes.data : [];
-        const customers = Array.isArray(customerRes.data) ? customerRes.data : [];
+        const grnSupplierIds = new Set(
+          (partyRes.data?.supplierIds || []).map((id) => String(id))
+        );
+        const grnCustomerIds = new Set(
+          (partyRes.data?.customerIds || []).map((id) => String(id))
+        );
+
+        // Also keep the allowed ids so Material Issue can filter the
+        // dropdown itself, even if the cached master lists are stale.
+        try {
+          localStorage.setItem(
+            'grnParties',
+            JSON.stringify({
+              supplierIds: Array.from(grnSupplierIds),
+              customerIds: Array.from(grnCustomerIds),
+            })
+          );
+        } catch (storageErr) {
+          console.warn('[DATA SYNC] Could not store GRN party ids:', storageErr);
+        }
+
+        const allSuppliers = Array.isArray(supplierRes.data) ? supplierRes.data : [];
+        const allCustomers = Array.isArray(customerRes.data) ? customerRes.data : [];
+
+        // Keep only parties that are used on a GRN.
+        const suppliers = allSuppliers.filter((s) => grnSupplierIds.has(String(s.id)));
+        const customers = allCustomers.filter((c) => grnCustomerIds.has(String(c.id)));
 
         await Promise.all([
           replaceSuppliersCache(suppliers),
           replaceCustomersCache(customers),
         ]);
 
-
-        console.log('[DATA SYNC] Downloaded suppliers:', suppliers.length);
-        console.log('[DATA SYNC] Downloaded customers:', customers.length);
+        console.log(
+          '[DATA SYNC] GRN suppliers cached:',
+          suppliers.length,
+          'of',
+          allSuppliers.length
+        );
+        console.log(
+          '[DATA SYNC] GRN customers cached:',
+          customers.length,
+          'of',
+          allCustomers.length
+        );
       } catch (err) {
         console.error('[DATA SYNC] Supplier/Customer master download failed:', err);
         toast.warning('Supplier / Customer master refresh failed. Existing cached values will be used.');
       }
 
+
       // ============================================================
-      // 4. DOWNLOAD LATEST PALLET DATA + VERIFIED-PALLET-IDS
+      // 4. DOWNLOAD PALLET-STATUS CACHE (in-stock + issued)
+      //    Used by Store Verification to give an accurate reason when
+      //    a scanned pallet isn't in the "available" list — e.g. because
+      //    it was already issued out, rather than never existing at all.
+      //    Runs ONCE per sync (not once per pending issue).
+      // ============================================================
+      try {
+
+        const statusRes = await API.get(
+          '/StoreMovement/all-pallets-status'
+        );
+
+        const statusPallets =
+          Array.isArray(statusRes.data)
+            ? statusRes.data
+            : [];
+
+        console.log(
+          '[DATA SYNC] Downloaded pallet status records:',
+          statusPallets.length
+        );
+
+        await replacePalletStatusCache(statusPallets);
+
+      } catch (err) {
+
+        console.error(
+          '[DATA SYNC] Pallet status download failed:',
+          {
+            status: err?.response?.status,
+            responseData: err?.response?.data,
+            message: err?.message
+          }
+        );
+
+        // Don't let this failure undo successfully
+        // uploaded/downloaded data.
+      }
+
+
+      // ============================================================
+      // 5. DOWNLOAD LATEST PALLET DATA + VERIFIED-PALLET-IDS
       // ============================================================
 
       try {
@@ -555,7 +595,7 @@ try {
 
 
       // ============================================================
-      // 4. GET ACTUAL REMAINING PENDING COUNT
+      // 6. GET ACTUAL REMAINING PENDING COUNT
       // ============================================================
 
       const remainingIssues =
@@ -591,7 +631,7 @@ try {
 
 
       // ============================================================
-      // 5. SET MODAL RESULT
+      // 7. SET MODAL RESULT
       // ============================================================
 
       setSyncStats({

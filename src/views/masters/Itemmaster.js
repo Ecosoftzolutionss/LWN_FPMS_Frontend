@@ -119,6 +119,7 @@ const ItemMaster = () => {
     effectiveFrom: '',
     effectiveTo: '',
     uom: '',
+    stuffQuantity: '',
     safetyLevel: '',
     reorderLevel: '',
     dangerLevel: '',
@@ -240,10 +241,17 @@ const ItemMaster = () => {
     if (!form.itemGroupId) temp.itemGroupId = 'Item Group is required'
     if (form.unitPrice === '' || form.unitPrice === null) temp.unitPrice = 'Unit Price is required'
     if (!form.customerOrSupplier) temp.customerOrSupplier = 'Customer / Supplier is required'
+    if (
+      form.stuffQuantity === '' ||
+      form.stuffQuantity === null ||
+      form.stuffQuantity === undefined ||
+      !Number.isFinite(Number(form.stuffQuantity)) ||
+      Number(form.stuffQuantity) <= 0
+    ) {
+      temp.stuffQuantity = 'Stuff Quantity is required and must be greater than 0'
+    }
     if (!form.effectiveFrom) {
       temp.effectiveFrom = 'Effective From is required'
-    } else if (form.effectiveFrom < getTodayDate()) {
-      temp.effectiveFrom = 'Effective From cannot be a past date'
     }
 
     if (!form.effectiveTo) {
@@ -252,12 +260,21 @@ const ItemMaster = () => {
       form.effectiveFrom &&
       form.effectiveTo < form.effectiveFrom
     ) {
-      temp.effectiveTo = 'Effective To cannot be before Effective From'
+      temp.effectiveTo =
+        'Effective To cannot be before Effective From'
     }
+
     if (!form.uom.trim()) temp.uom = 'UOM is required'
     if (form.safetyLevel === '' || form.safetyLevel === null) temp.safetyLevel = 'Safety Level is required'
     if (form.reorderLevel === '' || form.reorderLevel === null) temp.reorderLevel = 'Reorder Level is required'
-    if (!form.dangerLevel.trim()) temp.dangerLevel = 'Danger Level is required'
+    if (
+      form.dangerLevel === '' ||
+      form.dangerLevel === null ||
+      form.dangerLevel === undefined ||
+      !Number.isFinite(Number(form.dangerLevel))
+    ) {
+      temp.dangerLevel = 'Danger Level is required'
+    }
 
     setErrors(temp)
 
@@ -290,7 +307,7 @@ const ItemMaster = () => {
         description: form.description.trim(),
         safetyLevel: Number(form.safetyLevel) || 0,
         reorderLevel: Number(form.reorderLevel) || 0,
-        dangerLevel: form.dangerLevel.trim(),
+        dangerLevel: Number(form.dangerLevel),
       }
 
       if (editId) {
@@ -342,7 +359,7 @@ const ItemMaster = () => {
         description: d.description || '',
         safetyLevel: d.safetyLevel ?? '',
         reorderLevel: d.reorderLevel ?? '',
-        dangerLevel: d.dangerLevel || '',
+        dangerLevel: d.dangerLevel ?? '',
       })
 
       setErrors({
@@ -400,6 +417,21 @@ const ItemMaster = () => {
     setTimeout(() => {
       itemNumberRef.current?.focus()
     }, 100)
+  }
+
+  const openDatePicker = (e) => {
+    const input = e.currentTarget
+
+    try {
+      if (typeof input.showPicker === 'function') {
+        input.showPicker()
+      } else {
+        input.focus()
+        input.click()
+      }
+    } catch (error) {
+      input.focus()
+    }
   }
 
   const handleAddNew = () => {
@@ -801,14 +833,27 @@ const ItemMaster = () => {
                 </div>
               </CCol>
               <CCol md={3}>
-                <label className="custom-label"><strong>Stuff Quantity</strong></label>
+                <label className="custom-label">
+                  <strong>Stuff Quantity</strong>{' '}
+                  <span className="required">*</span>
+                </label>
+
                 <CFormInput
                   type="number"
                   name="stuffQuantity"
+                  min="0.001"
+                  step="0.001"
                   placeholder="Enter Stuff Quantity"
                   value={form.stuffQuantity}
+                  className={errors.stuffQuantity ? 'error-input' : ''}
                   onChange={handleChange}
                 />
+
+                {errors.stuffQuantity && (
+                  <small className="text-danger">
+                    {errors.stuffQuantity}
+                  </small>
+                )}
               </CCol>
               <CCol md={3}>
                 <label className="custom-label"><strong>Item Model</strong></label>
@@ -914,18 +959,14 @@ const ItemMaster = () => {
                     <span className="required">*</span>
                   </label>
 
+
                   <CFormInput
                     ref={effectiveFromRef}
                     type="date"
                     name="effectiveFrom"
-                    min={getTodayDate()}
                     value={form.effectiveFrom}
                     className={errors.effectiveFrom ? 'error-input' : ''}
-                    onClick={(e) => {
-                      if (e.currentTarget.showPicker) {
-                        e.currentTarget.showPicker()
-                      }
-                    }}
+                    onClick={openDatePicker}
                     onChange={handleChange}
                   />
 
@@ -942,17 +983,14 @@ const ItemMaster = () => {
                     <span className="required">*</span>
                   </label>
 
+
                   <CFormInput
                     type="date"
                     name="effectiveTo"
-                    min={form.effectiveFrom || getTodayDate()}
+                    min={form.effectiveFrom || undefined}
                     value={form.effectiveTo}
                     className={errors.effectiveTo ? 'error-input' : ''}
-                    onClick={(e) => {
-                      if (e.currentTarget.showPicker) {
-                        e.currentTarget.showPicker()
-                      }
-                    }}
+                    onClick={openDatePicker}
                     onChange={handleChange}
                   />
 
@@ -1003,22 +1041,25 @@ const ItemMaster = () => {
                 </label>
                 <CFormInput
                   name="dangerLevel"
-                  type="text"
-                  inputMode="numeric"
+                  type="number"
+                  min="0"
+                  step="0.001"
                   placeholder="Enter Danger Level"
                   value={form.dangerLevel}
                   className={errors.dangerLevel ? 'error-input' : ''}
                   onChange={(e) => {
-                    const value = e.target.value.replace(/\D/g, '')
-
                     setForm((prev) => ({
                       ...prev,
-                      dangerLevel: value,
+                      dangerLevel: e.target.value,
                     }))
-
                     clearError('dangerLevel')
                   }}
                 />
+                {errors.dangerLevel && (
+                  <small className="text-danger">
+                    {errors.dangerLevel}
+                  </small>
+                )}
                 {errors.dangerLevel && <small className="text-danger">{errors.dangerLevel}</small>}
               </CCol>
             </CRow>

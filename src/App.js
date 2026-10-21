@@ -20,22 +20,22 @@ const StoreVerification = React.lazy(() =>import('./views/mobiletransaction/stor
 // Helper
 // ==========================================
 
+
 const getStoredUser = () => {
   try {
     const storedUser =
-      sessionStorage.getItem('user');
-    if (!storedUser) {
-      return null;
-    }
+      sessionStorage.getItem('user') ||
+      localStorage.getItem('user');
+
+    if (!storedUser) return null;
+
     return JSON.parse(storedUser);
   } catch (error) {
-    console.error(
-      'Error reading user session:',
-      error
-    );
+    console.error('Error reading stored user:', error);
     return null;
   }
 };
+
 
 
 // ==========================================
@@ -106,9 +106,9 @@ function App() {
     !!currentUser;
 
 
-  const isMobile =
-    !!currentUser &&
-    currentUser.mobilityWithoutCheck !== true;
+const isMobile =
+  !!currentUser &&
+  currentUser.mobilityWithoutCheck === true;
 
 
   // ========================================

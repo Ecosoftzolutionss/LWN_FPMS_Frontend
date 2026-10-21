@@ -14,6 +14,7 @@ import {
   cilNotes,
   cilCloudDownload,
   cilListRich,
+  cilSettings,
 } from '@coreui/icons'
 
 export const MENU_CONFIG = [
@@ -101,8 +102,13 @@ export const MENU_CONFIG = [
     name: 'Material Issue Report',
     icon: cilListRich,
   },
-   {
+  {
     name: 'Stock Report',
     icon: cilListRich,
+  },
+
+  {
+    name: 'Dashboard Settings',
+    icon: cilSettings,
   },
 ]

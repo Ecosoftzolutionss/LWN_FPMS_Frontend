@@ -328,13 +328,31 @@ const loadStoreMasters = async () => {
   }
 }
 
-  const storeMasterOptions = storeMasters.map((s) => ({
-    value: s.id,
-    label: `${s.storeLocation}`,
-    colourCode: s.colourCode,
-    palletNumber: s.palletNumber,
-    partNumber: s.partNumberCode || '',
-  }))
+const getPartNumberText = (value) => {
+  if (value == null || value === '') return '';
+
+  if (typeof value === 'object') {
+    return String(
+      value.itemNumber ??
+      value.ItemNumber ??
+      value.partNumber ??
+      value.PartNumber ??
+      ''
+    );
+  }
+
+  return String(value);
+};
+
+const storeMasterOptions = storeMasters.map((s) => ({
+  value: s.id,
+  label: s.storeLocation,
+  colourCode: s.colourCode,
+  palletNumber: s.palletNumber,
+  partNumber: getPartNumberText(
+    s.partNumberCode ?? s.partNumber
+  ),
+}));
 
   const filterStoreMasterOption = (option, rawInput) => {
     const normalize = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, '')
@@ -1018,6 +1036,14 @@ setModalRows(normalRowCount || 1)
               <div className="sc">
                 <div className="sc-row"><div className="sc-lbl">Store Name</div><div className="sc-val">{activeStore.storeLocation}</div></div>
                 <div className="sc-row"><div className="sc-lbl">Store ID</div><div className="sc-val">{activeStore.storeCode}</div></div>
+                <div className="sc-row">
+
+  <div className="sc-lbl">Part Number</div>
+  <div className="sc-val">
+    {getPartNumberText(activeStore?.partNumber) || 'N/A'}
+
+</div>
+</div>
                 <div className="sc-row"><div className="sc-lbl">Pallet No</div><div className="sc-val">{activeStore.palletNumber}</div></div>
                 <div className="sc-row">
                   <div className="sc-lbl">Racks</div>
@@ -1289,6 +1315,8 @@ setModalRows(normalRowCount || 1)
                   <div className="dash-title">
                     Store : {activeStore.storeLocation} (ID : {activeStore.storeCode})
                   </div>
+
+                  
 
                   <div className="dash-controls">
                     <span className="dash-rack-view-label">RACK</span>

@@ -12,9 +12,7 @@ import {
 } from '@coreui/react'
 
 import {
-    FaEdit,
     FaPrint,
-    FaSearch,
     FaTimes,
 } from 'react-icons/fa'
 
@@ -22,6 +20,11 @@ import { toast } from 'react-toastify'
 import API from '../../api.js'
 
 import '../../assets/CSS/materialIssueSlip.css'
+
+// One printed slip (sheet) holds this many item rows, like the paper
+// form. Anything above this continues on the next slip (next page)
+// with the same header, signatures and "Page n/N".
+const ROWS_PER_SLIP = 8
 
 const formatDateTime = (value) => {
     if (!value) return '—'
@@ -97,6 +100,7 @@ const getItemFifoNumbers = (item) => {
         : []
 
     return uniqueDisplayValues([
+        item?.fifoPalletNo,
         item?.fifoNo,
         item?.fifoNumber,
         item?.fifoNos,
@@ -137,19 +141,14 @@ const getItemGrnNumbers = (item) => {
     ])
 }
 
-const makeDisplayKey = (values) =>
-    uniqueDisplayValues(values)
-        .map((value) => String(value).trim().toLowerCase())
-        .join('|') || '—'
+const round3 = (n) => Math.round((Number(n) || 0) * 1000) / 1000
 
 // IMPORTANT:
 // One IssueNumber represents one physical Material Issue Slip.
-// Rows are consolidated only when PART + FIFO NO + PALLET NO are the
-// same. This means if GRN 260003 and GRN 260004 were issued in the
-// same click and both use the same FIFO/Pallet, the slip shows ONE row:
-//   GRN: 260003, 260004 | FIFO: F26090003 | Pallet: BR-03
-// If FIFO/Pallet differs, they remain separate rows so the physical
-// traceability is never lost.
+// The slip lists ONE ROW PER PART (like the paper form):
+//   S.NO | PART NO | PART NAME | QUANTITY | ISSUED QTY | M/C. / FIFO No.
+// All pallets of the same part are added together, and their FIFO
+// numbers are listed in the last column.
 const consolidateItems = (items = []) => {
     const grouped = new Map()
 
@@ -159,22 +158,18 @@ const consolidateItems = (items = []) => {
         ).trim()
 
         const partName = item?.partName ?? item?.itemName ?? '—'
+        const quantity = Number(item?.quantity ?? item?.qty ?? 0) || 0
         const fifoNumbers = getItemFifoNumbers(item)
         const palletNumbers = getItemPalletNumbers(item)
         const grnNumbers = getItemGrnNumbers(item)
 
-        const groupKey = [
-            partNumber.toLowerCase() || `__part_${index}`,
-            makeDisplayKey(fifoNumbers),
-            makeDisplayKey(palletNumbers),
-        ].join('||')
+        const groupKey = partNumber.toLowerCase() || `__part_${index}`
 
         if (!grouped.has(groupKey)) {
             grouped.set(groupKey, {
-                ...item,
-                partNumber: partNumber || item?.partNumber || '—',
+                partNumber: partNumber || '—',
                 partName,
-                quantity: Number(item?.quantity ?? item?.qty ?? 0) || 0,
+                quantity,
                 fifoNumbers,
                 palletNumbers,
                 grnNumbers,
@@ -183,23 +178,174 @@ const consolidateItems = (items = []) => {
         }
 
         const existing = grouped.get(groupKey)
-        existing.quantity += Number(item?.quantity ?? item?.qty ?? 0) || 0
-        existing.grnNumbers = uniqueDisplayValues([
-            existing.grnNumbers,
-            grnNumbers,
-        ])
-        existing.fifoNumbers = uniqueDisplayValues([
-            existing.fifoNumbers,
-            fifoNumbers,
-        ])
-        existing.palletNumbers = uniqueDisplayValues([
-            existing.palletNumbers,
-            palletNumbers,
-        ])
+        existing.quantity += quantity
+        existing.fifoNumbers = uniqueDisplayValues([existing.fifoNumbers, fifoNumbers])
+        existing.palletNumbers = uniqueDisplayValues([existing.palletNumbers, palletNumbers])
+        existing.grnNumbers = uniqueDisplayValues([existing.grnNumbers, grnNumbers])
     })
 
-    return Array.from(grouped.values())
+    return Array.from(grouped.values()).map((row) => ({
+        ...row,
+        quantity: round3(row.quantity),
+    }))
 }
+
+// Split the item rows into slips of ROWS_PER_SLIP rows each.
+// An empty list still produces one (blank) slip.
+const chunkItems = (items, size) => {
+    if (!items.length) return [[]]
+
+    const pages = []
+
+    for (let i = 0; i < items.length; i += size) {
+        pages.push(items.slice(i, i + size))
+    }
+
+    return pages
+}
+
+// =========================================================
+// SLIP STYLES
+// Self-contained: used for the on-screen preview AND the print
+// window, so both look exactly the same.
+// =========================================================
+const SLIP_CSS = `
+.mis2-slip {
+    width: 100%;
+    max-width: 1100px;
+    margin: 0 auto;
+    background: #ffffff;
+    color: #111827;
+    border: 1.5px solid #111827;
+    font-family: Arial, Helvetica, sans-serif;
+    box-sizing: border-box;
+}
+.mis2-slip * { box-sizing: border-box; }
+.mis2-slip + .mis2-slip { margin-top: 16px; }
+
+.mis2-title {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding: 6px 12px;
+    border-bottom: 1px solid #111827;
+}
+.mis2-logo {
+    width: 38px;
+    height: 28px;
+    margin-right: 12px;
+    object-fit: contain;
+    display: block;
+    flex-shrink: 0;
+}
+.mis2-heading {
+    flex: 1;
+    text-align: center;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 1.4px;
+    line-height: 1.15;
+    color: #111827;
+}
+.mis2-page {
+    width: 50px;
+    flex-shrink: 0;
+    text-align: right;
+    font-size: 10px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.mis2-info {
+    display: grid;
+    grid-template-columns: 1.7fr 1.2fr 1.4fr 1fr;
+    border-bottom: 1px solid #111827;
+}
+.mis2-info-cell {
+    display: flex;
+    align-items: baseline;
+    gap: 5px;
+    min-width: 0;
+    padding: 5px 10px;
+    border-right: 1px solid #111827;
+    font-size: 11.5px;
+    line-height: 1.3;
+}
+.mis2-info-cell:last-child { border-right: none; }
+.mis2-info-label { font-weight: 700; white-space: nowrap; }
+.mis2-info-value { font-weight: 600; word-break: break-word; }
+
+.mis2-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    margin: 0;
+}
+.mis2-table th,
+.mis2-table td {
+    border: 1px solid #111827;
+    padding: 4px 6px;
+    font-size: 11px;
+    line-height: 1.25;
+    text-align: center;
+    vertical-align: middle;
+    word-break: break-word;
+}
+.mis2-table th {
+    background: #eef2f7;
+    font-weight: 700;
+    padding: 5px 6px;
+}
+.mis2-table td { height: 32px; }
+.mis2-table thead th { border-top: none; }
+.mis2-table th:first-child,
+.mis2-table td:first-child { border-left: none; }
+.mis2-table th:last-child,
+.mis2-table td:last-child { border-right: none; }
+.mis2-table td.mis2-left { text-align: left; }
+
+.mis2-table .c-sno   { width: 7%; }
+.mis2-table .c-part  { width: 15%; }
+.mis2-table .c-name  { width: 31%; }
+.mis2-table .c-qty   { width: 11%; }
+.mis2-table .c-iss   { width: 12%; }
+.mis2-table .c-fifo  { width: 24%; }
+
+.mis2-remarks {
+    min-height: 30px;
+    padding: 5px 10px;
+    border-top: 1px solid #111827;
+    font-size: 11px;
+    line-height: 1.3;
+}
+.mis2-remarks strong { margin-right: 4px; }
+
+.mis2-sign {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    border-top: 1px solid #111827;
+}
+.mis2-sign-box {
+    height: 54px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 0 8px 5px;
+    border-right: 1px solid #111827;
+    font-size: 10.5px;
+    font-weight: 700;
+    text-align: center;
+}
+.mis2-sign-box:last-child { border-right: none; }
+
+.mis2-thanks {
+    border-top: 1px solid #111827;
+    padding: 4px;
+    font-size: 10.5px;
+    font-weight: 700;
+    text-align: center;
+}
+`
 
 const MaterialIssueSlip = () => {
 
@@ -304,13 +450,17 @@ const MaterialIssueSlip = () => {
 
     // =====================================================
     // PRINT MATERIAL ISSUE SLIP
-    // Opens only the slip in a clean print window.
-    // This avoids CoreUI modal layout causing a blank first page.
+    // Opens only the slip(s) in a clean print window.
+    // Every slip (8 rows each) prints on its own page.
+    // The slip uses its own self-contained styles (SLIP_CSS),
+    // so the printout matches the on-screen preview.
     // =====================================================
     const printMaterialIssueSlip = () => {
-        const slipElement = document.querySelector('.issue-slip')
+        const slipElements = Array.from(
+            document.querySelectorAll('.mis2-slip')
+        )
 
-        if (!slipElement) {
+        if (!slipElements.length) {
             toast.error('Material Issue Slip is not available for printing')
             return
         }
@@ -326,23 +476,9 @@ const MaterialIssueSlip = () => {
             return
         }
 
-        // Copy same-origin application styles so the print document
-        // keeps the same typography and table formatting.
-        let pageStyles = ''
-
-        Array.from(document.styleSheets).forEach((sheet) => {
-            try {
-                const rules = Array.from(sheet.cssRules || [])
-                    .map((rule) => rule.cssText)
-                    .join('\n')
-
-                pageStyles += rules
-            } catch (error) {
-                // Ignore stylesheets that cannot be read by the browser.
-            }
-        })
-
-        const slipHtml = slipElement.outerHTML
+        const slipHtml = slipElements
+            .map((element) => element.outerHTML)
+            .join('')
 
         printWindow.document.open()
         printWindow.document.write(`
@@ -357,288 +493,45 @@ const MaterialIssueSlip = () => {
                     <title>Material Requisition and Issue Slip</title>
 
                     <style>
-                        ${pageStyles}
+                        ${SLIP_CSS}
 
                         @page {
                             size: A4 landscape;
                             margin: 8mm;
                         }
 
-                        * {
-                            box-sizing: border-box !important;
-                        }
-
-                        html {
-                            width: 100% !important;
-                            min-height: 0 !important;
-                            margin: 0 !important;
-                            padding: 0 !important;
-                            background: #ffffff !important;
-                        }
-
+                        html,
                         body {
-                            width: 100% !important;
-                            min-width: 0 !important;
-                            min-height: 0 !important;
-                            height: auto !important;
-                            margin: 0 !important;
-                            padding: 0 !important;
-                            background: #ffffff !important;
-                            color: #111827 !important;
-                            overflow: visible !important;
-                            font-family:
-                                Arial,
-                                Helvetica,
-                                sans-serif !important;
-                            -webkit-print-color-adjust: exact !important;
-                            print-color-adjust: exact !important;
+                            margin: 0;
+                            padding: 0;
+                            background: #ffffff;
+                            -webkit-print-color-adjust: exact;
+                            print-color-adjust: exact;
                         }
 
-                        .issue-slip {
-                            position: relative !important;
-                            display: block !important;
-
-                            /* Leave a tiny amount of room so the outer
-                               border is always visible in Chrome preview. */
-                            width: calc(100% - 4px) !important;
-                            max-width: none !important;
-                            height: auto !important;
-                            min-height: 0 !important;
-
-                            margin: 2px auto !important;
-                            padding: 0 !important;
-
-                            border: 2px solid #111827 !important;
-                            border-radius: 2px !important;
-
-                            background: #ffffff !important;
-                            color: #111827 !important;
-
-                            box-sizing: border-box !important;
-                            box-shadow: none !important;
-
-                            overflow: visible !important;
-
-                            break-inside: avoid !important;
-                            page-break-inside: avoid !important;
+                        .mis2-slip {
+                            max-width: none;
+                            width: calc(100% - 4px);
+                            margin: 2px auto;
+                            break-inside: avoid;
+                            page-break-inside: avoid;
+                            break-after: page;
+                            page-break-after: always;
                         }
 
-                        .slip-title {
-                            width: 100% !important;
-                            height: 58px !important;
-                            min-height: 58px !important;
-                            display: flex !important;
-                            align-items: center !important;
-                            justify-content: flex-start !important;
-                            padding: 0 18px !important;
-                            border-bottom: 1px solid #111827 !important;
-                            background: #ffffff !important;
+                        .mis2-slip + .mis2-slip {
+                            margin-top: 2px;
                         }
 
-                        .leewon-brand {
-                            display: flex !important;
-                            align-items: center !important;
-                            flex-shrink: 0 !important;
-                            margin-right: 28px !important;
+                        .mis2-slip:last-child {
+                            break-after: auto;
+                            page-break-after: auto;
                         }
 
-                        .leewon-logo {
-                            width: 42px !important;
-                            height: 32px !important;
-                            object-fit: contain !important;
-                            display: block !important;
-                        }
-
-                        .slip-heading {
-                            font-size: 19px !important;
-                            font-weight: 700 !important;
-                            letter-spacing: 1.8px !important;
-                            line-height: 1.1 !important;
-                            white-space: nowrap !important;
-                            color: #111827 !important;
-                        }
-
-                        .header-grid {
-                            display: grid !important;
-                            grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-                            width: 100% !important;
-                            border-bottom: 1px solid #111827 !important;
-                        }
-
-                        .header-cell {
-                            min-width: 0 !important;
-                            min-height: 72px !important;
-                            padding: 10px 12px !important;
-                            text-align: center !important;
-                            border-right: 1px solid #111827 !important;
-                            font-size: 11px !important;
-                        }
-
-                        .header-cell:last-child {
-                            border-right: none !important;
-                        }
-
-                        .header-cell > strong {
-                            display: block !important;
-                            font-size: 11px !important;
-                            font-weight: 700 !important;
-                            line-height: 1.2 !important;
-                            white-space: nowrap !important;
-                        }
-
-                        .value-line {
-                            margin-top: 11px !important;
-                            min-height: 19px !important;
-                            padding: 0 5px 5px !important;
-                            border-bottom: 1px solid #111827 !important;
-                            font-size: 12px !important;
-                            font-weight: 600 !important;
-                            line-height: 1.25 !important;
-                            text-align: center !important;
-                            white-space: nowrap !important;
-                            overflow: hidden !important;
-                            text-overflow: ellipsis !important;
-                        }
-
-                        .items-table {
-                            width: 100% !important;
-                            table-layout: fixed !important;
-                            border-collapse: collapse !important;
-                            margin: 0 !important;
-                        }
-
-                        .items-table th,
-                        .items-table td {
-                            border: 1px solid #111827 !important;
-                            vertical-align: middle !important;
-                        }
-
-                        .items-table th {
-                            background: #eef2f7 !important;
-                            color: #172033 !important;
-                            text-align: center !important;
-                            font-weight: 700 !important;
-                            padding: 8px !important;
-                            font-size: 11px !important;
-                        }
-
-                        .items-table td {
-                            height: 36px !important;
-                            padding: 7px 8px !important;
-                            text-align: center !important;
-                            font-size: 11px !important;
-                            line-height: 1.25 !important;
-                        }
-
-                        .items-table th:nth-child(1),
-                        .items-table td:nth-child(1) {
-                            width: 8% !important;
-                        }
-
-                        .items-table th:nth-child(2),
-                        .items-table td:nth-child(2) {
-                            width: 15% !important;
-                        }
-
-                        .items-table th:nth-child(3),
-                        .items-table td:nth-child(3) {
-                            width: 15% !important;
-                        }
-
-                        .items-table th:nth-child(4),
-                        .items-table td:nth-child(4) {
-                            width: 25% !important;
-                        }
-
-                        .items-table th:nth-child(5),
-                        .items-table td:nth-child(5) {
-                            width: 10% !important;
-                        }
-
-                        .items-table th:nth-child(6),
-                        .items-table td:nth-child(6) {
-                            width: 27% !important;
-                        }
-
-                        .remarks {
-                            min-height: 42px !important;
-                            padding: 8px 10px !important;
-                            border-bottom: 1px solid #111827 !important;
-                            font-size: 11px !important;
-                            line-height: 1.35 !important;
-                        }
-
-                        .approval-grid {
-                            display: grid !important;
-                            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-                            width: 100% !important;
-                        }
-
-                        .approval-box {
-                            min-width: 0 !important;
-                            min-height: 92px !important;
-
-                            display: flex !important;
-                            align-items: flex-end !important;
-                            justify-content: center !important;
-
-                            padding: 0 12px 8px 12px !important;
-
-                            text-align: center !important;
-                            font-size: 11px !important;
-                            font-weight: 700 !important;
-
-                            border-right: 1px solid #111827 !important;
-                            box-sizing: border-box !important;
-                        }
-
-                        .approval-box span {
-                            display: block !important;
-                            width: 100% !important;
-                            text-align: center !important;
-                        }
-
-                        .approval-box:last-child {
-                            border-right: none !important;
-                        }
-
-                        .thank-you {
-                            border-top: 1px solid #111827 !important;
-                            padding: 8px !important;
-                            font-size: 11px !important;
-                            font-weight: 700 !important;
-                            text-align: center !important;
-                        }
-
-                        .mis-modal-actions,
-                        .mis-modal-title,
-                        .modal-header,
-                        .btn-close,
-                        .mis-document-toolbar {
-                            display: none !important;
-                        }
-
-                        .items-table tr,
-                        .approval-grid,
-                        .remarks {
-                            break-inside: avoid !important;
-                            page-break-inside: avoid !important;
-                        }
-
-                        @media print {
-                            html,
-                            body {
-                                width: 100% !important;
-                                margin: 0 !important;
-                                padding: 0 !important;
-                            }
-
-                            .issue-slip {
-                                width: calc(100% - 4px) !important;
-                                margin: 2px auto !important;
-                                border: 2px solid #111827 !important;
-                                border-radius: 2px !important;
-                            }
+                        .mis2-table tr,
+                        .mis2-sign {
+                            break-inside: avoid;
+                            page-break-inside: avoid;
                         }
                     </style>
                 </head>
@@ -766,16 +659,6 @@ const MaterialIssueSlip = () => {
             cell: row => (
 
                 <div className="mis-action-wrapper">
-                    {/* 
-                    <CButton
-                        className="mis-edit-btn"
-                        title="View Material Issue Slip"
-                        onClick={() =>
-                            openSlip(row.id)
-                        }
-                    >
-                        <FaEdit />
-                    </CButton> */}
 
                     <CButton
                         className="mis-print-btn"
@@ -924,325 +807,229 @@ const MaterialIssueSlip = () => {
                             const consolidatedItems = consolidateItems(
                                 selectedSlip.items || []
                             )
+                            const slipPages = chunkItems(
+                                consolidatedItems,
+                                ROWS_PER_SLIP
+                            )
 
                             return (
-                        <>
+                                <>
 
-                            <div className="mis-document-toolbar">
-                                <div className="mis-document-label">
-                                    Ready to print
-                                </div>
+                                    <style>{SLIP_CSS}</style>
 
-                                <div className="mis-document-meta">
-                                    A4 Landscape • Material Issue Slip
-                                </div>
-                            </div>
-
-                            <div className="mis-document-frame">
-                            <div className="issue-slip">
-
-                                {/* ==============================
-                    TITLE
-                ============================== */}
-
-                                <div className="slip-title">
-
-                                    <div className="leewon-brand">
-                                        <img
-                                            src="/GLOVIS.png"
-                                            alt="LEEWON Logo"
-                                            className="leewon-logo"
-                                        />
-
-                                        {/* <span className="leewon-text">
-                                           
-                                        </span> */}
-                                    </div>
-
-                                    <span className="slip-heading">
-                                        MATERIAL REQUISITION AND ISSUE SLIP
-                                    </span>
-
-                                </div>
-
-
-                                {/* ==============================
-                    HEADER
-                ============================== */}
-
-                                <div className="header-grid">
-
-                                    <div className="header-cell">
-
-                                        <strong>
-                                            GRN NO.
-                                        </strong>
-
-                                        <div className="value-line">
-
-                                            {slipGrnNumbers.length ? slipGrnNumbers.join(', ') : '—'}
+                                    <div className="mis-document-toolbar">
+                                        <div className="mis-document-label">
+                                            Ready to print
                                         </div>
 
-                                    </div>
-
-
-                                    <div className="header-cell">
-
-                                        <strong>
-                                            ISSUE NO.
-                                        </strong>
-
-                                        <div className="value-line">
-
-                                            {selectedSlip.issueNumber || ''}
-
+                                        <div className="mis-document-meta">
+                                            A4 Landscape • Material Issue Slip
+                                            {slipPages.length > 1
+                                                ? ` • ${slipPages.length} pages`
+                                                : ''}
                                         </div>
-
                                     </div>
 
+                                    <div className="mis-document-frame">
 
-                                    <div className="header-cell">
+                                        {slipPages.map((pageItems, pageIndex) => {
+                                            const blankRowCount = Math.max(
+                                                ROWS_PER_SLIP - pageItems.length,
+                                                0
+                                            )
 
-                                        <strong>
-                                            DATE & TIME
-                                        </strong>
+                                            return (
+                                                <div
+                                                    className="mis2-slip"
+                                                    key={`slip-page-${pageIndex}`}
+                                                >
 
-                                        <div className="value-line">
+                                                    {/* ==============================
+                                                        TITLE
+                                                    ============================== */}
 
-                                            {formatDateTime(
-                                                selectedSlip.issueDate
-                                            )}
+                                                    <div className="mis2-title">
+                                                        <img
+                                                            src="/GLOVIS.png"
+                                                            alt="Logo"
+                                                            className="mis2-logo"
+                                                        />
 
-                                        </div>
+                                                        <span className="mis2-heading">
+                                                            MATERIAL REQUISITION AND ISSUE SLIP
+                                                        </span>
 
-                                    </div>
-
-
-                                    <div className="header-cell">
-
-                                        <strong>
-                                            TOTAL QUANTITY
-                                        </strong>
-
-                                        <div className="value-line">
-
-                                            {selectedSlip.totalQuantity || 0}
-
-                                        </div>
-
-                                    </div>
-
-                                </div>
+                                                        <span className="mis2-page">
+                                                            {slipPages.length > 1
+                                                                ? `Page ${pageIndex + 1}/${slipPages.length}`
+                                                                : ''}
+                                                        </span>
+                                                    </div>
 
 
-                                {/* ==============================
-                    FROM / TO
-                ============================== */}
+                                                    {/* ==============================
+                                                        HEADER FIELDS (label : value)
+                                                    ============================== */}
 
-                                {/* <div className="from-to">
+                                                    <div className="mis2-info">
 
- 
+                                                        <div className="mis2-info-cell">
+                                                            <span className="mis2-info-label">GRN No :</span>
+                                                            <span className="mis2-info-value">
+                                                                {slipGrnNumbers.length
+                                                                    ? slipGrnNumbers.join(', ')
+                                                                    : '—'}
+                                                            </span>
+                                                        </div>
 
-                                    <div className="from-to-box">
+                                                        <div className="mis2-info-cell">
+                                                            <span className="mis2-info-label">Issue No :</span>
+                                                            <span className="mis2-info-value">
+                                                                {selectedSlip.issueNumber || '—'}
+                                                            </span>
+                                                        </div>
 
-                                        <strong>
-                                            FROM
-                                        </strong>
+                                                        <div className="mis2-info-cell">
+                                                            <span className="mis2-info-label">Date &amp; Time :</span>
+                                                            <span className="mis2-info-value">
+                                                                {formatDateTime(selectedSlip.issueDate)}
+                                                            </span>
+                                                        </div>
 
-                                        <div className="address-content">
+                                                        <div className="mis2-info-cell">
+                                                            <span className="mis2-info-label">Total Qty :</span>
+                                                            <span className="mis2-info-value">
+                                                                {selectedSlip.totalQuantity || 0}
+                                                            </span>
+                                                        </div>
 
-                                            <div>
-                                                <strong>
-                                                    {selectedSlip.supplier?.billingCompanyName ||
-                                                        selectedSlip.supplier?.supplierName ||
-                                                        '—'}
-                                                </strong>
-                                            </div>
-                                            <div>
-                                                {selectedSlip.supplier?.billingAddressLine1 || ''}
-                                            </div>
-                                            {selectedSlip.supplier?.billingAddressLine2 && (
-                                                <div>
-                                                    {selectedSlip.supplier.billingAddressLine2}
+                                                    </div>
+
+
+                                                    {/* ==============================
+                                                        ITEMS — one row per part,
+                                                        8 rows per slip
+                                                    ============================== */}
+
+                                                    <table className="mis2-table">
+                                                        <thead>
+                                                            <tr>
+                                                                <th className="c-sno">S.NO.</th>
+                                                                <th className="c-part">PART NO.</th>
+                                                                <th className="c-name">PART NAME</th>
+                                                                <th className="c-qty">QUANTITY</th>
+                                                                <th className="c-iss">ISSUED QTY.</th>
+                                                                <th className="c-fifo">M/C. / FIFO No.</th>
+                                                            </tr>
+                                                        </thead>
+
+                                                        <tbody>
+                                                            {pageItems.map((item, itemIndex) => (
+                                                                <tr key={`${item.partNumber}-${pageIndex}-${itemIndex}`}>
+                                                                    <td>{pageIndex * ROWS_PER_SLIP + itemIndex + 1}</td>
+                                                                    <td>{item.partNumber || '—'}</td>
+                                                                    <td className="mis2-left">{item.partName || '—'}</td>
+                                                                    <td>{item.quantity || 0}</td>
+                                                                    <td>{item.quantity || 0}</td>
+                                                                    <td>
+                                                                        {item.fifoNumbers?.length
+                                                                            ? item.fifoNumbers.join(', ')
+                                                                            : item.palletNumbers?.length
+                                                                                ? item.palletNumbers.join(', ')
+                                                                                : '—'}
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+
+                                                            {/* Blank rows keep every slip at 8 rows */}
+                                                            {Array.from({ length: blankRowCount }).map((_, blankIndex) => (
+                                                                <tr key={`blank-${pageIndex}-${blankIndex}`}>
+                                                                    <td>&nbsp;</td>
+                                                                    <td>&nbsp;</td>
+                                                                    <td>&nbsp;</td>
+                                                                    <td>&nbsp;</td>
+                                                                    <td>&nbsp;</td>
+                                                                    <td>&nbsp;</td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+
+
+                                                    {/* ==============================
+                                                        REMARKS
+                                                    ============================== */}
+
+                                                    <div className="mis2-remarks">
+                                                        <strong>Remarks :</strong>
+                                                        {selectedSlip.remarks || ''}
+                                                    </div>
+
+
+                                                    {/* ==============================
+                                                        APPROVAL
+                                                    ============================== */}
+
+                                                    <div className="mis2-sign">
+                                                        <div className="mis2-sign-box">
+                                                            <span>PREPARED BY</span>
+                                                        </div>
+
+                                                        <div className="mis2-sign-box">
+                                                            <span>CHECKED BY</span>
+                                                        </div>
+
+                                                        <div className="mis2-sign-box">
+                                                            <span>APPROVED BY</span>
+                                                        </div>
+                                                    </div>
+
+
+                                                    <div className="mis2-thanks">
+                                                        Thank You!
+                                                    </div>
+
                                                 </div>
-                                            )}
-                                            <div>
-                                                {selectedSlip.supplier?.billingState || ''}
-                                                {selectedSlip.supplier?.billingStateCode
-                                                    ? ` - ${selectedSlip.supplier.billingStateCode}`
-                                                    : ''}
-                                            </div>
-                                            <div>
-                                                PIN: {selectedSlip.supplier?.billingPinCode || '—'}
-                                            </div>
-                                            {selectedSlip.supplier?.gstNo && (
-                                                <div>
-                                                    GSTIN: {selectedSlip.supplier.gstNo}
-                                                </div>
-                                            )}
-                                        </div>
+                                            )
+                                        })}
+
                                     </div>
 
 
+                                    {/* ==============================
+                                        BUTTONS
+                                    ============================== */}
+
+                                    <div className="mis-modal-actions">
+
+                                        <CButton
+                                            color="secondary"
+                                            onClick={() =>
+                                                setModalVisible(false)
+                                            }
+                                        >
+
+                                            <FaTimes />
+
+                                            Close
+
+                                        </CButton>
 
 
-                                    <div className="from-to-box">
-                                        <strong>
-                                            TO
-                                        </strong>
-                                        <div className="address-content">
-                                            <div>
-                                                <strong>
-                                                    {selectedSlip.supplier?.shippingCompanyName ||
-                                                        selectedSlip.supplier?.supplierName ||
-                                                        '—'}
-                                                </strong>
-                                            </div>
-                                            <div>
-                                                {selectedSlip.supplier?.shippingAddressLine1 || ''}
-                                            </div>
-                                            {selectedSlip.supplier?.shippingAddressLine2 && (
-                                                <div>
-                                                    {selectedSlip.supplier.shippingAddressLine2}
-                                                </div>
-                                            )}
-                                            <div>
-                                                {selectedSlip.supplier?.shippingState || ''}
-                                                {selectedSlip.supplier?.shippingStateCode
-                                                    ? ` - ${selectedSlip.supplier.shippingStateCode}`
-                                                    : ''}
-                                            </div>
-                                            <div>
-                                                PIN: {selectedSlip.supplier?.shippingPinCode || '—'}
-                                            </div>
-                                        </div>
+                                        <CButton
+                                            color="primary"
+                                            onClick={printMaterialIssueSlip}
+                                        >
+
+                                            <FaPrint />
+
+                                            Print
+
+                                        </CButton>
+
                                     </div>
-                                </div> */}
 
-
-                                {/* ==============================
-                    ITEM
-                ============================== */}
-
-                                <table className="items-table">
-                                    <thead>
-                                        <tr>
-                                            <th>SL. NO.</th>
-                                            <th>GRN NO.</th>
-                                            <th>ITEM NO.</th>
-                                            <th>ITEM NAME</th>
-                                            <th>QTY</th>
-                                            {/* <th>FIFO NO.</th> */}
-                                            <th>PALLET NO.</th>
-                                        </tr>
-                                    </thead>
-
-                                    <tbody>
-                                        {consolidatedItems.map((item, index) => (
-                                            <tr key={`${item.partNumber}-${index}`}>
-                                                <td>{index + 1}</td>
-                                                <td>{item.grnNumbers?.length ? item.grnNumbers.join(', ') : '—'}</td>
-                                                <td>{item.partNumber || '—'}</td>
-                                                <td>{item.partName || '—'}</td>
-                                                <td>{item.quantity || 0}</td>
-                                                {/* <td>
-                                                    {item.fifoNumbers?.length
-                                                        ? item.fifoNumbers.join(', ')
-                                                        : '—'}
-                                                </td> */}
-                                                <td>
-                                                    {item.palletNumbers?.length
-                                                        ? item.palletNumbers.join(', ')
-                                                        : '—'}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-
-
-                                {/* ==============================
-                    REMARKS
-                ============================== */}
-
-                                <div className="remarks">
-
-                                    <strong>
-                                        Remarks:
-                                    </strong>
-
-                                    <br />
-
-                                    {selectedSlip.remarks || ''}
-
-                                </div>
-
-
-                                {/* ==============================
-                    APPROVAL
-                ============================== */}
-
-                               <div className="approval-grid">
-
-    <div className="approval-box">
-        <span>PREPARED BY</span>
-    </div>
-
-    <div className="approval-box">
-        <span>CHECKED BY</span>
-    </div>
-
-    <div className="approval-box">
-        <span>APPROVED BY</span>
-    </div>
-
-</div>
-
-
-                                <div className="thank-you">
-
-                                    Thank You!
-
-                                </div>
-
-                            </div>
-                            </div>
-
-
-                            {/* ==============================
-                  BUTTONS
-              ============================== */}
-
-                            <div className="mis-modal-actions">
-
-                                <CButton
-                                    color="secondary"
-                                    onClick={() =>
-                                        setModalVisible(false)
-                                    }
-                                >
-
-                                    <FaTimes />
-
-                                    Close
-
-                                </CButton>
-
-
-                                <CButton
-                                    color="primary"
-                                    onClick={printMaterialIssueSlip}
-                                >
-
-                                    <FaPrint />
-
-                                    Print
-
-                                </CButton>
-
-                            </div>
-
-                        </>
+                                </>
                             )
                         })()
                     )}

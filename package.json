@@ -19,7 +19,7 @@
     "start": "vite"
   },
   "dependencies": {
-    "@capacitor/android": "^8.5.0",
+    "@capacitor/android": "^8.5.3",
     "@capacitor/cli": "^8.5.0",
     "@capacitor/core": "^8.5.0",
     "@coreui/chartjs": "^4.1.0",

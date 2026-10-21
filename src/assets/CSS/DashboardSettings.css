@@ -1,0 +1,497 @@
+/* ===== Page wrapper + Input Path row ===== */
+.ds-page {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  background: #f4f6fb;
+  box-sizing: border-box;
+}
+
+.ds-page *,
+.ds-page *::before,
+.ds-page *::after {
+  box-sizing: border-box;
+}
+
+.ds-path-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 12px 0;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.ds-path-row label {
+  margin: 0;
+  color: #23395d;
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ds-path-row .form-control {
+  flex: 1;
+  min-width: 0;
+  min-height: 40px;
+  border-color: #dce3ed;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.ds-browse-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 130px;
+  min-height: 40px;
+  color: #263449;
+  background: #fff;
+  border: 1px solid #dce3ed;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.ds-browse-btn:hover:not(:disabled) {
+  background: #f3f7ff;
+  border-color: #c5d3ea;
+}
+
+/* ===== Main two-panel layout ===== */
+.dashboard-settings {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  gap: 12px;
+  width: 100%;
+  /* extra space reserved for the Input Path row above */
+  height: calc(100vh - 190px);
+  min-height: 420px;
+  padding: 12px;
+  color: #263449;
+  background: #f4f6fb;
+  font-family: Arial, Helvetica, sans-serif;
+  box-sizing: border-box;
+}
+
+.dashboard-settings *,
+.dashboard-settings *::before,
+.dashboard-settings *::after {
+  box-sizing: border-box;
+}
+
+.dashboard-settings .ds-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #dbe2ed;
+  border-radius: 9px;
+  box-shadow: 0 2px 8px rgb(31 54 88 / 6%);
+}
+
+.dashboard-settings .ds-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  gap: 10px;
+  min-height: 58px;
+  padding: 10px 12px;
+  background: #fff;
+  border-bottom: 1px solid #e5eaf1;
+}
+
+.dashboard-settings .ds-heading {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  color: #244d9b;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.dashboard-settings .ds-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  max-width: 275px;
+  min-width: 150px;
+  height: 36px;
+  padding: 0 10px;
+  color: #8793a6;
+  background: #fff;
+  border: 1px solid #dce3ed;
+  border-radius: 5px;
+}
+
+.dashboard-settings .ds-search:focus-within {
+  border-color: #7ba2ff;
+  box-shadow: 0 0 0 3px rgb(36 77 255 / 10%);
+}
+
+.dashboard-settings .ds-search input {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  color: #263449;
+  background: transparent;
+  border: 0;
+  outline: none;
+  font-size: 12px;
+}
+
+.dashboard-settings .ds-right-header {
+  align-items: center;
+}
+
+.dashboard-settings .ds-slot-control {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.dashboard-settings .ds-slot-control label {
+  margin: 0;
+  color: #526176;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.dashboard-settings .ds-slot-control .form-control {
+  width: 65px;
+  min-height: 32px;
+  padding: 4px 7px;
+  border-color: #d6dfed;
+  border-radius: 5px;
+  font-size: 12px;
+}
+
+.dashboard-settings .ds-slot-control .btn {
+  min-height: 32px;
+  padding: 5px 10px;
+  border-radius: 5px;
+  font-size: 12px;
+}
+
+/* ===== Tables ===== */
+.dashboard-settings .ds-table-wrapper {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  background: #fff;
+}
+
+.dashboard-settings .rdt_Table {
+  width: 100%;
+  color: #263449;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.dashboard-settings .rdt_TableHead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.dashboard-settings .rdt_TableHeadRow {
+  background: #f1f4fa !important;
+  border-bottom: 1px solid #dce3ed !important;
+}
+
+.dashboard-settings .rdt_TableCol {
+  color: #23395d !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+}
+
+.dashboard-settings .rdt_TableCell {
+  min-width: 0;
+  color: #344256 !important;
+  font-size: 12px !important;
+}
+
+.dashboard-settings .rdt_TableRow {
+  border-bottom: 1px solid #e9edf3 !important;
+}
+
+.dashboard-settings .rdt_TableRow:nth-child(even) {
+  background: #fafbfd;
+}
+
+.dashboard-settings .rdt_TableRow:hover {
+  background: #f1f6ff !important;
+}
+
+.dashboard-settings .ds-select-checkbox {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: #244dff;
+  vertical-align: middle;
+}
+
+.ds-state-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 110px;
+  padding: 20px;
+  color: #68778d;
+  font-size: 13px;
+  text-align: center;
+}
+
+/* ===== Panel footers ===== */
+.dashboard-settings .ds-panel-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  gap: 10px;
+  min-height: 44px;
+  padding: 8px 12px;
+  color: #59677b;
+  background: #fafbfd;
+  border-top: 1px solid #e5eaf1;
+  font-size: 12px;
+}
+
+.dashboard-settings .ds-panel-footer strong {
+  color: #23395d;
+  font-weight: 700;
+}
+
+.dashboard-settings .ds-remove-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 29px;
+  height: 29px;
+  padding: 0;
+  color: #d73737;
+  background: #fff0f0;
+  border: 1px solid #ffd6d6;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.dashboard-settings .ds-remove-btn:hover {
+  color: #bd2525;
+  background: #ffdddd;
+}
+
+.dashboard-settings .ds-empty-position {
+  color: #b4bdca;
+}
+
+/* ===== Modals =====
+   CoreUI renders modals in a portal outside .dashboard-settings,
+   so modal styles must be scoped by the modal's own class. */
+.ds-position-modal .modal-content,
+.ds-browse-modal .modal-content {
+  overflow: hidden;
+  border: 1px solid #dbe2ed;
+  border-radius: 10px;
+  box-shadow: 0 12px 35px rgb(0 0 0 / 15%);
+}
+
+.ds-position-modal .modal-header,
+.ds-browse-modal .modal-header {
+  padding: 16px 20px;
+  background: #f7f9fd;
+  border-bottom: 1px solid #e5eaf1;
+}
+
+.ds-position-modal .modal-title,
+.ds-browse-modal .modal-title {
+  color: #244d9b;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.ds-position-modal .modal-body,
+.ds-browse-modal .modal-body {
+  padding: 20px;
+}
+
+.ds-position-modal .modal-footer,
+.ds-browse-modal .modal-footer {
+  padding: 12px 20px;
+  background: #fafbfd;
+  border-top: 1px solid #e5eaf1;
+}
+
+.ds-position-modal .ds-selected-part {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 20px;
+  padding: 13px;
+  background: #f3f7ff;
+  border: 1px solid #dce7ff;
+  border-radius: 7px;
+}
+
+.ds-position-modal .ds-selected-part strong {
+  color: #244d9b;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.ds-position-modal .ds-selected-part span {
+  color: #263449;
+  font-size: 13px;
+}
+
+.ds-position-modal .ds-selected-part small,
+.ds-position-modal .ds-modal-help {
+  color: #7a8799;
+  font-size: 12px;
+}
+
+.ds-position-modal .ds-modal-label {
+  display: block;
+  margin-bottom: 7px;
+  color: #263449;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ds-position-modal .form-select {
+  min-height: 40px;
+  border-color: #cbd6e5;
+  border-radius: 5px;
+  font-size: 13px;
+}
+
+.ds-position-modal .ds-modal-help {
+  display: block;
+  margin-top: 9px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+/* ===== Folder browser modal ===== */
+.ds-browse-modal .ds-browse-current {
+  margin-bottom: 8px;
+  padding: 6px 10px;
+  background: #f1f4fa;
+  border-radius: 4px;
+  color: #263449;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.ds-browse-modal .ds-browse-list {
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid #e5eaf1;
+  border-radius: 4px;
+}
+
+.ds-browse-modal .ds-browse-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  color: #263449;
+  background: #fff;
+  border: 0;
+  border-bottom: 1px solid #eef1f6;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ds-browse-modal .ds-browse-item svg {
+  flex-shrink: 0;
+  color: #f5b83d;
+}
+
+.ds-browse-modal .ds-browse-item:hover:not(:disabled) {
+  background: #f3f7ff;
+}
+
+.ds-browse-modal .ds-browse-item:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 1050px) {
+  .dashboard-settings {
+    grid-template-columns: minmax(0, 1fr);
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+  }
+
+  .dashboard-settings .ds-panel {
+    min-height: 350px;
+  }
+
+  .dashboard-settings .ds-table-wrapper {
+    min-height: 250px;
+  }
+}
+
+@media (max-width: 600px) {
+  .ds-path-row {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 8px 0;
+  }
+
+  .ds-path-row .form-control {
+    flex-basis: 100%;
+    order: 3;
+  }
+
+  .ds-browse-btn {
+    margin-left: auto;
+    min-width: 110px;
+  }
+
+  .dashboard-settings {
+    gap: 10px;
+    padding: 8px;
+  }
+
+  .dashboard-settings .ds-panel-header {
+    align-items: stretch;
+    padding: 10px;
+  }
+
+  .dashboard-settings .ds-heading {
+    font-size: 14px;
+  }
+
+  .dashboard-settings .ds-search {
+    max-width: none;
+    min-width: 0;
+  }
+
+  .dashboard-settings .ds-right-header {
+    align-items: flex-start;
+  }
+
+  .dashboard-settings .ds-slot-control {
+    width: 100%;
+  }
+
+  .dashboard-settings .ds-panel-footer {
+    padding: 8px 10px;
+  }
+}
