@@ -1,8 +1,22 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { CTooltip } from '@coreui/react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  CTooltip,
+  CModal,
+  CModalHeader,
+  CModalTitle,
+  CModalBody,
+} from '@coreui/react'
 import DataTable from 'react-data-table-component'
 import Select from 'react-select'
-import { FaFileExcel, FaFilePdf, FaSearch, FaSyncAlt } from 'react-icons/fa'
+import {
+  FaFileExcel,
+  FaFilePdf,
+  FaSearch,
+  FaSyncAlt,
+  FaPrint,
+  FaDownload,
+  FaTimes,
+} from 'react-icons/fa'
 import { jsPDF } from 'jspdf'
 import { autoTable } from 'jspdf-autotable'
 import { toast } from 'react-toastify'
@@ -98,6 +112,22 @@ const StockReport = () => {
   const [showInwardValue, setShowInwardValue] = useState(false)
   const [showOutwardRate, setShowOutwardRate] = useState(false)
   const [showOutwardValue, setShowOutwardValue] = useState(false)
+  const [pdfViewerOpen, setPdfViewerOpen] = useState(false)
+  const [pdfUrl, setPdfUrl] = useState('')
+  const [pdfFileName, setPdfFileName] = useState('Stock_Report.pdf')
+  const [pdfFrameLoaded, setPdfFrameLoaded] = useState(false)
+  const pdfFrameRef = useRef(null)
+  const pdfUrlRef = useRef('')
+
+  // Release the generated PDF from memory when leaving the page
+  useEffect(() => {
+    return () => {
+      if (pdfUrlRef.current) {
+        URL.revokeObjectURL(pdfUrlRef.current)
+      }
+    }
+  }, [])
+
   // Optional grid columns; enabled by default to preserve the current report.
   const buildParams = (currentFilters, currentPage = page, currentPageSize = pageSize, exportAll = false) => {
     const params = {
@@ -254,26 +284,56 @@ const StockReport = () => {
         toast.error('Nothing to export for the selected filters')
         return
       }
-      const exportData = exportRows.map((row, index) => ({
-        'S.No': index + 1,
-        Date: row.date
-          ? new Date(row.date).toLocaleDateString('en-GB')
-          : '',
-        Direction: row.direction,
-        'Part Number': row.partNumber,
-        'Part Name': row.partName,
-        UOM: row.uom ?? row.UOM ?? '—',
-        'Part Group': row.partGroupName,
-        Supplier: row.supplierName,
-        'Supplier Group': row.supplierGroupName,
-        Quantity: row.quantity,
-        Inward: row.inward,
-        Outward: row.outward,
-        Rate: row.rate,
-        Value: row.value,
-        Reference: row.reference,
-      }))
+      // Excel columns follow the grid:
+      // INWARD / OUTWARD are always exported.
+      // RATE / VALUE columns are exported only when ticked in the grid header.
+      const exportData = exportRows.map((row, index) => {
+        const inwardQty = Number(row.inward) || 0
+        const outwardQty = Number(row.outward) || 0
+
+        return {
+          'S.No': index + 1,
+          Date: row.date
+            ? new Date(row.date).toLocaleDateString('en-GB')
+            : '',
+          Direction: row.direction,
+          'Part Number': row.partNumber,
+          'Part Name': row.partName,
+          UOM: row.uom ?? row.UOM ?? '—',
+          'Part Group': row.partGroupName,
+          Supplier: row.supplierName,
+          'Supplier Group': row.supplierGroupName,
+          Quantity: row.quantity,
+          Inward: inwardQty,
+          ...(showInwardRate && {
+            'Inward Rate': inwardQty > 0 ? Number(row.rate) || 0 : 0,
+          }),
+          ...(showInwardValue && {
+            'Inward Value': inwardQty > 0 ? Number(row.value) || 0 : 0,
+          }),
+          Outward: outwardQty,
+          ...(showOutwardRate && {
+            'Outward Rate': outwardQty > 0 ? Number(row.rate) || 0 : 0,
+          }),
+          ...(showOutwardValue && {
+            'Outward Value': outwardQty > 0 ? Number(row.value) || 0 : 0,
+          }),
+          Reference: row.reference,
+        }
+      })
       const worksheet = XLSX.utils.json_to_sheet(exportData)
+
+      // Auto column width so headers and values are fully visible
+      const headers = Object.keys(exportData[0] || {})
+      worksheet['!cols'] = headers.map((header) => ({
+        wch: Math.min(
+          40,
+          Math.max(
+            header.length + 2,
+            ...exportData.map((r) => String(r[header] ?? '').length + 2)
+          )
+        ),
+      }))
       const workbook = XLSX.utils.book_new()
       XLSX.utils.book_append_sheet(
         workbook,
@@ -292,6 +352,57 @@ const StockReport = () => {
       setExporting(false)
     }
   }
+
+  // ---------------------------------------------------------
+  // PDF VIEWER ACTIONS
+  // ---------------------------------------------------------
+
+  const closePdfViewer = () => {
+    setPdfViewerOpen(false)
+    setPdfFrameLoaded(false)
+
+    // Free memory after the closing animation finishes
+    setTimeout(() => {
+      if (pdfUrlRef.current) {
+        URL.revokeObjectURL(pdfUrlRef.current)
+        pdfUrlRef.current = ''
+      }
+      setPdfUrl('')
+    }, 300)
+  }
+
+  const handlePrintPdf = () => {
+    const frame = pdfFrameRef.current
+
+    try {
+      if (frame?.contentWindow) {
+        frame.contentWindow.focus()
+        frame.contentWindow.print()
+        return
+      }
+      throw new Error('Viewer not ready')
+    } catch {
+      // Fallback: open in a new tab where the browser's own print works
+      if (pdfUrl) {
+        window.open(pdfUrl, '_blank')
+        toast.info('Opened in a new tab — press Ctrl+P to print')
+      }
+    }
+  }
+
+  const handleDownloadPdf = () => {
+    if (!pdfUrl) return
+
+    const link = document.createElement('a')
+    link.href = pdfUrl
+    link.download = pdfFileName
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+
+    toast.success('Stock Report PDF downloaded')
+  }
+
 const exportPdf = async () => {
   setPdfExporting(true)
 
@@ -527,17 +638,28 @@ const exportPdf = async () => {
     }
 
     // ---------------------------------------------------------
-    // SAVE
+    // OPEN IN PDF VIEWER (Print / Download available there)
+    // Previously: doc.save(...) downloaded the file immediately.
     // ---------------------------------------------------------
 
-    doc.save(
+    const blob = doc.output('blob')
+
+    if (pdfUrlRef.current) {
+      URL.revokeObjectURL(pdfUrlRef.current)
+    }
+
+    const url = URL.createObjectURL(blob)
+    pdfUrlRef.current = url
+
+    setPdfUrl(url)
+    setPdfFileName(
       `Stock_Report_${new Date().toISOString().slice(0, 10)}.pdf`
     )
-
-    toast.success('Stock Report PDF exported successfully')
+    setPdfFrameLoaded(false)
+    setPdfViewerOpen(true)
   } catch (err) {
     console.error('PDF Export Error:', err)
-    toast.error('Failed to export Stock Report PDF')
+    toast.error('Failed to generate Stock Report PDF')
   } finally {
     setPdfExporting(false)
   }
@@ -1020,7 +1142,7 @@ const exportPdf = async () => {
             </button>
           </CTooltip>
           <CTooltip
-            content="Export the Stock Report as a PDF with Part Number, Part Name, Qty, UOM and Total"
+            content="Open the Stock Report as a PDF preview with Print and Download options"
             placement="top"
           >
             <button
@@ -1030,7 +1152,7 @@ const exportPdf = async () => {
               disabled={pdfExporting || exporting || loading}
             >
               <FaFilePdf size={13} />
-              {pdfExporting ? 'Generating PDF...' : 'PDF'}
+              {pdfExporting ? 'Preparing PDF...' : 'PDF'}
             </button>
           </CTooltip>
           <div className="sr-search-box">
@@ -1090,6 +1212,76 @@ const exportPdf = async () => {
           }
         />
       </div>
+
+      {/* ---------------- PDF VIEWER ---------------- */}
+      <CModal
+        visible={pdfViewerOpen}
+        onClose={closePdfViewer}
+        size="xl"
+        alignment="center"
+        backdrop="static"
+        className="sr-pdf-modal"
+      >
+        <CModalHeader closeButton={false} className="sr-pdf-header">
+          <CModalTitle className="sr-pdf-title">
+            <FaFilePdf size={16} />
+            Stock Report — PDF Preview
+          </CModalTitle>
+
+          <div className="sr-pdf-actions">
+            <button
+              type="button"
+              className="sr-pdf-action sr-pdf-print"
+              onClick={handlePrintPdf}
+              disabled={!pdfFrameLoaded}
+              title="Print this report"
+            >
+              <FaPrint size={13} />
+              Print
+            </button>
+
+            <button
+              type="button"
+              className="sr-pdf-action sr-pdf-download"
+              onClick={handleDownloadPdf}
+              disabled={!pdfUrl}
+              title="Download as PDF file"
+            >
+              <FaDownload size={13} />
+              Download
+            </button>
+
+            <button
+              type="button"
+              className="sr-pdf-action sr-pdf-close"
+              onClick={closePdfViewer}
+              title="Close preview"
+            >
+              <FaTimes size={13} />
+              Close
+            </button>
+          </div>
+        </CModalHeader>
+
+        <CModalBody className="sr-pdf-body">
+          {!pdfFrameLoaded && (
+            <div className="sr-pdf-loading">
+              <span className="sr-pdf-spinner" />
+              Loading preview...
+            </div>
+          )}
+
+          {pdfUrl && (
+            <iframe
+              ref={pdfFrameRef}
+              title="Stock Report PDF"
+              src={pdfUrl}
+              className="sr-pdf-frame"
+              onLoad={() => setPdfFrameLoaded(true)}
+            />
+          )}
+        </CModalBody>
+      </CModal>
     </div>
   )
 }

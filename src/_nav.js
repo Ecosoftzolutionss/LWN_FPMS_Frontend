@@ -21,7 +21,7 @@ import {
   cilNotes,
   cilChart,
   cilListRich,
-  cilLocationPin
+  cilLocationPin,
 } from '@coreui/icons'
 
 import { CNavGroup, CNavItem } from '@coreui/react'
@@ -83,12 +83,7 @@ const _nav = [
         to: '/masters/customermaster',
         icon: <CIcon icon={cilBuilding} customClassName="nav-icon" />,
       },
-      // {
-      //   component: CNavItem,
-      //   name: 'Price Master',
-      //   to: '/masters/pricemaster',
-      //   icon: <CIcon icon={cilDollar} customClassName="nav-icon" />,
-      // },
+
       {
         component: CNavItem,
         name: 'Pallet Master',
@@ -101,12 +96,6 @@ const _nav = [
         to: '/masters/locationmaster',
         icon: <CIcon icon={cilDescription} customClassName="nav-icon" />,
       },
-      // {
-      //   component: CNavItem,
-      //   name: 'Mail Settings',
-      //   to: '/masters/mailsetting',
-      //   icon: <CIcon icon={cilEnvelopeClosed} customClassName="nav-icon" />,
-      // },
     ],
   },
 
@@ -143,47 +132,47 @@ const _nav = [
     ],
   },
 
- {
-  component: CNavGroup,
-  name: 'Reports',
-  icon: <CIcon icon={cilChart} customClassName="nav-icon" />,
-  items: [
-    {
-      component: CNavItem,
-      name: 'GRN Report',
-      to: '/report/Grnreport',
-      icon: <CIcon icon={cilNotes} customClassName="nav-icon" />,
-    },
-    {
-      component: CNavItem,
-      name: 'Store Report',
-      to: '/report/StoreReport',
-      icon: <CIcon icon={cilLocationPin} customClassName="nav-icon" />,
-    },
-    {
-      component: CNavItem,
-      name: 'Material Issue Report',
-      to: '/report/MaterialIssueReport',
-      icon: <CIcon icon={cilListRich} customClassName="nav-icon" />,
-    },
+  {
+    component: CNavGroup,
+    name: 'Reports',
+    icon: <CIcon icon={cilChart} customClassName="nav-icon" />,
+    items: [
+      {
+        component: CNavItem,
+        name: 'GRN Report',
+        to: '/report/Grnreport',
+        icon: <CIcon icon={cilNotes} customClassName="nav-icon" />,
+      },
+      {
+        component: CNavItem,
+        name: 'Store Report',
+        to: '/report/StoreReport',
+        icon: <CIcon icon={cilLocationPin} customClassName="nav-icon" />,
+      },
+      {
+        component: CNavItem,
+        name: 'Material Issue Report',
+        to: '/report/MaterialIssueReport',
+        icon: <CIcon icon={cilListRich} customClassName="nav-icon" />,
+      },
 
-     {
-      component: CNavItem,
-      name: 'Stock Report',
-      to: '/report/StockReport',
-      icon: <CIcon icon={cilListRich} customClassName="nav-icon" />,
-    },
+      {
+        component: CNavItem,
+        name: 'Stock Report',
+        to: '/report/StockReport',
+        icon: <CIcon icon={cilListRich} customClassName="nav-icon" />,
+      },
 
-  ],
-}
+    ],
+  },
+  {
+    component: CNavItem,
+    name: 'Dashboard Settings',
+    to: '/dashboard/settings',
+    icon: <CIcon icon={cilSettings} customClassName="nav-icon" />,
+  },
 
-  // Reports
-  // {
-  //   component: CNavItem,
-  //   name: 'Reports',
-  //   to: '/report/reports',
-  //   icon: <CIcon icon={cilChartLine} customClassName="nav-icon" />,
-  // },
+
 ]
 
 export default _nav

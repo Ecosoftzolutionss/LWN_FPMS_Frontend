@@ -15,7 +15,6 @@ const getErrorMessage = (err, fallback) => {
   if (!data) return fallback
   if (typeof data === 'string') return data
   if (data.message || data.error) return data.message || data.error
-
   if (data.errors && typeof data.errors === 'object') {
     const firstField = Object.keys(data.errors)[0]
     const firstMessage = data.errors[firstField]?.[0]
@@ -43,7 +42,7 @@ const formatDate = (value) => {
 // so long values such as 1000000 or 24210-04087D always fit and are
 // never cut off.
 // =========================================================
-const AVG_GLYPH = 0.6 // average bold Arial glyph width as a fraction of font size
+const AVG_GLYPH = 0.7 // average heavy (Arial Black) digit/letter width as a fraction of font size
 
 const fitFontMm = (length, widthMm, maxMm, minMm = 1.4) => {
   const n = Math.max(Number(length) || 0, 1)
@@ -73,14 +72,14 @@ const longestPalletLine = (value) =>
 const getPalletNoFontSize = (value) => {
   const n = longestPalletLine(value)
 
-  if (n <= 4) return 44
-  if (n <= 5) return 37
-  if (n <= 6) return 31
-  if (n <= 7) return 27
-  if (n <= 8) return 23
-  if (n <= 10) return 18
-  if (n <= 12) return 15
-  return 12
+  if (n <= 4) return 40
+  if (n <= 5) return 33
+  if (n <= 6) return 28
+  if (n <= 7) return 24
+  if (n <= 8) return 21
+  if (n <= 10) return 16
+  if (n <= 12) return 13
+  return 11
 }
 
 const getPalletNoScaleY = (value) => {
@@ -98,14 +97,14 @@ const getPalletNoScaleY = (value) => {
 const getCompactPalletNoFontSize = (value) => {
   const n = longestPalletLine(value)
 
-  if (n <= 4) return 4.0
-  if (n <= 5) return 3.4
-  if (n <= 6) return 2.9
-  if (n <= 7) return 2.6
-  if (n <= 8) return 2.25
-  if (n <= 10) return 1.8
-  if (n <= 12) return 1.5
-  return 1.2
+  if (n <= 4) return 3.8
+  if (n <= 5) return 3.0
+  if (n <= 6) return 2.6
+  if (n <= 7) return 2.3
+  if (n <= 8) return 2.0
+  if (n <= 10) return 1.6
+  if (n <= 12) return 1.35
+  return 1.1
 }
 
 const getPartNumberFontSize = (value, compact = false) => {
@@ -113,15 +112,15 @@ const getPartNumberFontSize = (value, compact = false) => {
 
   if (compact) {
     // part number now has the full row width; kept slightly condensed
-    return fitFontMm(len, 26, 4.2, 1.6)
+    return fitFontMm(len, 25, 4.0, 1.6)
   }
 
-  if (len <= 8) return 40
-  if (len <= 10) return 37
-  if (len <= 12) return 33
-  if (len <= 14) return 30
-  if (len <= 18) return 26
-  return 22
+  if (len <= 8) return 38
+  if (len <= 10) return 35
+  if (len <= 12) return 32
+  if (len <= 14) return 29
+  if (len <= 18) return 25
+  return 21
 }
 
 const getPartNameFontSize = (value, compact = false) => {
@@ -129,25 +128,25 @@ const getPartNameFontSize = (value, compact = false) => {
 
   if (compact) {
     // wraps onto up to 3 lines inside ~21mm
-    if (len <= 14) return 2.3
-    if (len <= 20) return 2.0
-    if (len <= 28) return 1.8
-    if (len <= 40) return 1.55
-    return 1.3
+    if (len <= 14) return 2.1
+    if (len <= 20) return 1.85
+    if (len <= 28) return 1.65
+    if (len <= 40) return 1.4
+    return 1.2
   }
 
-  if (len <= 20) return 32
-  if (len <= 28) return 28
-  if (len <= 48) return 23
-  return 18
+  if (len <= 20) return 28
+  if (len <= 28) return 25
+  if (len <= 48) return 21
+  return 17
 }
 
 const getQtyFontSize = (value, compact = false) => {
   const digits = String(value ?? '').replace(/[^0-9]/g, '').length
 
   if (compact) {
-    // qty column is 11mm wide (minus left shift) -> ~9.4mm for the digits
-    return fitFontMm(digits, 9.4, 4.0, 1.4)
+    // qty column is 12.5mm wide (minus left shift) -> ~11mm for the digits
+    return fitFontMm(digits, 11, 4.0, 1.4)
   }
 
   if (digits <= 2) return 50
@@ -162,17 +161,19 @@ const getQtyFontSize = (value, compact = false) => {
 // The label sizes the user can pick before printing/downloading.
 //   layout 'landscape' -> 150x100 master design, drawn 1:1
 //   layout 'compact'   -> 50x25 geometry, drawn 1:1
-//   layout 'compact2x' -> the same 50x25 card scaled exactly 2x = 100x50
+//   layout 'compact2x' -> (not offered now) 50x25 card scaled 2x = 100x50
+//   100x75 uses 'landscape': the master card is drawn 150 x 112.5mm (same 4:3
+//   shape) and scaled uniformly by 2/3, so nothing is stretched or squashed.
 const LABEL_SIZE_OPTIONS = [
   { value: '', label: 'Select Label Size', widthMm: 0, heightMm: 0, layout: '' },
   { value: '150x100', label: 'Size (150 x 100mm)', widthMm: 150, heightMm: 100, layout: 'landscape' },
-  { value: '100x50', label: 'Size (100 x 50mm)', widthMm: 100, heightMm: 50, layout: 'compact2x' },
+  { value: '100x75', label: 'Size (100 x 75mm)', widthMm: 100, heightMm: 75, layout: 'landscape' },
   { value: '50x25', label: 'Size (50 x 25mm)', widthMm: 50, heightMm: 25, layout: 'compact' },
 ]
 
 const SIZE_CHIP_NOTES = {
   '150x100': 'Large · full details',
-  '100x50': 'Medium · standard',
+  '100x75': 'Medium · standard',
   '50x25': 'Small · compact',
 }
 
@@ -181,7 +182,7 @@ const BASE_CARD_HEIGHT_MM = 100
 
 const computeCardTransform = (activeSize) => {
   if (!activeSize || !activeSize.widthMm) {
-    return { scaleX: 0, scaleY: 0, offsetXmm: 0, offsetYmm: 0 }
+    return { scaleX: 0, scaleY: 0, offsetXmm: 0, offsetYmm: 0, cardHeightMm: BASE_CARD_HEIGHT_MM }
   }
 
   if (
@@ -189,15 +190,48 @@ const computeCardTransform = (activeSize) => {
     activeSize.layout === 'compact' ||
     activeSize.layout === 'compact2x'
   ) {
-    return { scaleX: 1, scaleY: 1, offsetXmm: 0, offsetYmm: 0 }
+    return { scaleX: 1, scaleY: 1, offsetXmm: 0, offsetYmm: 0, cardHeightMm: BASE_CARD_HEIGHT_MM }
   }
 
+  // Uniform scale (no distortion). The master card is drawn at the SAME
+  // aspect ratio as the label: 150x100 -> 100mm tall, 100x75 -> 112.5mm tall.
+  const uniform = activeSize.widthMm / BASE_CARD_WIDTH_MM
   return {
-    scaleX: activeSize.widthMm / BASE_CARD_WIDTH_MM,
-    scaleY: activeSize.heightMm / BASE_CARD_HEIGHT_MM,
+    scaleX: uniform,
+    scaleY: uniform,
     offsetXmm: 0,
     offsetYmm: 0,
+    cardHeightMm: BASE_CARD_WIDTH_MM * (activeSize.heightMm / activeSize.widthMm),
   }
+}
+
+// ---------------------------------------------------------
+// 50 x 25 mm labels are usually supplied 2 ACROSS on the roll / sheet
+// (two 50 mm labels side by side with a small gap). For this size the
+// user can choose 1 across (page 50 x 25) or 2 across (page 100+gap x 25).
+// getEffectiveSize() returns the REAL page size used for preview, print
+// and PDF. All other sizes are returned unchanged.
+// ---------------------------------------------------------
+const SHEET_LABEL_VALUE = '50x25'
+
+const getEffectiveSize = (size, across, gapMm) => {
+  if (!size || size.value !== SHEET_LABEL_VALUE) return size
+  const n = Number(across) === 2 ? 2 : 1
+  if (n === 1) return size
+  const gap = Math.min(Math.max(Number(gapMm) || 0, 0), 20)
+  return {
+    ...size,
+    widthMm: Number((size.widthMm * n + gap * (n - 1)).toFixed(2)),
+    across: n,
+    gapMm: gap,
+  }
+}
+
+const chunkLines = (lines, perPage) => {
+  const out = []
+  const n = Math.max(Number(perPage) || 1, 1)
+  for (let i = 0; i < (lines || []).length; i += n) out.push(lines.slice(i, i + n))
+  return out
 }
 
 // =========================================================
@@ -383,6 +417,48 @@ const LabelSizePicker = ({ value, onChange }) => (
   </div>
 )
 
+// Extra choice shown only for the 50 x 25 mm label: labels across the roll.
+const SheetOptions = ({ across, setAcross, gap, setGap }) => {
+  const g = Math.min(Math.max(Number(gap) || 0, 0), 20)
+  return (
+    <div className="grn-size-picker">
+      <div className="grn-size-picker-title">Labels across the roll / sheet</div>
+      <div className="grn-size-chips">
+        <button
+          type="button"
+          className={`grn-size-chip ${across === '1' ? 'active' : ''}`}
+          onClick={() => setAcross('1')}
+        >
+          <span className="grn-size-chip-main">1 across</span>
+          <span className="grn-size-chip-sub">Page 50 × 25 mm</span>
+        </button>
+        <button
+          type="button"
+          className={`grn-size-chip ${across === '2' ? 'active' : ''}`}
+          onClick={() => setAcross('2')}
+        >
+          <span className="grn-size-chip-main">2 across</span>
+          <span className="grn-size-chip-sub">Page {(100 + g).toFixed(g % 1 ? 1 : 0)} × 25 mm</span>
+        </button>
+        {across === '2' && (
+          <div className="grn-sheet-gap">
+            <label className="grn-label-size-label">Gap between labels (mm)</label>
+            <CFormInput
+              type="number"
+              min="0"
+              max="20"
+              step="0.5"
+              value={gap}
+              onChange={(e) => setGap(e.target.value)}
+              style={{ width: 110 }}
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 const GRNPost = () => {
   const navigate = useNavigate()
   const [tab, setTab] = useState('unposted') // 'unposted' | 'reprint'
@@ -399,6 +475,8 @@ const GRNPost = () => {
   const [showLabel, setShowLabel] = useState(false)
 
   const [labelSize, setLabelSize] = useState('')
+  const [sheetAcross, setSheetAcross] = useState('1') // 50x25 only: '1' | '2'
+  const [sheetGap, setSheetGap] = useState('2') // mm between labels when 2 across
 
   const [selectedLines, setSelectedLines] = useState([])
   const [toggleClearSelectedLines, setToggleClearSelectedLines] = useState(false)
@@ -656,7 +734,11 @@ const GRNPost = () => {
       return
     }
 
-    const size = LABEL_SIZE_OPTIONS.find((s) => s.value === labelSize) || LABEL_SIZE_OPTIONS[0]
+    const size = getEffectiveSize(
+      LABEL_SIZE_OPTIONS.find((s) => s.value === labelSize) || LABEL_SIZE_OPTIONS[0],
+      sheetAcross,
+      sheetGap,
+    )
 
     if (!size.widthMm) {
       toast.warning('Please select a label size')
@@ -681,7 +763,7 @@ const GRNPost = () => {
       })
 
       pdf.addImage(imgData, 'PNG', 0, 0, size.widthMm, size.heightMm)
-      pdf.save(`FIFO-Label-${labelGrn?.fifoPalletNo || labelGrn?.grnNumber || 'card'}-${size.value}.pdf`)
+      pdf.save(`FIFO-Label-${labelGrn?.fifoPalletNo || labelGrn?.grnNumber || 'card'}-${size.value}${size.across > 1 ? '-2up' : ''}.pdf`)
     } catch (err) {
       toast.error('Failed to generate the label PDF for download')
     }
@@ -813,7 +895,11 @@ const GRNPost = () => {
       return
     }
 
-    const size = LABEL_SIZE_OPTIONS.find((s) => s.value === labelSize)
+    const size = getEffectiveSize(
+      LABEL_SIZE_OPTIONS.find((s) => s.value === labelSize),
+      sheetAcross,
+      sheetGap,
+    )
 
     if (!size || !size.widthMm || !size.heightMm) {
       toast.error('Invalid label size')
@@ -850,16 +936,22 @@ const GRNPost = () => {
       return
     }
 
-    const size = LABEL_SIZE_OPTIONS.find((s) => s.value === bulkLabelSize)
+    const size = getEffectiveSize(
+      LABEL_SIZE_OPTIONS.find((s) => s.value === bulkLabelSize),
+      sheetAcross,
+      sheetGap,
+    )
 
     if (!size || !size.widthMm || !size.heightMm) {
       toast.error('Invalid label size')
       return
     }
 
+    const pages = chunkLines(bulkLabelGrn.lines, size.across > 1 ? size.across : 1)
+
     const labelHtmlParts = await Promise.all(
-      bulkLabelGrn.lines.map(async (line) => {
-        const existing = document.getElementById(`fifo-bulk-frame-${line.id}`)
+      pages.map(async (page) => {
+        const existing = document.getElementById(`fifo-bulk-frame-${page[0].id}`)
         if (!existing) return ''
 
         const cloned = existing.cloneNode(true)
@@ -887,12 +979,18 @@ const GRNPost = () => {
       return
     }
 
-    const size = LABEL_SIZE_OPTIONS.find((s) => s.value === bulkLabelSize) || LABEL_SIZE_OPTIONS[0]
+    const size = getEffectiveSize(
+      LABEL_SIZE_OPTIONS.find((s) => s.value === bulkLabelSize) || LABEL_SIZE_OPTIONS[0],
+      sheetAcross,
+      sheetGap,
+    )
 
     if (!size.widthMm) {
       toast.warning('Please select a label size')
       return
     }
+
+    const pages = chunkLines(bulkLabelGrn.lines, size.across > 1 ? size.across : 1)
 
     const orientation = size.widthMm >= size.heightMm ? 'landscape' : 'portrait'
 
@@ -903,9 +1001,8 @@ const GRNPost = () => {
         format: [size.widthMm, size.heightMm],
       })
 
-      for (let i = 0; i < bulkLabelGrn.lines.length; i++) {
-        const line = bulkLabelGrn.lines[i]
-        const node = document.getElementById(`fifo-bulk-frame-${line.id}`)
+      for (let i = 0; i < pages.length; i++) {
+        const node = document.getElementById(`fifo-bulk-frame-${pages[i][0].id}`)
         if (!node) continue
 
         await inlineImagesInElement(node)
@@ -923,7 +1020,7 @@ const GRNPost = () => {
         pdf.addImage(imgData, 'PNG', 0, 0, size.widthMm, size.heightMm)
       }
 
-      pdf.save(`FIFO-Labels-Bulk-${bulkLabelGrn.grnNumber}-${size.value}.pdf`)
+      pdf.save(`FIFO-Labels-Bulk-${bulkLabelGrn.grnNumber}-${size.value}${size.across > 1 ? '-2up' : ''}.pdf`)
     } catch (err) {
       toast.error('Failed to generate the bulk label PDF for download')
     }
@@ -936,15 +1033,21 @@ const GRNPost = () => {
   const firstLine = labelGrn?.line
 
   const activeSize = LABEL_SIZE_OPTIONS.find((s) => s.value === labelSize)
-  const { scaleX: cardScaleX, scaleY: cardScaleY, offsetXmm: cardOffsetXmm, offsetYmm: cardOffsetYmm } = computeCardTransform(activeSize)
+  const { scaleX: cardScaleX, scaleY: cardScaleY, offsetXmm: cardOffsetXmm, offsetYmm: cardOffsetYmm, cardHeightMm } = computeCardTransform(activeSize)
 
   const bulkActiveSize = LABEL_SIZE_OPTIONS.find((s) => s.value === bulkLabelSize)
-  const { scaleX: bulkCardScaleX, scaleY: bulkCardScaleY, offsetXmm: bulkCardOffsetXmm, offsetYmm: bulkCardOffsetYmm } = computeCardTransform(bulkActiveSize)
+  const { scaleX: bulkCardScaleX, scaleY: bulkCardScaleY, offsetXmm: bulkCardOffsetXmm, offsetYmm: bulkCardOffsetYmm, cardHeightMm: bulkCardHeightMm } = computeCardTransform(bulkActiveSize)
+
+  // Real page size (50x25 may be 2 across = 100+gap x 25).
+  const effActiveSize = getEffectiveSize(activeSize, sheetAcross, sheetGap)
+  const bulkEffSize = getEffectiveSize(bulkActiveSize, sheetAcross, sheetGap)
+  const bulkPerPage = bulkEffSize?.across > 1 ? bulkEffSize.across : 1
+  const bulkPages = bulkLabelGrn ? chunkLines(bulkLabelGrn.lines, bulkPerPage) : []
 
   // Renders the FIFO card markup for one line. Shared by the single and
   // bulk modals so the design can never drift between the two.
   // layout: 'landscape' | 'portrait' | 'compact' | 'compact2x'
-  const renderFifoCard = (grnMeta, line, scaleX, scaleY, offsetXmm, offsetYmm, layout = 'landscape') => {
+  const renderFifoCard = (grnMeta, line, scaleX, scaleY, offsetXmm, offsetYmm, layout = 'landscape', heightMm = BASE_CARD_HEIGHT_MM) => {
     const compact = layout === 'compact' || layout === 'compact2x'
     const portrait = layout === 'portrait'
 
@@ -967,7 +1070,7 @@ const GRNPost = () => {
           }
         : {
             width: `${BASE_CARD_WIDTH_MM}mm`,
-            height: `${BASE_CARD_HEIGHT_MM}mm`,
+            height: `${heightMm}mm`,
             transformOrigin: 'top left',
             transform: `translate(${offsetXmm}mm, ${offsetYmm}mm) scaleX(${scaleX}) scaleY(${scaleY})`,
           }
@@ -1526,6 +1629,10 @@ const GRNPost = () => {
 
               <LabelSizePicker value={labelSize} onChange={setLabelSize} />
 
+              {labelSize === SHEET_LABEL_VALUE && (
+                <SheetOptions across={sheetAcross} setAcross={setSheetAcross} gap={sheetGap} setGap={setSheetGap} />
+              )}
+
               {!labelSize ? (
                 <div className="fifo-select-size-message">
                   Please select a label size to see the preview
@@ -1533,27 +1640,56 @@ const GRNPost = () => {
               ) : (
                 <>
                   <div className="fifo-print-preview-wrap">
-                    <div
-                      className={`fifo-label-frame ${labelSize === '100x75' ? 'fifo-label-frame-100x75' : ''}`}
-                      id="fifo-print-area"
-                      style={{
-                        width: `${activeSize.widthMm}mm`,
-                        height: `${activeSize.heightMm}mm`,
-                      }}
-                    >
-                      {renderFifoCard(
-                        labelGrn,
-                        firstLine,
-                        cardScaleX,
-                        cardScaleY,
-                        cardOffsetXmm,
-                        cardOffsetYmm,
-                        activeSize.layout,
-                      )}
-                    </div>
+                    {effActiveSize.across > 1 ? (
+                      <div
+                        className="fifo-sheet-frame"
+                        id="fifo-print-area"
+                        style={{
+                          width: `${effActiveSize.widthMm}mm`,
+                          height: `${effActiveSize.heightMm}mm`,
+                          gap: `${effActiveSize.gapMm}mm`,
+                        }}
+                      >
+                        {Array.from({ length: effActiveSize.across }).map((_, i) => (
+                          <div key={i} className="fifo-sheet-cell">
+                            {renderFifoCard(
+                              labelGrn,
+                              firstLine,
+                              cardScaleX,
+                              cardScaleY,
+                              cardOffsetXmm,
+                              cardOffsetYmm,
+                              activeSize.layout,
+                              cardHeightMm,
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div
+                        className={`fifo-label-frame ${labelSize === '100x75' ? 'fifo-label-frame-100x75' : ''}`}
+                        id="fifo-print-area"
+                        style={{
+                          width: `${activeSize.widthMm}mm`,
+                          height: `${activeSize.heightMm}mm`,
+                        }}
+                      >
+                        {renderFifoCard(
+                          labelGrn,
+                          firstLine,
+                          cardScaleX,
+                          cardScaleY,
+                          cardOffsetXmm,
+                          cardOffsetYmm,
+                          activeSize.layout,
+                          cardHeightMm,
+                        )}
+                      </div>
+                    )}
                   </div>
                   <p className="grn-label-hint">
-                    Preview is shown at the real print size ({activeSize.widthMm} × {activeSize.heightMm} mm).
+                    Preview is shown at the real print size ({effActiveSize.widthMm} × {effActiveSize.heightMm} mm
+                    {effActiveSize.across > 1 ? `, ${effActiveSize.across} labels across` : ''}).
                   </p>
                 </>
               )}
@@ -1601,6 +1737,10 @@ const GRNPost = () => {
 
               <LabelSizePicker value={bulkLabelSize} onChange={setBulkLabelSize} />
 
+              {bulkLabelSize === SHEET_LABEL_VALUE && (
+                <SheetOptions across={sheetAcross} setAcross={setSheetAcross} gap={sheetGap} setGap={setSheetGap} />
+              )}
+
               {!bulkLabelSize ? (
                 <div className="fifo-select-size-message">
                   Please select a label size to see the preview
@@ -1611,27 +1751,60 @@ const GRNPost = () => {
                   id="fifo-bulk-print-area"
                   style={{ display: 'flex', flexDirection: 'column', gap: 16, alignItems: 'center' }}
                 >
-                  {bulkLabelGrn.lines.map((line) => (
-                    <div
-                      key={line.id}
-                      className={`fifo-label-frame fifo-bulk-label-frame ${bulkLabelSize === '100x75' ? 'fifo-bulk-label-frame-100x75' : ''}`}
-                      id={`fifo-bulk-frame-${line.id}`}
-                      style={{
-                        width: `${bulkActiveSize.widthMm}mm`,
-                        height: `${bulkActiveSize.heightMm}mm`,
-                      }}
-                    >
-                      {renderFifoCard(
-                        bulkLabelGrn,
-                        line,
-                        bulkCardScaleX,
-                        bulkCardScaleY,
-                        bulkCardOffsetXmm,
-                        bulkCardOffsetYmm,
-                        bulkActiveSize.layout,
-                      )}
-                    </div>
-                  ))}
+                  {bulkPages.map((page) =>
+                    bulkPerPage > 1 ? (
+                      <div
+                        key={page[0].id}
+                        className="fifo-sheet-frame"
+                        id={`fifo-bulk-frame-${page[0].id}`}
+                        style={{
+                          width: `${bulkEffSize.widthMm}mm`,
+                          height: `${bulkEffSize.heightMm}mm`,
+                          gap: `${bulkEffSize.gapMm}mm`,
+                        }}
+                      >
+                        {Array.from({ length: bulkPerPage }).map((_, i) =>
+                          page[i] ? (
+                            <div key={page[i].id} className="fifo-sheet-cell">
+                              {renderFifoCard(
+                                bulkLabelGrn,
+                                page[i],
+                                bulkCardScaleX,
+                                bulkCardScaleY,
+                                bulkCardOffsetXmm,
+                                bulkCardOffsetYmm,
+                                bulkActiveSize.layout,
+                                bulkCardHeightMm,
+                              )}
+                            </div>
+                          ) : (
+                            <div key={`empty-${i}`} className="fifo-sheet-cell" />
+                          ),
+                        )}
+                      </div>
+                    ) : (
+                      <div
+                        key={page[0].id}
+                        className={`fifo-label-frame fifo-bulk-label-frame ${bulkLabelSize === '100x75' ? 'fifo-bulk-label-frame-100x75' : ''}`}
+                        id={`fifo-bulk-frame-${page[0].id}`}
+                        style={{
+                          width: `${bulkActiveSize.widthMm}mm`,
+                          height: `${bulkActiveSize.heightMm}mm`,
+                        }}
+                      >
+                        {renderFifoCard(
+                          bulkLabelGrn,
+                          page[0],
+                          bulkCardScaleX,
+                          bulkCardScaleY,
+                          bulkCardOffsetXmm,
+                          bulkCardOffsetYmm,
+                          bulkActiveSize.layout,
+                          bulkCardHeightMm,
+                        )}
+                      </div>
+                    ),
+                  )}
                 </div>
               )}
             </CModalBody>

@@ -187,19 +187,12 @@ const Login = () => {
         );
       }
     };
-    // =========================================================
-    // MOBILITY LOGIN
-    // =========================================================
-
+  
     if (form.mobilityWithoutCheck) {
-
       const MOBILITY_USERNAME = 'Store';
       const MOBILITY_PASSWORD = 'Store@123';
 
-      // -------------------------------------------------
-      // Validate Mobility credentials
-      // -------------------------------------------------
-
+      // Validate Mobility credentials locally
       if (
         form.username.trim() !== MOBILITY_USERNAME ||
         form.password !== MOBILITY_PASSWORD
@@ -208,10 +201,6 @@ const Login = () => {
         clearLoginFields();
         return;
       }
-
-      // -------------------------------------------------
-      // Mobility User
-      // -------------------------------------------------
 
       const mobilityUser = {
         id: 999999,
@@ -222,68 +211,27 @@ const Login = () => {
         mobilityWithoutCheck: true,
       };
 
-      // -------------------------------------------------
-      // Save Mobility User
-      // -------------------------------------------------
+      try {
+        // Save the Mobility session
+        sessionStorage.setItem('user', JSON.stringify(mobilityUser));
+        localStorage.setItem('user', JSON.stringify(mobilityUser));
+      } catch (storageError) {
+        console.error('Failed to save Mobility session:', storageError);
+        toast.error('Unable to save login session on this device');
+        return;
+      }
 
-      sessionStorage.setItem(
-        'user',
-        JSON.stringify(mobilityUser)
-      );
+      // Notify App.js to update authentication state
+      window.dispatchEvent(new Event('authChange'));
 
-      // -------------------------------------------------
-      // Notify App.js
-      // -------------------------------------------------
+      toast.success('Login Successful', { autoClose: 2000 });
 
-      window.dispatchEvent(
-        new Event('authChange')
-      );
-
-      window.dispatchEvent(
-        new Event('storage')
-      );
-
-      // -------------------------------------------------
-      // Login Success
-      // -------------------------------------------------
-
-      toast.success(
-        'Login Successful',
-        {
-          autoClose: 3000,
-        }
-      );
-
-      // -------------------------------------------------
-      // Show Storage Information
-      // -------------------------------------------------
-
-      await showStorageInformation();
-
-      // -------------------------------------------------
-      // Navigate to Mobility
-      // -------------------------------------------------
-
-      navigate(
-        '/m/send',
-        {
-          replace: true,
-        }
-      );
-
+      // Do not call the backend storage API for offline Mobility login
+      navigate('/m/send', { replace: true });
       return;
     }
 
-    // =========================================================
-    // NORMAL LOGIN
-    // =========================================================
-
     try {
-
-      // -------------------------------------------------
-      // API Request
-      // -------------------------------------------------
-
       const request = {
         username:
           form.username.trim(),
@@ -291,20 +239,11 @@ const Login = () => {
         password:
           form.password,
       };
-
-      // -------------------------------------------------
-      // Login API
-      // -------------------------------------------------
-
       const res =
         await API.post(
           '/Auth/login',
           request
         );
-
-      // -------------------------------------------------
-      // Validate API Response
-      // -------------------------------------------------
 
       if (!res.data?.user) {
         toast.error(
@@ -315,10 +254,6 @@ const Login = () => {
         clearLoginFields();
         return;
       }
-
-      // -------------------------------------------------
-      // Normal User Data
-      // -------------------------------------------------
 
       const userData = {
 
@@ -346,18 +281,10 @@ const Login = () => {
         mobilityWithoutCheck: true,
       };
 
-      // -------------------------------------------------
-      // Save User
-      // -------------------------------------------------
-
       sessionStorage.setItem(
         'user',
         JSON.stringify(userData)
       );
-
-      // -------------------------------------------------
-      // Notify App.js
-      // -------------------------------------------------
 
       window.dispatchEvent(
         new Event('authChange')
@@ -367,10 +294,6 @@ const Login = () => {
         new Event('storage')
       );
 
-      // -------------------------------------------------
-      // LOGIN SUCCESS
-      // -------------------------------------------------
-
       toast.success(
         'Login Successful',
         {
@@ -378,15 +301,8 @@ const Login = () => {
         }
       );
 
-      // -------------------------------------------------
-      // SHOW STORAGE INFORMATION
-      // -------------------------------------------------
-
       await showStorageInformation();
 
-      // -------------------------------------------------
-      // GO TO DASHBOARD
-      // -------------------------------------------------
 
       navigate(
         '/dashboard',
@@ -412,51 +328,28 @@ const Login = () => {
     }
   };
 
-
-  // ==========================================
-  // UI
-  // ==========================================
-
   return (
 
     <div className="lg-root">
-
       <div className="lg-left">
-
         <img
           src={truckImg}
           alt="FORVIA"
           className="lg-truck-img"
         />
-
       </div>
 
-
-      {/* ====================================
-          Right
-      ==================================== */}
-
       <div className="lg-right">
-
         <div className="lg-card">
-
-        
-
-
           <h2 className="lg-title">
             Sign in to continue to your account
           </h2>
-
-
           <CForm
             onSubmit={handleLogin}
             className="lg-form"
           >
 
-            {/* =================================
-                Username
-            ================================= */}
-
+          
             <div className="lg-field">
 
               <label className="lg-label">

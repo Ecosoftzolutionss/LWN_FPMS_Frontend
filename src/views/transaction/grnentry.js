@@ -58,6 +58,7 @@ const GRNEntry = () => {
   const editGrnId = location.state?.editGrnId || null
   const isEditMode = !!editGrnId
   const [items, setItems] = useState([]);
+  const [locationConfiguredItemIds, setLocationConfiguredItemIds] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [customers, setCustomers] = useState([]);
 
@@ -221,32 +222,62 @@ const GRNEntry = () => {
 
   const loadItems = async () => {
     try {
-      // Load ALL Part Numbers from Part Master
+      // Load Part Master items, then keep only items configured in Location Master.
       const res = await API.get('/ItemMaster')
-      setItems(res.data || [])
+      const allItems = res.data || []
+      setItems(allItems)
+
+      const locationChecks = await Promise.all(
+        allItems.map(async (item) => {
+          try {
+            const locationRes = await API.get(
+              `/StoreMovement/rack-slots?itemId=${item.id}`
+            )
+            const locations = locationRes.data || []
+            const isConfigured =
+              locations.length > 0 &&
+              locations.some(
+                (store) => Array.isArray(store.racks) && store.racks.length > 0
+              )
+
+            return isConfigured ? item.id : null
+          } catch {
+            // Do not show a part if its Location Master configuration cannot be verified.
+            return null
+          }
+        })
+      )
+
+      setLocationConfiguredItemIds(
+        locationChecks.filter((id) => id !== null).map(String)
+      )
     } catch {
       toast.error('Failed to load part numbers')
+      setItems([])
+      setLocationConfiguredItemIds([])
     }
   }
- const itemOptions = items.map((i) => ({
-  value: i.id,
-  label: i.itemNumber,
-  itemName: i.itemName,
-  uom: i.uom,
-  unitPrice: i.unitPrice,
-  effectiveFrom: i.effectiveFrom,
-  effectiveTo: i.effectiveTo,
-  stuffQuantity: i.stuffQuantity,
-  customerOrSupplier: i.customerOrSupplier,
-}))
 
+  const itemOptions = items
+    .filter((i) => locationConfiguredItemIds.includes(String(i.id)))
+    .map((i) => ({
+      value: i.id,
+      label: i.itemNumber,
+      itemName: i.itemName,
+      uom: i.uom,
+      unitPrice: i.unitPrice,
+      effectiveFrom: i.effectiveFrom,
+      effectiveTo: i.effectiveTo,
+      stuffQuantity: i.stuffQuantity,
+      customerOrSupplier: i.customerOrSupplier,
+    }))
 
   const filteredItemOptions = header.partyType
     ? itemOptions.filter(
-      (item) =>
-        String(item.customerOrSupplier || '').toLowerCase() ===
-        String(header.partyType).toLowerCase()
-    )
+        (item) =>
+          String(item.customerOrSupplier || '').toLowerCase() ===
+          String(header.partyType).toLowerCase()
+      )
     : []
   const handlePartSelect = async (selected) => {
     if (!selected) {

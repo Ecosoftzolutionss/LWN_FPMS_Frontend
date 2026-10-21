@@ -18,10 +18,12 @@ const GRNPost = React.lazy(() => import('./views/transaction/grnpost'))
 const MaterialIssueSlip = React.lazy(() => import('./views/transaction/materialissueslip'))
 const StoreMovement = React.lazy(() => import('./views/transaction/storemovement'))
 //const Reports = React.lazy(() => import('./views/report/reports'))
-const GrnReport = React.lazy(()=> import('./views/report/Grnreport'))
-const MaterialIssueReport = React.lazy(()=> import('./views/report/MaterialIssueReport'))
-const StoreReport = React.lazy(()=> import('./views/report/StoreReport'))
-const StockReport = React.lazy(()=> import('./views/report/StockReport'))
+const GrnReport = React.lazy(() => import('./views/report/Grnreport'))
+const MaterialIssueReport = React.lazy(() => import('./views/report/MaterialIssueReport'))
+const StoreReport = React.lazy(() => import('./views/report/StoreReport'))
+const StockReport = React.lazy(() => import('./views/report/StockReport'))
+const DashboardSettings = React.lazy(() => import('./views/Dashboardsettings'))
+
 
 
 const routes = [
@@ -29,13 +31,14 @@ const routes = [
 
   // Dashboard
   { path: '/dashboard', name: 'Dashboard', element: Dashboard },
+  { path: '/dashboard/settings', name: 'Dashboard Settings', element: DashboardSettings },
 
   // Masters
   { path: '/masters/users', name: 'User Master', element: Users },
   { path: '/masters/Itemgroupmaster', name: 'Part Group Master', element: ItemGroupMaster },
   { path: '/masters/Itemmaster', name: 'Part Master', element: ItemMaster },
-  { path: '/masters/suppliermaster', name: 'Supplier Master', element: SupplierMaster},
-  { path: '/masters/suppliergroupmaster', name: 'Supplier Group Master', element: SupplierGroupMaster},
+  { path: '/masters/suppliermaster', name: 'Supplier Master', element: SupplierMaster },
+  { path: '/masters/suppliergroupmaster', name: 'Supplier Group Master', element: SupplierGroupMaster },
   { path: '/masters/customergroupmaster', name: 'Customer Group Master', element: CustomerGroupMaster },
   { path: '/masters/customermaster', name: 'Customer Master', element: CustomerMaster },
   { path: '/masters/pricemaster', name: 'Price Master', element: PriceMaster },

@@ -969,3 +969,153 @@
     width: auto;
   }
 }
+
+
+/* ============================================================
+   STOCK REPORT - PDF VIEWER (PRINT / DOWNLOAD)
+   ADD THIS BLOCK AT THE VERY END of stockReport.css.
+   Every class is new (sr-pdf-*), so nothing existing changes.
+   ============================================================ */
+.sr-pdf-modal .modal-content {
+  border: none;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.35);
+}
+
+.sr-pdf-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 18px !important;
+  background: #0d47a1;
+  border-bottom: none !important;
+}
+
+.sr-pdf-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  color: #ffffff !important;
+  font-size: 15px !important;
+  font-weight: 700;
+}
+
+.sr-pdf-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sr-pdf-action {
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.sr-pdf-action:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.sr-pdf-action:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.sr-pdf-print {
+  background: #ffffff;
+  color: #0d47a1;
+}
+.sr-pdf-print:hover:not(:disabled) {
+  background: #e8f0fe;
+}
+
+.sr-pdf-download {
+  background: #1e7e34;
+  color: #ffffff;
+}
+.sr-pdf-download:hover:not(:disabled) {
+  background: #17652a;
+}
+
+.sr-pdf-close {
+  background: transparent;
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.55);
+}
+.sr-pdf-close:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.sr-pdf-body {
+  position: relative;
+  padding: 0 !important;
+  height: 78vh;
+  background: #525659;
+}
+
+.sr-pdf-frame {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+
+.sr-pdf-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: #f4f6fb;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+  z-index: 1;
+}
+
+.sr-pdf-spinner {
+  width: 22px;
+  height: 22px;
+  border: 3px solid #d8e0ed;
+  border-top-color: #0d47a1;
+  border-radius: 50%;
+  display: inline-block;
+  animation: sr-pdf-spin 0.7s linear infinite;
+}
+
+@keyframes sr-pdf-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 600px) {
+  .sr-pdf-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .sr-pdf-actions {
+    width: 100%;
+  }
+  .sr-pdf-action {
+    flex: 1;
+  }
+  .sr-pdf-body {
+    height: 70vh;
+  }
+}
