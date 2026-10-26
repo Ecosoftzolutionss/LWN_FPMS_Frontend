@@ -92,23 +92,7 @@ const getGrnNumbers = (slip) => {
     ])
 }
 
-const getItemFifoNumbers = (item) => {
-    const nested = Array.isArray(item?.palletDetails)
-        ? item.palletDetails.flatMap((p) => [
-            p?.fifoNo, p?.fifoNumber, p?.fifoNos, p?.fifoNumbers,
-        ])
-        : []
-
-    return uniqueDisplayValues([
-        item?.fifoPalletNo,
-        item?.fifoNo,
-        item?.fifoNumber,
-        item?.fifoNos,
-        item?.fifoNumbers,
-        nested,
-    ])
-}
-
+// Pallet numbers for an item (the real PalletNo, not the FIFO number).
 const getItemPalletNumbers = (item) => {
     const nested = Array.isArray(item?.palletDetails)
         ? item.palletDetails.flatMap((p) => [
@@ -146,8 +130,8 @@ const round3 = (n) => Math.round((Number(n) || 0) * 1000) / 1000
 // IMPORTANT:
 // One IssueNumber represents one physical Material Issue Slip.
 // The slip lists ONE ROW PER PART (like the paper form):
-//   S.NO | PART NO | PART NAME | QUANTITY | ISSUED QTY | M/C. / FIFO No.
-// All pallets of the same part are added together, and their FIFO
+//   S.NO | PART NO | PART NAME | QUANTITY | ISSUED QTY | M/C. / PALLET No.
+// All pallets of the same part are added together, and their pallet
 // numbers are listed in the last column.
 const consolidateItems = (items = []) => {
     const grouped = new Map()
@@ -159,7 +143,6 @@ const consolidateItems = (items = []) => {
 
         const partName = item?.partName ?? item?.itemName ?? '—'
         const quantity = Number(item?.quantity ?? item?.qty ?? 0) || 0
-        const fifoNumbers = getItemFifoNumbers(item)
         const palletNumbers = getItemPalletNumbers(item)
         const grnNumbers = getItemGrnNumbers(item)
 
@@ -170,7 +153,6 @@ const consolidateItems = (items = []) => {
                 partNumber: partNumber || '—',
                 partName,
                 quantity,
-                fifoNumbers,
                 palletNumbers,
                 grnNumbers,
             })
@@ -179,7 +161,6 @@ const consolidateItems = (items = []) => {
 
         const existing = grouped.get(groupKey)
         existing.quantity += quantity
-        existing.fifoNumbers = uniqueDisplayValues([existing.fifoNumbers, fifoNumbers])
         existing.palletNumbers = uniqueDisplayValues([existing.palletNumbers, palletNumbers])
         existing.grnNumbers = uniqueDisplayValues([existing.grnNumbers, grnNumbers])
     })
@@ -919,7 +900,7 @@ const MaterialIssueSlip = () => {
                                                                 <th className="c-name">PART NAME</th>
                                                                 <th className="c-qty">QUANTITY</th>
                                                                 <th className="c-iss">ISSUED QTY.</th>
-                                                                <th className="c-fifo">M/C. / FIFO No.</th>
+                                                                <th className="c-fifo">M/C. / PALLET No.</th>
                                                             </tr>
                                                         </thead>
 
@@ -931,12 +912,11 @@ const MaterialIssueSlip = () => {
                                                                     <td className="mis2-left">{item.partName || '—'}</td>
                                                                     <td>{item.quantity || 0}</td>
                                                                     <td>{item.quantity || 0}</td>
+                                                                    {/* Pallet numbers (all pallets of this part) */}
                                                                     <td>
-                                                                        {item.fifoNumbers?.length
-                                                                            ? item.fifoNumbers.join(', ')
-                                                                            : item.palletNumbers?.length
-                                                                                ? item.palletNumbers.join(', ')
-                                                                                : '—'}
+                                                                        {item.palletNumbers?.length
+                                                                            ? item.palletNumbers.join(', ')
+                                                                            : '—'}
                                                                     </td>
                                                                 </tr>
                                                             ))}
@@ -1008,27 +988,17 @@ const MaterialIssueSlip = () => {
                                                 setModalVisible(false)
                                             }
                                         >
-
                                             <FaTimes />
-
                                             Close
-
                                         </CButton>
-
-
                                         <CButton
                                             color="primary"
                                             onClick={printMaterialIssueSlip}
                                         >
-
                                             <FaPrint />
-
                                             Print
-
                                         </CButton>
-
                                     </div>
-
                                 </>
                             )
                         })()
