@@ -274,10 +274,10 @@ const GRNEntry = () => {
 
   const filteredItemOptions = header.partyType
     ? itemOptions.filter(
-        (item) =>
-          String(item.customerOrSupplier || '').toLowerCase() ===
-          String(header.partyType).toLowerCase()
-      )
+      (item) =>
+        String(item.customerOrSupplier || '').toLowerCase() ===
+        String(header.partyType).toLowerCase()
+    )
     : []
   const handlePartSelect = async (selected) => {
     if (!selected) {
@@ -302,13 +302,13 @@ const GRNEntry = () => {
       const item = itemRes.data || {}
 
       const rate = item.unitPrice ?? ''
-const effectiveFrom = item.effectiveFrom
-  ? String(item.effectiveFrom).substring(0, 10)
-  : ''
+      const effectiveFrom = item.effectiveFrom
+        ? String(item.effectiveFrom).substring(0, 10)
+        : ''
 
-const effectiveTo = item.effectiveTo
-  ? String(item.effectiveTo).substring(0, 10)
-  : ''
+      const effectiveTo = item.effectiveTo
+        ? String(item.effectiveTo).substring(0, 10)
+        : ''
 
       const stuffQuantity =
         item.stuffQuantity !== null &&
@@ -502,24 +502,24 @@ const effectiveTo = item.effectiveTo
     ...customerOptions,
   ]
 
- const selectedItem = filteredItemOptions.find(
-  (x) => String(x.value) === String(line.itemId)
-)
+  const selectedItem = filteredItemOptions.find(
+    (x) => String(x.value) === String(line.itemId)
+  )
 
   const clearError = (name) =>
     setErrors((prev) => ({ ...prev, [name]: '' }))
 
- const handleHeaderChange = (e) => {
-  const { name, value } = e.target
+  const handleHeaderChange = (e) => {
+    const { name, value } = e.target
 
-  setHeader((prev) => ({
-    ...prev,
-    [name]: value,
-  }))
+    setHeader((prev) => ({
+      ...prev,
+      [name]: value,
+    }))
 
-  clearError(name)
+    clearError(name)
 
-}
+  }
 
   // Native <input type="date"> only opens its picker when the small
   // calendar icon is clicked, not the rest of the field. This makes a
@@ -593,20 +593,21 @@ const effectiveTo = item.effectiveTo
         : 'Enter a GRN No or uncheck "Edit GRN No" to use the auto value'
     }
 
-   if (!header.supplierId) {
-  temp.supplierId = 'Supplier / Customer is required'
-}
+    if (!header.supplierId) {
+      temp.supplierId = 'Supplier / Customer is required'
+    }
     if (!header.poNumber.trim()) temp.poNumber = 'PO Number is required'
     if (!header.poDate) temp.poDate = 'PO Date is required'
     if (!header.grnDate) temp.grnDate = 'GRN Date is required'
     if (!line.grnType) temp.grnType = 'GRN Type is required'
 
     const invoiceNumber = header.supplierInvoiceNumber.trim()
+
     if (!invoiceNumber) {
       temp.supplierInvoiceNumber = 'Supplier Invoice Number is required'
-    } else if (!/^[0-9]+$/.test(invoiceNumber)) {
+    } else if (!/^[a-zA-Z0-9]+$/.test(invoiceNumber)) {
       temp.supplierInvoiceNumber =
-        'Supplier Invoice Number must be numbers only'
+        'Supplier Invoice Number must contain only letters and numbers'
     }
 
     if (!header.supplierInvoiceDate) {
@@ -831,7 +832,7 @@ const effectiveTo = item.effectiveTo
         overrideGrnNo: isEditMode ? false : editGrnNo,
         createdBy: getCurrentUsername(),
         supplierId: Number(header.supplierId),
-          partyType: header.partyType,
+        partyType: header.partyType,
         poNumber: header.poNumber.trim(),
         poDate: header.poDate,
         grnDate: header.grnDate,
@@ -1037,7 +1038,9 @@ const effectiveTo = item.effectiveTo
                   handleHeaderChange({
                     target: {
                       name: 'poNumber',
-                      value: e.target.value.replace(/[^a-zA-Z0-9]/g, ''),
+                      value: e.target.value
+                        .replace(/[^a-zA-Z0-9]/g, '')
+                        .toUpperCase(),
                     },
                   })
                 }
@@ -1132,7 +1135,12 @@ const effectiveTo = item.effectiveTo
                 className={errors.supplierInvoiceNumber ? 'error-input' : ''}
                 onChange={(e) =>
                   handleHeaderChange({
-                    target: { name: 'supplierInvoiceNumber', value: e.target.value.replace(/[^0-9]/g, '') },
+                    target: {
+                      name: 'supplierInvoiceNumber',
+                      value: e.target.value
+                        .replace(/[^a-zA-Z0-9]/g, '')
+                        .toUpperCase(),
+                    },
                   })
                 }
               />

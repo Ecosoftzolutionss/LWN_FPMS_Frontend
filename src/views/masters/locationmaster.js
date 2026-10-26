@@ -27,6 +27,16 @@ const getErrorMessage = (err, fallback) => {
   return fallback
 }
 
+// Default number of rows when a new rack is started.
+const DEFAULT_RACK_ROWS = 1
+
+// Rack Name accepts letters AND numbers (A-Z, 0-9), max 5 characters.
+const RACK_NAME_PATTERN = /^[A-Z0-9]{1,5}$/
+const sanitizeRackName = (value) =>
+  String(value || '')
+    .replace(/[^a-zA-Z0-9]/g, '')
+    .toUpperCase()
+
 // Storage direction is configured independently for every level.
 // LTR = Left to Right, RTL = Right to Left.
 // Old R1/R2 rows are supported when loading and normalized to G1/G2.
@@ -263,6 +273,22 @@ const stripPositions = (grid) => grid.map(({ _c, _r, ...rest }) => rest)
 const findRackById = (racks, id) => racks.find((r) => String(r.id) === String(id))
 const sameId = (a, b) => String(a) === String(b)
 
+const getPartNumberText = (value) => {
+  if (value == null || value === '') return ''
+
+  if (typeof value === 'object') {
+    return String(
+      value.itemNumber ??
+      value.ItemNumber ??
+      value.partNumber ??
+      value.PartNumber ??
+      ''
+    )
+  }
+
+  return String(value)
+}
+
 const LocationMaster = () => {
   // ---- Store (Add Location) state — Store Name is linked to Store Master ----
   const [stores, setStores] = useState([])
@@ -281,7 +307,7 @@ const LocationMaster = () => {
   // ---- Add Rack panel (inline, left card) ----
   const [showRackPanel, setShowRackPanel] = useState(false)
   const [rackFormNo, setRackFormNo] = useState('')
-  const [rackFormRows, setRackFormRows] = useState(5)
+  const [rackFormRows, setRackFormRows] = useState(DEFAULT_RACK_ROWS)
   const [rackFormCols, setRackFormCols] = useState(1)
   const [draftGrid, setDraftGrid] = useState([]) // [{ columnNo, rowNo, hasFront, hasRear, fixture, _c, _r }]
   const [editingRackNo, setEditingRackNo] = useState('') // set when bulk-editing an existing rack
@@ -291,7 +317,7 @@ const LocationMaster = () => {
   const [modalSelectedRackId, setModalSelectedRackId] = useState('') // '' = "— New Rack —"
   const [modalEditingRackNo, setModalEditingRackNo] = useState('')
   const [modalRackNo, setModalRackNo] = useState('')
-  const [modalRows, setModalRows] = useState(5)
+  const [modalRows, setModalRows] = useState(DEFAULT_RACK_ROWS)
   const [modalCols, setModalCols] = useState(1)
   const [modalGrid, setModalGrid] = useState([])
   const [modalTouched, setModalTouched] = useState(false)
@@ -303,56 +329,43 @@ const LocationMaster = () => {
   const [zoom, setZoom] = useState(100)
   const { privileges: userPrivileges = [] } = usePrivilege()
   const uPrivilege = userPrivileges.find((p) => p.menuName === 'Location Master') || {}
-useEffect(() => {
-  initializeLocationMaster()
-}, [])
 
-const initializeLocationMaster = async () => {
-  try {
-    await loadStoreMasters()
-    await loadStores()
-  } catch (err) {
-    console.error(
-      'Location Master initialization failed:',
-      err
-    )
-  }
-}
-const loadStoreMasters = async () => {
-  try {
-    const res = await API.get('/StoreMaster')
-    setStoreMasters(res.data || [])
-  } catch (err) {
-    console.error('Failed to load Store Master:', err)
-    toast.error('Failed to load stores from Store Master')
-  }
-}
+  useEffect(() => {
+    initializeLocationMaster()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-const getPartNumberText = (value) => {
-  if (value == null || value === '') return '';
-
-  if (typeof value === 'object') {
-    return String(
-      value.itemNumber ??
-      value.ItemNumber ??
-      value.partNumber ??
-      value.PartNumber ??
-      ''
-    );
+  const initializeLocationMaster = async () => {
+    try {
+      await loadStoreMasters()
+      await loadStores()
+    } catch (err) {
+      console.error(
+        'Location Master initialization failed:',
+        err
+      )
+    }
   }
 
-  return String(value);
-};
+  const loadStoreMasters = async () => {
+    try {
+      const res = await API.get('/StoreMaster')
+      setStoreMasters(res.data || [])
+    } catch (err) {
+      console.error('Failed to load Store Master:', err)
+      toast.error('Failed to load stores from Store Master')
+    }
+  }
 
-const storeMasterOptions = storeMasters.map((s) => ({
-  value: s.id,
-  label: s.storeLocation,
-  colourCode: s.colourCode,
-  palletNumber: s.palletNumber,
-  partNumber: getPartNumberText(
-    s.partNumberCode ?? s.partNumber
-  ),
-}));
+  const storeMasterOptions = storeMasters.map((s) => ({
+    value: s.id,
+    label: s.storeLocation,
+    colourCode: s.colourCode,
+    palletNumber: s.palletNumber,
+    partNumber: getPartNumberText(
+      s.partNumberCode ?? s.partNumber
+    ),
+  }))
 
   const filterStoreMasterOption = (option, rawInput) => {
     const normalize = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, '')
@@ -365,115 +378,116 @@ const storeMasterOptions = storeMasters.map((s) => ({
 
   const clearError = (name) => setErrors((prev) => ({ ...prev, [name]: '' }))
 
-const loadStores = async () => {
-  try {
-    const res = await API.get('/LocationMaster')
+  const loadStores = async () => {
+    try {
+      const res = await API.get('/LocationMaster')
 
-    const storeList = res.data || []
+      const storeList = res.data || []
 
-    setStores(storeList)
+      setStores(storeList)
 
-    // Automatically select/open first store
-    // when Location Master is opened.
-    if (storeList.length > 0) {
-      await openStore(storeList[0])
-    } else {
-      setActiveStore(null)
-      setRacks([])
-      setOccupancy([])
+      // Automatically select/open first store
+      // when Location Master is opened.
+      if (storeList.length > 0) {
+        await openStore(storeList[0])
+      } else {
+        setActiveStore(null)
+        setRacks([])
+        setOccupancy([])
+      }
+    } catch (err) {
+      console.error('Failed to load stores:', err)
+
+      toast.error(
+        getErrorMessage(
+          err,
+          'Failed to load stores'
+        )
+      )
     }
-  } catch (err) {
-    console.error('Failed to load stores:', err)
-
-    toast.error(
-      getErrorMessage(
-        err,
-        'Failed to load stores'
-      )
-    )
   }
-}
- const loadRacks = async (storeId) => {
-  try {
-    const res = await API.get(
-      `/LocationRack/store/${storeId}`
-    )
 
-    setRacks(res.data || [])
-
-    return res.data || []
-  } catch (err) {
-    console.error('Failed to load racks:', err)
-
-    toast.error(
-      getErrorMessage(
-        err,
-        'Failed to load racks'
+  const loadRacks = async (storeId) => {
+    try {
+      const res = await API.get(
+        `/LocationRack/store/${storeId}`
       )
-    )
 
-    return []
-  }
-}
+      setRacks(res.data || [])
 
-const loadOccupancy = async (storeId) => {
-  try {
-    const res = await API.get(
-      `/LocationRack/store/${storeId}/occupancy`
-    )
+      return res.data || []
+    } catch (err) {
+      console.error('Failed to load racks:', err)
 
-    setOccupancy(res.data || [])
-  } catch (err) {
-    console.error(
-      'Failed to load slot occupancy:',
-      err
-    )
-
-    toast.error(
-      getErrorMessage(
-        err,
-        'Failed to load slot occupancy'
+      toast.error(
+        getErrorMessage(
+          err,
+          'Failed to load racks'
+        )
       )
-    )
+
+      return []
+    }
   }
-}
 
-const openStore = async (store) => {
-  try {
-    setActiveStore(store)
-
-    setShowRackPanel(false)
-    setDraftGrid([])
-    setRackFormNo('')
-    setSelectedRackKey(null)
-
-    const res = await API.get(
-      `/LocationRack/store/${store.id}`
-    )
-
-    const freshRacks = res.data || []
-
-    setRacks(freshRacks)
-
-    setSelectedRackKey(
-      freshRacks[0]?.id ?? null
-    )
-
-    await loadOccupancy(store.id)
-  } catch (err) {
-    console.error(
-      'Failed to open store:',
-      err
-    )
-
-    toast.error(
-      getErrorMessage(
-        err,
-        'Failed to load store details'
+  const loadOccupancy = async (storeId) => {
+    try {
+      const res = await API.get(
+        `/LocationRack/store/${storeId}/occupancy`
       )
-    )
+
+      setOccupancy(res.data || [])
+    } catch (err) {
+      console.error(
+        'Failed to load slot occupancy:',
+        err
+      )
+
+      toast.error(
+        getErrorMessage(
+          err,
+          'Failed to load slot occupancy'
+        )
+      )
+    }
   }
-}
+
+  const openStore = async (store) => {
+    try {
+      setActiveStore(store)
+
+      setShowRackPanel(false)
+      setDraftGrid([])
+      setRackFormNo('')
+      setSelectedRackKey(null)
+
+      const res = await API.get(
+        `/LocationRack/store/${store.id}`
+      )
+
+      const freshRacks = res.data || []
+
+      setRacks(freshRacks)
+
+      setSelectedRackKey(
+        freshRacks[0]?.id ?? null
+      )
+
+      await loadOccupancy(store.id)
+    } catch (err) {
+      console.error(
+        'Failed to open store:',
+        err
+      )
+
+      toast.error(
+        getErrorMessage(
+          err,
+          'Failed to load store details'
+        )
+      )
+    }
+  }
 
   const handleSubmit = async () => {
     if (!form.storeMasterId) {
@@ -559,11 +573,11 @@ const openStore = async (store) => {
     setShowRackPanel(true)
     setEditingRackNo('')
     setRackFormNo(defaultRackNo)
-    setRackFormRows(5)
+    setRackFormRows(DEFAULT_RACK_ROWS)
     setRackFormCols(1)
     setDraftGrid(
       defaultRackNo
-        ? buildGridFromInputs(defaultRackNo, 5, 1, [])
+        ? buildGridFromInputs(defaultRackNo, DEFAULT_RACK_ROWS, 1, [])
         : [],
     )
     setSelectedRackKey('__PREVIEW__')
@@ -587,12 +601,12 @@ const openStore = async (store) => {
 
     setEditingRackNo('')
     setRackFormNo(defaultRackNo)
-    setRackFormRows(5)
+    setRackFormRows(DEFAULT_RACK_ROWS)
     setRackFormCols(1)
 
     setDraftGrid(
       defaultRackNo
-        ? buildGridFromInputs(defaultRackNo, 5, 1, [])
+        ? buildGridFromInputs(defaultRackNo, DEFAULT_RACK_ROWS, 1, [])
         : [],
     )
 
@@ -609,9 +623,8 @@ const openStore = async (store) => {
       return
     }
 
-
-    if (!/^[A-Z]{1,5}$/.test(rackNo)) {
-      toast.error('Rack No must be letters only (A-Z)')
+    if (!RACK_NAME_PATTERN.test(rackNo)) {
+      toast.error('Rack Name must contain only letters and numbers (A-Z, 0-9)')
       return
     }
 
@@ -653,11 +666,11 @@ const openStore = async (store) => {
       toast.success(editingRackNo ? `Rack "${rackNo}" updated` : `Rack "${rackNo}" saved`)
 
       setRackFormNo('')
-      setRackFormRows(5)
+      setRackFormRows(DEFAULT_RACK_ROWS)
       setRackFormCols(1)
       setDraftGrid([])
       setEditingRackNo('')
-  
+
       const res = await API.get(`/LocationRack/store/${activeStore.id}`)
       const freshRacks = res.data || []
       setRacks(freshRacks)
@@ -675,13 +688,14 @@ const openStore = async (store) => {
     setShowRackPanel(true)
     setEditingRackNo(rack.rackNo)
     setRackFormNo(rack.rackNo)
-  const rackRows = rack.columns[0]?.rows || []
 
-const normalRowCount = rackRows.filter(
-  (row) => row.rowNo?.toUpperCase() !== 'G'
-).length
+    const rackRows = rack.columns[0]?.rows || []
 
-setRackFormRows(normalRowCount || 1)
+    const normalRowCount = rackRows.filter(
+      (row) => row.rowNo?.toUpperCase() !== 'G'
+    ).length
+
+    setRackFormRows(normalRowCount || 1)
     setRackFormCols(rack.columns.length || 1)
     setDraftGrid(attachPositions(rack.columns))
     setSelectedRackKey('__PREVIEW__')
@@ -736,41 +750,36 @@ setRackFormRows(normalRowCount || 1)
     return map
   }, [occupancy])
 
-//   const handleSlotClick = async (row, slotNumber, side) => {
-//   const key = `${row.id}-${slotNumber}-${side}`
-//   const existing = occupancyMap.get(key)
-
-//   // If slot is already occupied → Vacate it
-//   if (existing) {
-//     try {
-//       await API.delete(`/LocationRack/slots/occupy/${existing.id}`)
-
-//       toast.success('Slot Vacated')
-
-//       await loadOccupancy(activeStore.id)
-//     } catch (err) {
-//       toast.error(getErrorMessage(err, 'Vacate Failed'))
-//     }
-
-//     return
-//   }
-
-//   // If slot is available → Occupy directly with quantity 1
-//   try {
-//     await API.post('/LocationRack/slots/occupy', {
-//       rackRowId: row.id,
-//       slotNumber,
-//       side: side === 'front' ? 'Front' : 'Rear',
-//       quantity: 1,
-//     })
-
-//     toast.success('Slot Occupied')
-
-//     await loadOccupancy(activeStore.id)
-//   } catch (err) {
-//     toast.error(getErrorMessage(err, 'Occupy Failed'))
-//   }
-// }
+  // const handleSlotClick = async (row, slotNumber, side) => {
+  //   const key = `${row.id}-${slotNumber}-${side}`
+  //   const existing = occupancyMap.get(key)
+  //
+  //   // If slot is already occupied → Vacate it
+  //   if (existing) {
+  //     try {
+  //       await API.delete(`/LocationRack/slots/occupy/${existing.id}`)
+  //       toast.success('Slot Vacated')
+  //       await loadOccupancy(activeStore.id)
+  //     } catch (err) {
+  //       toast.error(getErrorMessage(err, 'Vacate Failed'))
+  //     }
+  //     return
+  //   }
+  //
+  //   // If slot is available → Occupy directly with quantity 1
+  //   try {
+  //     await API.post('/LocationRack/slots/occupy', {
+  //       rackRowId: row.id,
+  //       slotNumber,
+  //       side: side === 'front' ? 'Front' : 'Rear',
+  //       quantity: 1,
+  //     })
+  //     toast.success('Slot Occupied')
+  //     await loadOccupancy(activeStore.id)
+  //   } catch (err) {
+  //     toast.error(getErrorMessage(err, 'Occupy Failed'))
+  //   }
+  // }
 
   // ---------- Right panel: rack selector options + resolved view ----------
 
@@ -800,7 +809,7 @@ setRackFormRows(normalRowCount || 1)
   const resetModalRackForm = () => {
     setModalEditingRackNo('')
     setModalRackNo('')
-    setModalRows(5)
+    setModalRows(DEFAULT_RACK_ROWS)
     setModalCols(1)
     setModalGrid([])
     setModalTouched(false)
@@ -846,13 +855,14 @@ setRackFormRows(normalRowCount || 1)
 
     setModalEditingRackNo(rack.rackNo)
     setModalRackNo(rack.rackNo)
-  const rackRows = rack.columns[0]?.rows || []
 
-const normalRowCount = rackRows.filter(
-  (row) => row.rowNo?.toUpperCase() !== 'G'
-).length
+    const rackRows = rack.columns[0]?.rows || []
 
-setModalRows(normalRowCount || 1)
+    const normalRowCount = rackRows.filter(
+      (row) => row.rowNo?.toUpperCase() !== 'G'
+    ).length
+
+    setModalRows(normalRowCount || 1)
     setModalCols(rack.columns.length || 1)
     setModalGrid(attachPositions(rack.columns))
     setModalTouched(true)
@@ -868,8 +878,8 @@ setModalRows(normalRowCount || 1)
       toast.error('Enter Rack Name')
       return
     }
-    if (!/^[A-Z]{1,5}$/.test(rackNo)) {
-      toast.error('Rack Name must be letters only (A-Z)')
+    if (!RACK_NAME_PATTERN.test(rackNo)) {
+      toast.error('Rack Name must contain only letters and numbers (A-Z, 0-9)')
       return
     }
     if (!rows || rows < 1 || !cols || cols < 1) {
@@ -900,8 +910,8 @@ setModalRows(normalRowCount || 1)
       toast.error('Enter Rack Name')
       return
     }
-    if (!/^[A-Z]{1,5}$/.test(rackNo)) {
-      toast.error('Rack Name must be letters only (A-Z)')
+    if (!RACK_NAME_PATTERN.test(rackNo)) {
+      toast.error('Rack Name must contain only letters and numbers (A-Z, 0-9)')
       return
     }
     if (modalGrid.length === 0) {
@@ -1037,13 +1047,11 @@ setModalRows(normalRowCount || 1)
                 <div className="sc-row"><div className="sc-lbl">Store Name</div><div className="sc-val">{activeStore.storeLocation}</div></div>
                 <div className="sc-row"><div className="sc-lbl">Store ID</div><div className="sc-val">{activeStore.storeCode}</div></div>
                 <div className="sc-row">
-
-  <div className="sc-lbl">Part Number</div>
-  <div className="sc-val">
-    {getPartNumberText(activeStore?.partNumber) || 'N/A'}
-
-</div>
-</div>
+                  <div className="sc-lbl">Part Number</div>
+                  <div className="sc-val">
+                    {getPartNumberText(activeStore?.partNumber) || 'N/A'}
+                  </div>
+                </div>
                 <div className="sc-row"><div className="sc-lbl">Pallet No</div><div className="sc-val">{activeStore.palletNumber}</div></div>
                 <div className="sc-row">
                   <div className="sc-lbl">Racks</div>
@@ -1089,22 +1097,18 @@ setModalRows(normalRowCount || 1)
                       <label className="rack-input-label">
                         Rack Name
                         <span className="rack-input-help">
-                          Letters only — A, B, AB...
+                          Letters or numbers — A, B1, AB2...
                         </span>
                       </label>
 
                       <input
                         className="ri-full"
-                        placeholder="e.g. A"
+                        placeholder="e.g. A or A1"
                         value={rackFormNo}
                         disabled={!!editingRackNo}
                         maxLength={5}
                         onChange={(e) =>
-                          setRackFormNo(
-                            e.target.value
-                              .replace(/[^a-zA-Z]/g, '')
-                              .toUpperCase(),
-                          )
+                          setRackFormNo(sanitizeRackName(e.target.value))
                         }
                       />
                     </div>
@@ -1122,7 +1126,7 @@ setModalRows(normalRowCount || 1)
                         type="number"
                         min={1}
                         max={50}
-                        placeholder="e.g. 5"
+                        placeholder="e.g. 1"
                         value={rackFormRows}
                         onChange={(e) => {
                           const value = e.target.value
@@ -1316,8 +1320,6 @@ setModalRows(normalRowCount || 1)
                     Store : {activeStore.storeLocation} (ID : {activeStore.storeCode})
                   </div>
 
-                  
-
                   <div className="dash-controls">
                     <span className="dash-rack-view-label">RACK</span>
                     <div className="dash-rack-view-select">
@@ -1431,8 +1433,6 @@ setModalRows(normalRowCount || 1)
                     <span><i className="legend-swatch available" /> Available</span>
                   </div>
                 </div>
-
-
               </>
             )}
           </CCardBody>
@@ -1493,17 +1493,18 @@ setModalRows(normalRowCount || 1)
             {modalEditingRackNo ? `Edit Rack ${modalEditingRackNo}` : 'Add New Rack'}
           </div>
           <div className="text-muted mb-2" style={{ fontSize: 11 }}>
-            Rack Name: letters only (A, B, AB…). Rows/Columns update the grid live. Configure each level's storage direction; pallet slot numbers follow that direction.
+            Rack Name: letters or numbers (A, B1, AB2…). Rows/Columns update the grid live. Configure each level's storage direction; pallet slot numbers follow that direction.
           </div>
 
           <div className="row g-2 align-items-end mb-3">
             <div className="col-4">
               <CFormLabel className="small mb-1">Rack Name</CFormLabel>
               <CFormInput
-                placeholder="A"
+                placeholder="A or A1"
                 value={modalRackNo}
+                maxLength={5}
                 disabled={!!modalEditingRackNo}
-                onChange={(e) => setModalRackNo(e.target.value.replace(/[^a-zA-Z]/g, '').toUpperCase())}
+                onChange={(e) => setModalRackNo(sanitizeRackName(e.target.value))}
               />
             </div>
             <div className="col-3">
