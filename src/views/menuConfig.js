@@ -8,12 +8,12 @@ import {
   cilBuilding,
   cilEnvelopeClosed,
   cilDescription,
-  cilChartLine,
-  cilDollar,
+  cilChart,
+  cilLocationPin,
   cilStorage,
+  cilBell,
+  cilTransfer,
   cilNotes,
-  cilCloudDownload,
-  cilListRich,
   cilSettings,
 } from '@coreui/icons'
 
@@ -91,20 +91,23 @@ export const MENU_CONFIG = [
 
   {
     name: 'GRN Report',
-    icon: cilCloudDownload,
+    icon: cilNotes,
   },
-
   {
     name: 'Store Report',
-    icon: cilCloudDownload,
-  },
-  {
-    name: 'Material Issue Report',
-    icon: cilListRich,
+    icon: cilLocationPin,
   },
   {
     name: 'Stock Report',
-    icon: cilListRich,
+    icon: cilStorage,
+  },
+  {
+    name: 'Alert Report',
+    icon: cilBell,
+  },
+  {
+    name: 'Material Issue Report',
+    icon: cilTransfer,
   },
 
   {

@@ -22,6 +22,7 @@ const GrnReport = React.lazy(() => import('./views/report/Grnreport'))
 const MaterialIssueReport = React.lazy(() => import('./views/report/MaterialIssueReport'))
 const StoreReport = React.lazy(() => import('./views/report/StoreReport'))
 const StockReport = React.lazy(() => import('./views/report/StockReport'))
+const AlertReport = React.lazy(() => import('./views/report/alertreport'))
 const DashboardSettings = React.lazy(() => import('./views/Dashboardsettings'))
 
 
@@ -57,6 +58,7 @@ const routes = [
   { path: '/report/Grnreport', name: 'GRN Report', element: GrnReport },
   { path: '/report/MaterialIssueReport', name: 'Material Issue Report', element: MaterialIssueReport },
   { path: '/report/StoreReport', name: 'Store Report', element: StoreReport },
+  { path: '/report/AlertReport', name: 'Alert Report', element: AlertReport },
   { path: '/report/StockReport', name: 'Stock Report', element: StockReport }
 ]
 

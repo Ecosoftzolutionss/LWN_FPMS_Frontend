@@ -39,13 +39,11 @@ const getErrorMessage = (err, fallback) => {
   if (!data) return fallback
   if (typeof data === 'string') return data
   if (data.message || data.error) return data.message || data.error
-
   if (data.errors && typeof data.errors === 'object') {
     const firstField = Object.keys(data.errors)[0]
     const firstMessage = data.errors[firstField]?.[0]
     if (firstMessage) return firstMessage
   }
-
   return fallback
 }
 
@@ -54,36 +52,22 @@ const GRNEntry = () => {
   const location = useLocation();
   const [currentPage, setCurrentPage] = useState(1)
   const [rowsPerPage, setRowsPerPage] = useState(5)
-
   const editGrnId = location.state?.editGrnId || null
   const isEditMode = !!editGrnId
   const [items, setItems] = useState([]);
   const [locationConfiguredItemIds, setLocationConfiguredItemIds] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [customers, setCustomers] = useState([]);
-
   const [header, setHeader] = useState(EMPTY_HEADER);
   const [line, setLine] = useState(EMPTY_LINE);
   const [lineItems, setLineItems] = useState([]);
-  const [editingLineKey, setEditingLineKey] = useState(null);// rows added to the grid, not yet saved
+  const [editingLineKey, setEditingLineKey] = useState(null);
   const [errors, setErrors] = useState({});
   const [grnNoIsManual, setGrnNoIsManual] = useState(true);
-
-
-
-  // Lets a user override an auto-generated GRN No mid-sequence. When
-  // unchecked (default once auto-generation is active), the GRN No
-  // field stays disabled and shows the next auto value. When checked,
-  // the field unlocks, the user types a new value, and on Save the
-  // backend reseeds the counter from that value so future GRNs continue
-  // from there.
   const [editGrnNo, setEditGrnNo] = useState(false)
   const { privileges: userPrivileges = [] } = usePrivilege()
-  const grnPrivilege =
-    userPrivileges.find((p) => p.menuName === 'GRN Entry') || {}
-
+  const grnPrivilege = userPrivileges.find((p) => p.menuName === 'GRN Entry') || {}
   const canEditGRN = grnPrivilege.canEdit === true
-
   const getCurrentUsername = () => {
     try {
       const user = JSON.parse(sessionStorage.getItem('user') || '{}')
@@ -121,9 +105,6 @@ const GRNEntry = () => {
       setHeader((prev) => ({ ...prev, grnNo: res.data?.grnNumber || '' }))
       setEditGrnNo(false)
     } catch {
-      // Couldn't reach the preview endpoint — fall back to manual entry
-      // so the user can still type a GRN No rather than being locked
-      // out with a disabled, blank field.
       setGrnNoIsManual(true)
       setHeader((prev) => ({ ...prev, grnNo: '' }))
       toast.error('Could not check the next GRN No — enter it manually')
@@ -164,7 +145,7 @@ const GRNEntry = () => {
         return
       }
 
-      // Header
+    
       setHeader({
         grnNo: data.grnNumber || '',
         supplierId: data.supplierId || '',
@@ -175,7 +156,7 @@ const GRNEntry = () => {
         supplierInvoiceDate: toInputDate(data.supplierInvoiceDate),
       })
 
-      // Existing lines
+     
       const existingLines = (data.lines || []).map((l, index) => ({
         key: `existing-${l.id || index}`,
         id: l.id,
@@ -200,7 +181,7 @@ const GRNEntry = () => {
 
       setLineItems(existingLines)
 
-      // GRN number is fixed during edit
+    
       setGrnNoIsManual(false)
       setEditGrnNo(false)
       setLine(EMPTY_LINE)
@@ -222,7 +203,6 @@ const GRNEntry = () => {
 
   const loadItems = async () => {
     try {
-      // Load Part Master items, then keep only items configured in Location Master.
       const res = await API.get('/ItemMaster')
       const allItems = res.data || []
       setItems(allItems)
@@ -242,7 +222,6 @@ const GRNEntry = () => {
 
             return isConfigured ? item.id : null
           } catch {
-            // Do not show a part if its Location Master configuration cannot be verified.
             return null
           }
         })

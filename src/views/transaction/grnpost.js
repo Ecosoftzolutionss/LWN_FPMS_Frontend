@@ -7,6 +7,7 @@ import { toast } from 'react-toastify'
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import API from '../../api.js';
+import { QRCodeSVG } from 'qrcode.react';
 import '../../assets/CSS/grnPost.css';
 import usePrivilege from '../hooks/usePrivilege.js';
 
@@ -534,6 +535,7 @@ const GRNPost = () => {
 
   const buildLabelFromLine = (grn, line) => ({
     grnNumber: grn.grnNumber,
+    grnDate: grn.grnDate,
     supplierInvoiceNumber: grn.supplierInvoiceNumber,
     supplierInvoiceDate: grn.supplierInvoiceDate,
     totalQuantity: totalQuantity(grn),
@@ -662,6 +664,7 @@ const GRNPost = () => {
   const openBulkLabel = (grn, lines) => {
     setBulkLabelGrn({
       grnNumber: grn.grnNumber,
+       grnDate: grn.grnDate,
       supplierInvoiceNumber: grn.supplierInvoiceNumber,
       supplierInvoiceDate: grn.supplierInvoiceDate,
       totalQuantity: totalQuantity(grn),
@@ -1124,31 +1127,40 @@ const GRNPost = () => {
               </div>
             </div>
 
-            <div className="fifo-qr-box">
-              <img
-                className="fifo-qr-img"
-                alt="Scan for details"
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=0&data=${encodeURIComponent(
-                  JSON.stringify({
-                    grn: grnMeta.grnNumber,
-                    fifoPalletNo: line?.fifoPalletNo,
-                    palletNo: line?.palletNo,
-                    part: line?.partNumber,
-                    qty: line?.quantity ?? line?.palletQuantity ?? 0,
-                    location: line?.storeLocation || line?.location || '',
-                  }),
-                )}`}
-              />
-            </div>
+          <div className="fifo-qr-box">
+  <QRCodeSVG
+    className="fifo-qr-img"
+    value={JSON.stringify({
+      grn: grnMeta?.grnNumber ?? '',
+      fifoPalletNo: line?.fifoPalletNo ?? '',
+      palletNo: line?.palletNo ?? '',
+      part: line?.partNumber ?? '',
+      qty: line?.quantity ?? line?.palletQuantity ?? 0,
+      location: line?.storeLocation || line?.location || '',
+    })}
+    size={300}
+    level="M"
+    bgColor="#FFFFFF"
+    fgColor="#000000"
+    marginSize={0}
+  />
+</div>
           </div>
 
           <div className="fifo-right-col">
             <div className="fifo-meta-grid">
               <div><FaRegFileAlt className="fifo-meta-icon" /><span className="fifo-meta-label">SUP.INV.NO</span><span className="fifo-meta-colon">:</span><span className="fifo-meta-value">{grnMeta.supplierInvoiceNumber || '—'}</span></div>
-              <div><FaRegCalendarAlt className="fifo-meta-icon" /><span className="fifo-meta-label">DATE</span><span className="fifo-meta-colon">:</span><span className="fifo-meta-value">{formatDate(grnMeta.supplierInvoiceDate) || '—'}</span></div>
+              <div><FaRegCalendarAlt className="fifo-meta-icon" /><span className="fifo-meta-label">SDATE</span><span className="fifo-meta-colon">:</span><span className="fifo-meta-value">{formatDate(grnMeta.supplierInvoiceDate) || '—'}</span></div>
               <div><FaBoxOpen className="fifo-meta-icon" /><span className="fifo-meta-label">QTY</span><span className="fifo-meta-colon">:</span><span className="fifo-meta-value">{grnMeta.totalQuantity ?? 0} Nos.</span></div>
               <div><FaRegFileAlt className="fifo-meta-icon" /><span className="fifo-meta-label">GRN NO</span><span className="fifo-meta-colon">:</span><span className="fifo-meta-value">{grnMeta.grnNumber || '—'}</span></div>
-              <div><FaRegCalendarAlt className="fifo-meta-icon" /><span className="fifo-meta-label">DATE</span><span className="fifo-meta-colon">:</span><span className="fifo-meta-value">{formatDate(line?.postedDate) || '—'}</span></div>
+              <div>
+  <FaRegCalendarAlt className="fifo-meta-icon" />
+  <span className="fifo-meta-label">GDATE</span>
+  <span className="fifo-meta-colon">:</span>
+  <span className="fifo-meta-value">
+    {formatDate(grnMeta?.grnDate) || '—'}
+  </span>
+</div>
               <div><FaBoxOpen className="fifo-meta-icon" /><span className="fifo-meta-label">PQTY</span><span className="fifo-meta-colon">:</span><span className="fifo-meta-value">{line?.palletQuantity ?? 0} Nos.</span></div>
             </div>
 

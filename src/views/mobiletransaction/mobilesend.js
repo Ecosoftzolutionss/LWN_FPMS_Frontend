@@ -119,16 +119,15 @@ const Mobility = () => {
   // ========================================
 
   const handleDataSink = async () => {
-    if (!navigator.onLine) {
-      toast.error(
-        'You need Wi-Fi/internet to sync. Please connect and try again.'
-      );
-      return;
-    }
-
+    
     if (syncing) {
       return;
     }
+  console.log('[DATA SYNC] Starting USB/API synchronization');
+
+    console.log('[DATA SYNC] API URL:',
+        API.defaults.baseURL
+    );
 
     setSyncing(true);
 
