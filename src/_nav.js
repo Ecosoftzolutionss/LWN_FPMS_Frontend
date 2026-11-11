@@ -6,22 +6,18 @@ import {
   cilUser,
   cilList,
   cilBarcode,
-  cilFactory,
   cilTruck,
   cilGroup,
   cilBuilding,
-  cilEnvelopeClosed,
   cilStorage,
   cilDescription,
-  cilChartLine,
-  cilDollar,
   cilCloudUpload,
   cilCheckCircle,
-  cilTransfer,
-  cilNotes,
   cilChart,
-  cilListRich,
+  cilNotes,
   cilLocationPin,
+  cilBell,
+  cilTransfer,
 } from '@coreui/icons'
 
 import { CNavGroup, CNavItem } from '@coreui/react'
@@ -132,39 +128,43 @@ const _nav = [
     ],
   },
 
-  {
-    component: CNavGroup,
-    name: 'Reports',
-    icon: <CIcon icon={cilChart} customClassName="nav-icon" />,
-    items: [
-      {
-        component: CNavItem,
-        name: 'GRN Report',
-        to: '/report/Grnreport',
-        icon: <CIcon icon={cilNotes} customClassName="nav-icon" />,
-      },
-      {
-        component: CNavItem,
-        name: 'Store Report',
-        to: '/report/StoreReport',
-        icon: <CIcon icon={cilLocationPin} customClassName="nav-icon" />,
-      },
-      {
-        component: CNavItem,
-        name: 'Material Issue Report',
-        to: '/report/MaterialIssueReport',
-        icon: <CIcon icon={cilListRich} customClassName="nav-icon" />,
-      },
-
-      {
-        component: CNavItem,
-        name: 'Stock Report',
-        to: '/report/StockReport',
-        icon: <CIcon icon={cilListRich} customClassName="nav-icon" />,
-      },
-
-    ],
-  },
+ {
+  component: CNavGroup,
+  name: 'Reports',
+  icon: <CIcon icon={cilChart} customClassName="nav-icon" />,
+  items: [
+    {
+      component: CNavItem,
+      name: 'GRN Report',
+      to: '/report/Grnreport',
+      icon: <CIcon icon={cilNotes} customClassName="nav-icon" />,
+    },
+    {
+      component: CNavItem,
+      name: 'Store Report',
+      to: '/report/StoreReport',
+      icon: <CIcon icon={cilLocationPin} customClassName="nav-icon" />,
+    },
+    {
+      component: CNavItem,
+      name: 'Stock Report',
+      to: '/report/StockReport',
+      icon: <CIcon icon={cilStorage} customClassName="nav-icon" />,
+    },
+    {
+      component: CNavItem,
+      name: 'Alert Report',
+      to: '/report/alertreport',
+      icon: <CIcon icon={cilBell} customClassName="nav-icon" />,
+    },
+    {
+      component: CNavItem,
+      name: 'Material Issue Report',
+      to: '/report/MaterialIssueReport',
+      icon: <CIcon icon={cilTransfer} customClassName="nav-icon" />,
+    },
+  ],
+},
   {
     component: CNavItem,
     name: 'Dashboard Settings',

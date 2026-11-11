@@ -344,55 +344,74 @@ const MaterialIssue = () => {
 
   // "Issued To" is limited to the Supplier / Customer of the GRN(s) the
   // confirmed pallets belong to.
+  // const issuedToOptions = useMemo(() => {
+  //   if (confirmedRows.length === 0) return [];
+
+  //   const suppliers = (supplierOptions || []).map((s) => ({
+  //     value: `SUPPLIER:${s.id}`,
+  //     label: `${s.supplierCode || s.id} - ${s.supplierName || ''}`.trim(),
+  //     partyType: 'Supplier',
+  //   }));
+
+  //   const customers = (customerOptions || []).map((c) => ({
+  //     value: `CUSTOMER:${c.id}`,
+  //     label: `${c.customerCode || c.id} - ${c.customerName || ''}`.trim(),
+  //     partyType: 'Customer',
+  //   }));
+
+  //   const all = [...suppliers, ...customers];
+
+  //   const hasValue = (v) => v !== undefined && v !== null && v !== '';
+  //   const allowed = new Set();
+
+  //   confirmedRows.forEach((row) => {
+  //     const pallet = pallets.find((p) => p.id === row.palletId);
+  //     if (!pallet) return;
+
+  //     const supplierId = pallet.supplierId ?? pallet.grnSupplierId;
+  //     const customerId = pallet.customerId ?? pallet.grnCustomerId;
+
+  //     if (hasValue(supplierId)) allowed.add(`SUPPLIER:${supplierId}`);
+  //     if (hasValue(customerId)) allowed.add(`CUSTOMER:${customerId}`);
+  //   });
+
+  //   if (allowed.size === 0) {
+  //     console.warn(
+  //       'Pallet records have no supplierId / customerId — showing all parties. ' +
+  //       'Include them from GRN_HEADER in the pallet sync.'
+  //     );
+  //     return all;
+  //   }
+
+  //   return all.filter((o) => allowed.has(o.value));
+  // }, [supplierOptions, customerOptions, confirmedRows, pallets]);
+
   const issuedToOptions = useMemo(() => {
     if (confirmedRows.length === 0) return [];
 
-    const suppliers = (supplierOptions || []).map((s) => ({
-      value: `SUPPLIER:${s.id}`,
-      label: `${s.supplierCode || s.id} - ${s.supplierName || ''}`.trim(),
-      partyType: 'Supplier',
-    }));
+    return [
+      {
+        value: 'PRODUCTION',
+        label: 'Production',
+      },
+    ];
+  }, [confirmedRows.length]);
 
-    const customers = (customerOptions || []).map((c) => ({
-      value: `CUSTOMER:${c.id}`,
-      label: `${c.customerCode || c.id} - ${c.customerName || ''}`.trim(),
-      partyType: 'Customer',
-    }));
-
-    const all = [...suppliers, ...customers];
-
-    const hasValue = (v) => v !== undefined && v !== null && v !== '';
-    const allowed = new Set();
-
-    confirmedRows.forEach((row) => {
-      const pallet = pallets.find((p) => p.id === row.palletId);
-      if (!pallet) return;
-
-      const supplierId = pallet.supplierId ?? pallet.grnSupplierId;
-      const customerId = pallet.customerId ?? pallet.grnCustomerId;
-
-      if (hasValue(supplierId)) allowed.add(`SUPPLIER:${supplierId}`);
-      if (hasValue(customerId)) allowed.add(`CUSTOMER:${customerId}`);
-    });
-
-    if (allowed.size === 0) {
-      console.warn(
-        'Pallet records have no supplierId / customerId — showing all parties. ' +
-        'Include them from GRN_HEADER in the pallet sync.'
-      );
-      return all;
-    }
-
-    return all.filter((o) => allowed.has(o.value));
-  }, [supplierOptions, customerOptions, confirmedRows, pallets]);
+  // useEffect(() => {
+  //   if (issuedToOptions.length === 1) {
+  //     setIssuedTo((cur) => (cur === issuedToOptions[0].label ? cur : issuedToOptions[0].label));
+  //   } else {
+  //     setIssuedTo((cur) =>
+  //       cur && !issuedToOptions.some((o) => o.label === cur) ? '' : cur
+  //     );
+  //   }
+  // }, [issuedToOptions]);
 
   useEffect(() => {
     if (issuedToOptions.length === 1) {
-      setIssuedTo((cur) => (cur === issuedToOptions[0].label ? cur : issuedToOptions[0].label));
+      setIssuedTo('Production');
     } else {
-      setIssuedTo((cur) =>
-        cur && !issuedToOptions.some((o) => o.label === cur) ? '' : cur
-      );
+      setIssuedTo('');
     }
   }, [issuedToOptions]);
 
@@ -1802,7 +1821,7 @@ const MaterialIssue = () => {
 
         {/* ISSUED TO / BY / REMARKS */}
         <div className="mi-grid-2">
-          <div className="mi-field">
+          {/* <div className="mi-field">
             <label className="mi-label">Issued To <span className="mi-req">*</span></label>
             <Select
               classNamePrefix="react-select"
@@ -1814,6 +1833,28 @@ const MaterialIssue = () => {
               isSearchable
               isDisabled={!hasConfirmed}
               noOptionsMessage={() => 'No Supplier / Customer found for this GRN'}
+            />
+          </div> */}
+          <div className="mi-field">
+            <label className="mi-label">
+              Issued To <span className="mi-req">*</span>
+            </label>
+
+            <Select
+              classNamePrefix="react-select"
+              placeholder={
+                hasConfirmed ? 'Select Issued To' : 'Scan GRN pallets first'
+              }
+              options={issuedToOptions}
+              value={issuedToOptions.find(
+                (option) => option.label === issuedTo
+              ) || null}
+              onChange={(selected) =>
+                setIssuedTo(selected?.label || '')
+              }
+              isDisabled={!hasConfirmed}
+              isClearable={false}
+              isSearchable={false}
             />
           </div>
           <div className="mi-field">

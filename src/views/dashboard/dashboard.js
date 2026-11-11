@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import DataTable from 'react-data-table-component'
 import { CCard, CCardBody, CTooltip } from '@coreui/react'
-import {FaArrowDown,FaArrowUp,FaBox,FaExchangeAlt,FaChartBar,FaDolly,FaExclamationTriangle,} from 'react-icons/fa'
+import { FaArrowDown, FaArrowUp, FaBox, FaExchangeAlt, FaChartBar, FaDolly, FaExclamationTriangle, } from 'react-icons/fa'
 import { toast } from 'react-toastify'
 import API from '../../api.js'
 import '../../assets/CSS/dashboard.css'
@@ -356,11 +356,9 @@ const Dashboard = () => {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [mode, setMode] = useState('qty') // 'qty' | 'value'
-
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
-
   const [partNo, setPartNo] = useState('')
   const [debouncedPartNo, setDebouncedPartNo] = useState('')
 
@@ -467,6 +465,7 @@ const Dashboard = () => {
       icon: <FaExclamationTriangle />,
       tone: 'red',
       sub: 'Items need attention',
+      onClick: () => navigate('/report/alertreport'),
     },
   ]
 
@@ -539,7 +538,20 @@ const Dashboard = () => {
       {/* ---------- KPI cards ---------- */}
       <div className="dashboard-kpi-grid dashboard-kpi-grid-4">
         {kpiCards.map((k) => (
-          <CCard key={k.label} className={`dashboard-kpi-card tone-${k.tone}`}>
+          <CCard
+            key={k.label}
+            className={`dashboard-kpi-card tone-${k.tone} ${k.onClick ? 'dashboard-clickable-card' : ''
+              }`}
+            onClick={k.onClick}
+            role={k.onClick ? 'button' : undefined}
+            tabIndex={k.onClick ? 0 : undefined}
+            onKeyDown={(e) => {
+              if (k.onClick && (e.key === 'Enter' || e.key === ' ')) {
+                e.preventDefault()
+                k.onClick()
+              }
+            }}
+          >
             <CCardBody>
               <div className="dashboard-kpi-icon">{k.icon}</div>
               <div className="dashboard-kpi-label">{k.label}</div>
@@ -664,7 +676,7 @@ const Dashboard = () => {
         </CCard>
       </div>
 
-      
+
       <CCard className="dashboard-recent-card">
         <CCardBody>
           <div className="section-title">Recent Activities</div>
