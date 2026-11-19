@@ -34,8 +34,7 @@ const MailSettings = () => {
   const [showPassword, setShowPassword] = useState(false)
 
   const { privileges: userPrivileges = [] } = usePrivilege()
-  const uPrivilege =
-    userPrivileges.find((p) => p.menuName === 'Mail Settings') || {}
+  const uPrivilege = userPrivileges.find((p) => p.menuName === 'Mail Settings') || {}
 
   const [form, setForm] = useState({
     host: '',

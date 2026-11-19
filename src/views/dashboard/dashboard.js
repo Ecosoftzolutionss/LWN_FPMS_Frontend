@@ -2,14 +2,19 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import DataTable from 'react-data-table-component'
 import { CCard, CCardBody, CTooltip } from '@coreui/react'
-import { FaArrowDown, FaArrowUp, FaBox, FaExchangeAlt, FaChartBar, FaDolly, FaExclamationTriangle, } from 'react-icons/fa'
+import { FaArrowDown, FaArrowUp, FaBox, FaExchangeAlt, FaChartBar, FaDolly, FaExclamationTriangle } from 'react-icons/fa'
 import { toast } from 'react-toastify'
 import API from '../../api.js'
 import '../../assets/CSS/dashboard.css'
 
-const num = (value) => Number(value || 0).toLocaleString()
+// One locale for EVERY number on the page (KPI cards, chart axis,
+// chart labels, table). Previously KPI used the browser locale
+// (297,249) while the chart used en-IN (2,97,249).
+const LOCALE = 'en-IN'
+
+const num = (value) => Number(value || 0).toLocaleString(LOCALE)
 const money = (value) =>
-  Number(value || 0).toLocaleString(undefined, {
+  Number(value || 0).toLocaleString(LOCALE, {
     style: 'currency',
     currency: 'INR',
     maximumFractionDigits: 0,
@@ -31,7 +36,6 @@ const MONTH_SHORT = [
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 ]
 
-
 const getFiscalYearRange = (year, month) => {
   const fiscalStartYear = month >= 4 ? year : year - 1
   const fiscalEndYear = fiscalStartYear + 1
@@ -42,17 +46,28 @@ const getFiscalYearRange = (year, month) => {
   }
 }
 
-
-const buildFiscalMonthLabels = (fiscalStartYear) => {
-  const labels = []
+// 12 fiscal months (Apr -> Mar) with numeric year/month keys so the
+// API rows are matched by number, not by a culture dependent label.
+const buildFiscalMonths = (fiscalStartYear) => {
+  const months = []
   for (let i = 0; i < 12; i++) {
     const monthIndex = (3 + i) % 12 // 3 = April (0-indexed)
     const yr = fiscalStartYear + (monthIndex < 3 ? 1 : 0)
-    labels.push(`${MONTH_SHORT[monthIndex]} ${yr}`)
+    months.push({
+      year: yr,
+      month: monthIndex + 1,
+      label: `${MONTH_SHORT[monthIndex]} ${yr}`,
+    })
   }
-  return labels
+  return months
 }
 
+const pick = (obj, keys) => {
+  for (const k of keys) {
+    if (obj?.[k] !== undefined && obj?.[k] !== null) return Number(obj[k]) || 0
+  }
+  return 0
+}
 
 const BarChart = ({
   months,
@@ -106,16 +121,12 @@ const BarChart = ({
 
   const groupWidth = chartW / Math.max(chartData.length, 1)
 
-  // Bars are sized to comfortably fit 12 fixed groups (Apr -> Mar)
-  // inside the fixed 900-wide viewBox without overlapping.
   const barWidth = 14
   const barGap = 16
 
   const shortValue = (value) => {
     const n = Number(value || 0)
-    return isValueMode
-      ? money(n)
-      : Math.round(n).toLocaleString('en-IN')
+    return isValueMode ? money(n) : num(Math.round(n))
   }
 
   return (
@@ -181,9 +192,9 @@ const BarChart = ({
                 rx={3}
                 ry={3}
                 fill="#2563eb"
-                style={{ cursor: "pointer" }}
+                style={{ cursor: 'pointer' }}
                 onClick={() => onBarClick?.({
-                  type: "inward",
+                  type: 'inward',
                   month: m.label,
                   value: inwardValue,
                 })}
@@ -191,23 +202,27 @@ const BarChart = ({
                 tabIndex={0}
                 aria-label={`Open GRN Report for inward ${m.label}`}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
+                  if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault()
                     onBarClick?.({
-                      type: "inward",
+                      type: 'inward',
                       month: m.label,
                       value: inwardValue,
                     })
                   }
                 }}
-              />
+              >
+                <title>{`Inward ${m.label}: ${shortValue(inwardValue)}`}</title>
+              </rect>
               {inwardValue > 0 && (
+                // Anchored to the bar's right edge so the text grows
+                // LEFT and can never collide with the outward label.
                 <text
                   className="dashboard-chart-value-label"
-                  x={inwardX + barWidth / 2}
+                  x={inwardX + barWidth}
                   y={Math.max(padding.top + 12, inwardY - 6)}
                   fill="#2563eb"
-                  textAnchor="middle"
+                  textAnchor="end"
                 >
                   {shortValue(inwardValue)}
                 </text>
@@ -222,9 +237,9 @@ const BarChart = ({
                 rx={3}
                 ry={3}
                 fill="#14b8a6"
-                style={{ cursor: "pointer" }}
+                style={{ cursor: 'pointer' }}
                 onClick={() => onBarClick?.({
-                  type: "outward",
+                  type: 'outward',
                   month: m.label,
                   value: outwardValue,
                 })}
@@ -232,23 +247,26 @@ const BarChart = ({
                 tabIndex={0}
                 aria-label={`Open Material Issue Report for outward ${m.label}`}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
+                  if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault()
                     onBarClick?.({
-                      type: "outward",
+                      type: 'outward',
                       month: m.label,
                       value: outwardValue,
                     })
                   }
                 }}
-              />
+              >
+                <title>{`Outward ${m.label}: ${shortValue(outwardValue)}`}</title>
+              </rect>
               {outwardValue > 0 && (
+                // Anchored to the bar's left edge so the text grows RIGHT.
                 <text
                   className="dashboard-chart-value-label"
-                  x={outwardX + barWidth / 2}
+                  x={outwardX}
                   y={Math.max(padding.top + 12, outwardY - 6)}
                   fill="#14b8a6"
-                  textAnchor="middle"
+                  textAnchor="start"
                 >
                   {shortValue(outwardValue)}
                 </text>
@@ -272,7 +290,6 @@ const BarChart = ({
     </div>
   )
 }
-
 
 const StockStatusDonut = ({ safetyPct, reorderPct, dangerPct, total }) => {
   const radius = 42
@@ -329,7 +346,6 @@ const StockStatusDonut = ({ safetyPct, reorderPct, dangerPct, total }) => {
   )
 }
 
-
 const TooltipCell = ({ value }) => {
   const displayValue = value ?? '—'
 
@@ -368,34 +384,41 @@ const Dashboard = () => {
   }, [partNo])
 
   const yearOptions = useMemo(() => {
-    const currentYear = now.getFullYear()
+    const currentYear = new Date().getFullYear()
     const years = []
     for (let y = currentYear; y >= currentYear - 5; y--) years.push(y)
     return years
   }, [])
 
+  // Load data. The `cancelled` flag drops out-of-order responses, so
+  // typing a part number quickly can no longer leave the screen
+  // showing numbers from an OLDER request (another source of "mismatch").
   useEffect(() => {
-    loadSummary(year, month, debouncedPartNo)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [year, month, debouncedPartNo])
+    let cancelled = false
 
-  const loadSummary = async (selectedYear, selectedMonth, selectedPartNo) => {
-    setLoading(true)
-    try {
-      const res = await API.get('/Dashboard/summary', {
-        params: {
-          year: selectedYear,
-          month: selectedMonth,
-          partNo: selectedPartNo || undefined,
-        },
-      })
-      setData(res.data)
-    } catch (err) {
-      toast.error('Failed to load dashboard')
-    } finally {
-      setLoading(false)
+    const load = async () => {
+      setLoading(true)
+      try {
+        const res = await API.get('/Dashboard/summary', {
+          params: {
+            year,
+            month,
+            partNo: debouncedPartNo || undefined,
+          },
+        })
+        if (!cancelled) setData(res.data)
+      } catch (err) {
+        if (!cancelled) toast.error('Failed to load dashboard')
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
     }
-  }
+
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [year, month, debouncedPartNo])
 
   if (loading && !data) {
     return <div className="dashboard-page"><div className="dashboard-loading">Loading dashboard...</div></div>
@@ -405,29 +428,27 @@ const Dashboard = () => {
 
   const kpi = data.kpi || {}
 
-  // Fiscal year range for the currently selected year/month —
-  // computed once here and reused for both the badge and the
-  // client-side fallback fill below, so they can never disagree.
   const { fiscalStartYear, label: fiscalYearLabel } = getFiscalYearRange(year, month)
 
-  // Map whatever the API returned, keyed by label, so we can
-  // safely re-align it against the canonical 12-month list below.
-  const apiChartByLabel = new Map(
-    (Array.isArray(data.chart) ? data.chart : []).map((m) => [
-      m.label ?? m.monthLabel ?? '',
-      m,
-    ])
-  )
+  // Index API rows by numeric year-month (fallback: label).
+  const apiChartRows = Array.isArray(data.chart) ? data.chart : []
+  const apiChartByKey = new Map()
+  apiChartRows.forEach((m) => {
+    const y = m.year ?? m.Year
+    const mo = m.month ?? m.Month
+    if (y != null && mo != null) apiChartByKey.set(`${y}-${mo}`, m)
+    const lbl = m.label ?? m.monthLabel
+    if (lbl) apiChartByKey.set(String(lbl), m)
+  })
 
-
-  const chartMonths = buildFiscalMonthLabels(fiscalStartYear).map((label) => {
-    const m = apiChartByLabel.get(label) || {}
+  const chartMonths = buildFiscalMonths(fiscalStartYear).map(({ year: y, month: mo, label }) => {
+    const m = apiChartByKey.get(`${y}-${mo}`) || apiChartByKey.get(label) || {}
     return {
       label,
-      inwardQty: Number(m.inwardQty ?? m.inwardQuantity ?? m.InwardQty ?? m.InwardQuantity ?? 0),
-      outwardQty: Number(m.outwardQty ?? m.outwardQuantity ?? m.OutwardQty ?? m.OutwardQuantity ?? 0),
-      inwardValue: Number(m.inwardValue ?? m.InwardValue ?? 0),
-      outwardValue: Number(m.outwardValue ?? m.OutwardValue ?? 0),
+      inwardQty: pick(m, ['inwardQty', 'inwardQuantity', 'InwardQty', 'InwardQuantity']),
+      outwardQty: pick(m, ['outwardQty', 'outwardQuantity', 'OutwardQty', 'OutwardQuantity']),
+      inwardValue: pick(m, ['inwardValue', 'InwardValue']),
+      outwardValue: pick(m, ['outwardValue', 'OutwardValue']),
     }
   })
 
@@ -437,27 +458,38 @@ const Dashboard = () => {
   const isValueMode = mode === 'value'
   const stockAlerts = Number(stock.reorder?.count || 0) + Number(stock.danger?.count || 0)
 
+  const periodText = `${MONTH_SHORT[month - 1]} ${year}`
+
+  // Inward / Outward are for the SELECTED MONTH.
+  // Available is the CURRENT stock (all dates) - it is a balance,
+  // not a monthly figure, so it is labelled differently on purpose.
   const kpiCards = [
     {
       label: 'Inward Parts',
       value: isValueMode ? money(kpi.inwardValue ?? 0) : num(kpi.inwardPartCount ?? 0),
       icon: <FaArrowDown />,
       tone: 'blue',
-      sub: isValueMode ? 'Total inward value' : 'Total inward quantity',
+      sub: isValueMode
+        ? `Inward value · ${periodText}`
+        : `Inward quantity · ${periodText}`,
     },
     {
       label: 'Outward Parts',
       value: isValueMode ? money(kpi.outwardValue ?? 0) : num(kpi.outwardPartCount ?? 0),
       icon: <FaArrowUp />,
       tone: 'green',
-      sub: isValueMode ? 'Total outward value' : 'Total outward quantity',
+      sub: isValueMode
+        ? `Outward value · ${periodText}`
+        : `Outward quantity · ${periodText}`,
     },
     {
       label: 'Available Parts',
       value: isValueMode ? money(kpi.availableValue ?? 0) : num(kpi.availablePartCount ?? 0),
       icon: <FaBox />,
       tone: 'orange',
-      sub: isValueMode ? 'Current available value' : 'Current available quantity',
+      sub: isValueMode
+        ? 'Current stock value · all dates'
+        : 'Current stock (all inward − all outward)',
     },
     {
       label: 'Stock Alerts',
@@ -540,8 +572,7 @@ const Dashboard = () => {
         {kpiCards.map((k) => (
           <CCard
             key={k.label}
-            className={`dashboard-kpi-card tone-${k.tone} ${k.onClick ? 'dashboard-clickable-card' : ''
-              }`}
+            className={`dashboard-kpi-card tone-${k.tone} ${k.onClick ? 'dashboard-clickable-card' : ''}`}
             onClick={k.onClick}
             role={k.onClick ? 'button' : undefined}
             tabIndex={k.onClick ? 0 : undefined}
@@ -595,10 +626,10 @@ const Dashboard = () => {
               onBarClick={({ type }) => {
                 // Inward -> GRN Report
                 // Outward -> Material Issue Report
-                if (type === "inward") {
-                  navigate("/report/Grnreport")
-                } else if (type === "outward") {
-                  navigate("/report/MaterialIssueReport")
+                if (type === 'inward') {
+                  navigate('/report/Grnreport')
+                } else if (type === 'outward') {
+                  navigate('/report/MaterialIssueReport')
                 }
               }}
             />
@@ -676,7 +707,6 @@ const Dashboard = () => {
         </CCard>
       </div>
 
-
       <CCard className="dashboard-recent-card">
         <CCardBody>
           <div className="section-title">Recent Activities</div>
@@ -700,13 +730,14 @@ const Dashboard = () => {
               },
               {
                 name: 'QUANTITY',
-                selector: (row) => num(row.quantity),
+                selector: (row) => Number(row.quantity || 0),
                 cell: (row) => (
                   <CTooltip content={num(row.quantity)} placement="top">
                     <span style={{ cursor: 'default' }}>{num(row.quantity)}</span>
                   </CTooltip>
                 ),
                 center: true,
+                sortable: true,
               },
               {
                 name: 'REF NO',
