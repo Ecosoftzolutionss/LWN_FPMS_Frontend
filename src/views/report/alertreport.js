@@ -4,27 +4,19 @@ import React, { useEffect, useRef, useState } from 'react'
 import DataTable from 'react-data-table-component'
 import Select from 'react-select'
 
-import {
-  CButton,
-  CFormInput,
-  CCard,
-  CCardBody,
-  CTooltip,
-} from '@coreui/react'
+import {CButton,CFormInput,CCard,CCardBody,CTooltip,} from '@coreui/react';
 
 import {
   FaFileExcel,
   FaSearch,
   FaSyncAlt,
-} from 'react-icons/fa'
+} from 'react-icons/fa';
 
-import { toast } from 'react-toastify'
-import * as XLSX from 'xlsx'
-
-import API from '../../api.js'
-
-import '../../assets/CSS/Grnreport.css'
-import '../../assets/CSS/AlertReport.css'
+import { toast } from 'react-toastify';
+import * as XLSX from 'xlsx';
+import API from '../../api.js';
+import '../../assets/CSS/Grnreport.css';
+import '../../assets/CSS/AlertReport.css';
 
 // ============================================================
 // ERROR MESSAGE
@@ -32,11 +24,8 @@ import '../../assets/CSS/AlertReport.css'
 
 const getErrorMessage = (err, fallback) => {
   const data = err?.response?.data
-
   if (!data) return fallback
-
   if (typeof data === 'string') return data
-
   return data.message || data.error || fallback
 }
 
@@ -154,17 +143,12 @@ const AlertReport = () => {
   // FILTER STATES
   // ----------------------------------------------------------
 
-  const [search, setSearch] = useState('')
-  const [selectedItemGroup, setSelectedItemGroup] = useState('')
-  const [selectedPartNumber, setSelectedPartNumber] = useState('')
-  const [selectedStatus, setSelectedStatus] = useState('Alert')
-
-  // ----------------------------------------------------------
-  // DROPDOWN STATES
-  // ----------------------------------------------------------
-
-  const [itemGroupOptions, setItemGroupOptions] = useState([])
-  const [partNumberOptions, setPartNumberOptions] = useState([])
+  const [search, setSearch] = useState('');
+  const [selectedItemGroup, setSelectedItemGroup] = useState('');
+  const [selectedPartNumber, setSelectedPartNumber] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState('Alert');
+  const [itemGroupOptions, setItemGroupOptions] = useState([]);
+  const [partNumberOptions, setPartNumberOptions] = useState([]);
 
   const statusOptions = [
     { value: 'Alert', label: 'All Alerts' },
@@ -454,9 +438,7 @@ const AlertReport = () => {
       }))
 
       const worksheet = XLSX.utils.json_to_sheet(exportData)
-
       const workbook = XLSX.utils.book_new()
-
       XLSX.utils.book_append_sheet(
         workbook,
         worksheet,
@@ -467,9 +449,7 @@ const AlertReport = () => {
         workbook,
         'Alert_Report.xlsx',
       )
-
       toast.success('Alert Report exported successfully')
-
     } catch (err) {
       toast.error(
         getErrorMessage(err, 'Failed to export Alert Report'),
