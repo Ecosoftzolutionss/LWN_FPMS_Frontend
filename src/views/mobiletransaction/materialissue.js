@@ -52,9 +52,35 @@ const GRN_TYPE_OPTIONS = ['REGULAR', 'SAMPLE'];
 const DEFAULT_TYPE = 'REGULAR';
 
 const typeOf = (p) => (p?.type || 'REGULAR').toUpperCase();
-const byMovementDate = (a, b) =>
-  new Date(a.movementDate || 0) - new Date(b.movementDate || 0);
+// const byMovementDate = (a, b) =>
+//   new Date(a.movementDate || 0) - new Date(b.movementDate || 0);
 
+const dayKey = (v) => {
+  if (!v) return 0;
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return 0;
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+};
+
+const fifoDay = (v) => dayKey(v) || Number.MAX_SAFE_INTEGER;
+const fifoNoOf = (p) => String(p.fifoPalletNo || p.fifoNo || '');
+
+const byFifoOrder = (a, b) => {
+  // 1. GR date (day only, same as the grid shows)
+  const dayDiff = fifoDay(a.movementDate) - fifoDay(b.movementDate);
+  if (dayDiff !== 0) return dayDiff;
+
+  // 2. FIFO No (F26100126 comes before F26100206)
+  const fifoDiff = fifoNoOf(a).localeCompare(fifoNoOf(b), undefined, { numeric: true });
+  if (fifoDiff !== 0) return fifoDiff;
+
+  // 3. GRN No
+  const grnDiff = String(a.grnNo || '').localeCompare(String(b.grnNo || ''), undefined, { numeric: true });
+  if (grnDiff !== 0) return grnDiff;
+
+  // 4. Pallet id (insertion order)
+  return (Number(a.id) || 0) - (Number(b.id) || 0);
+};
 // Avoid floating point noise (0.1 + 0.2) when comparing quantities.
 const round3 = (n) => Math.round((Number(n) || 0) * 1000) / 1000;
 
@@ -656,7 +682,7 @@ const MaterialIssue = () => {
 
     if (unusedRegular.length === 0) return null;
 
-    return [...unusedRegular].sort(byMovementDate)[0];
+    return [...unusedRegular].sort(byFifoOrder)[0];
   };
 
   // ------------------------------------------
@@ -709,7 +735,7 @@ const MaterialIssue = () => {
       return;
     }
 
-    const ordered = [...matches].sort(byMovementDate);
+    const ordered = [...matches].sort(byFifoOrder);
 
     const pendingQty = round3(requestedQty - confirmedQtyForPart);
     let cumulativeQty = 0;
@@ -936,51 +962,108 @@ const MaterialIssue = () => {
   };
 
   const handleAddFromIssueQtyModal = () => {
-    if (!issueQtyTarget) return;
+  if (!issueQtyTarget) return;
 
-    const availableQty = Number(issueQtyTarget.quantity || 0);
-    const enteredQty = round3(issueQty);
-    const remainingQty = getRemainingRequestedQty(issueQtyTarget.itemId);
+  const availableQty = Number(issueQtyTarget.quantity || 0);
+  const enteredQty = round3(issueQty);
+  const remainingQty = getRemainingRequestedQty(issueQtyTarget.itemId);
 
-    if (!Number.isFinite(enteredQty) || enteredQty <= 0) {
-      toast.error('Please enter a valid Issue Qty greater than 0.');
-      return;
-    }
+  if (!Number.isFinite(enteredQty) || enteredQty <= 0) {
+    toast.error('Please enter a valid Issue Qty greater than 0.');
+    return;
+  }
 
-    if (enteredQty > availableQty) {
-      toast.error(`Issue Qty cannot exceed the pallet's available quantity (${availableQty}).`);
-      return;
-    }
+  if (enteredQty > availableQty) {
+    toast.error(`Issue Qty cannot exceed the pallet's available quantity (${availableQty}).`);
+    return;
+  }
 
-    if (enteredQty > remainingQty) {
-      toast.error(`Issue Qty cannot exceed the remaining requested quantity (${remainingQty}).`);
-      return;
-    }
+  if (enteredQty > remainingQty) {
+    toast.error(`Issue Qty cannot exceed the remaining requested quantity (${remainingQty}).`);
+    return;
+  }
 
-    const added = addConfirmedRow({
-      palletId: issueQtyTarget.id,
-      itemId: issueQtyTarget.itemId,
-      partLabel: issueQtyTarget.partLabel,
-      palletNo: issueQtyTarget.palletNo,
-      storeLocation: issueQtyTarget.storeLocation,
-      quantity: enteredQty,
-      grnNo: issueQtyTarget.grnNo,
-      remarks: form.remarks,
-      type: issueQtyTarget.type,
-      movementDate: issueQtyTarget.movementDate,
-      fifoPalletNo: issueQtyTarget.fifoPalletNo || issueQtyTarget.fifoNo || '',
-    });
+  // FIFO: take the full pallet (or whatever is still needed) before moving on.
+  const mustIssue = round3(Math.min(availableQty, remainingQty));
+  if (enteredQty !== mustIssue) {
+    toast.error(
+      `Issue the full ${mustIssue} from this pallet first. ` +
+      `You can only move to the next pallet after this one is fully issued.`
+    );
+    return;
+  }
 
-    if (added) {
-      setRequestedByPart((prev) => ({
-        ...prev,
-        [String(issueQtyTarget.itemId)]: round3(requestedQtyNumber),
-      }));
+  const added = addConfirmedRow({
+    palletId: issueQtyTarget.id,
+    itemId: issueQtyTarget.itemId,
+    partLabel: issueQtyTarget.partLabel,
+    palletNo: issueQtyTarget.palletNo,
+    storeLocation: issueQtyTarget.storeLocation,
+    quantity: enteredQty,
+    grnNo: issueQtyTarget.grnNo,
+    remarks: form.remarks,
+    type: issueQtyTarget.type,
+    movementDate: issueQtyTarget.movementDate,
+    fifoPalletNo: issueQtyTarget.fifoPalletNo || issueQtyTarget.fifoNo || '',
+  });
 
-      setSearchResults((rows) => rows.filter((r) => r.id !== issueQtyTarget.id));
-      closeIssueQtyModal();
-    }
-  };
+  if (added) {
+    setRequestedByPart((prev) => ({
+      ...prev,
+      [String(issueQtyTarget.itemId)]: round3(requestedQtyNumber),
+    }));
+
+    setSearchResults((rows) => rows.filter((r) => r.id !== issueQtyTarget.id));
+    closeIssueQtyModal();
+  }
+};
+
+  // const handleAddFromIssueQtyModal = () => {
+  //   if (!issueQtyTarget) return;
+
+  //   const availableQty = Number(issueQtyTarget.quantity || 0);
+  //   const enteredQty = round3(issueQty);
+  //   const remainingQty = getRemainingRequestedQty(issueQtyTarget.itemId);
+
+  //   if (!Number.isFinite(enteredQty) || enteredQty <= 0) {
+  //     toast.error('Please enter a valid Issue Qty greater than 0.');
+  //     return;
+  //   }
+
+  //   if (enteredQty > availableQty) {
+  //     toast.error(`Issue Qty cannot exceed the pallet's available quantity (${availableQty}).`);
+  //     return;
+  //   }
+
+  //   if (enteredQty > remainingQty) {
+  //     toast.error(`Issue Qty cannot exceed the remaining requested quantity (${remainingQty}).`);
+  //     return;
+  //   }
+
+  //   const added = addConfirmedRow({
+  //     palletId: issueQtyTarget.id,
+  //     itemId: issueQtyTarget.itemId,
+  //     partLabel: issueQtyTarget.partLabel,
+  //     palletNo: issueQtyTarget.palletNo,
+  //     storeLocation: issueQtyTarget.storeLocation,
+  //     quantity: enteredQty,
+  //     grnNo: issueQtyTarget.grnNo,
+  //     remarks: form.remarks,
+  //     type: issueQtyTarget.type,
+  //     movementDate: issueQtyTarget.movementDate,
+  //     fifoPalletNo: issueQtyTarget.fifoPalletNo || issueQtyTarget.fifoNo || '',
+  //   });
+
+  //   if (added) {
+  //     setRequestedByPart((prev) => ({
+  //       ...prev,
+  //       [String(issueQtyTarget.itemId)]: round3(requestedQtyNumber),
+  //     }));
+
+  //     setSearchResults((rows) => rows.filter((r) => r.id !== issueQtyTarget.id));
+  //     closeIssueQtyModal();
+  //   }
+  // };
 
   // ------------------------------------------
   // Scan Pallet / GRN Label

@@ -3,6 +3,7 @@
   //   Customer PC IIS : "http://localhost:82/api"
   //   Cloud IIS       : "http://13.202.148.130:3041/api"
   var SITE_API = "http://localhost:82/api";
+  //var SITE_API = "https://localhost:7058/api";
   // APK ki eppudu idhe (adb reverse valla PC API ki veltundi)
   var APK_API = "http://localhost:5000/api";
   var isApk =

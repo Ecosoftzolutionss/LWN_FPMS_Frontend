@@ -526,6 +526,17 @@ const GRNPost = () => {
     try {
       const res = await API.get(`/GrnEntry/${row.id}`)
       setDetailsGrn(res.data)
+
+      console.log(
+  'GRN PART MASTER STUFF QUANTITY:',
+  res.data?.lines?.map((l) => ({
+    partNumber: l.partNumber,
+    quantity: l.quantity,
+    palletQuantity: l.palletQuantity,
+    stuffQuantity: l.stuffQuantity,
+    uom: l.uom,
+  }))
+)
       setSelectedLines([])
       setShowDetails(true)
     } catch {
@@ -533,14 +544,15 @@ const GRNPost = () => {
     }
   }
 
-  const buildLabelFromLine = (grn, line) => ({
-    grnNumber: grn.grnNumber,
-    grnDate: grn.grnDate,
-    supplierInvoiceNumber: grn.supplierInvoiceNumber,
-    supplierInvoiceDate: grn.supplierInvoiceDate,
-    totalQuantity: totalQuantity(grn),
-    line,
-  })
+const buildLabelFromLine = (grn, line) => ({
+  grnNumber: grn.grnNumber,
+  grnDate: grn.grnDate,
+  supplierInvoiceNumber: grn.supplierInvoiceNumber,
+  supplierInvoiceDate: grn.supplierInvoiceDate,
+  totalQuantity: Number(line?.quantity ?? 0),
+  allLines: grn.lines || [],
+  line,
+})
 
   const handlePostLine = async (line) => {
     try {
@@ -662,17 +674,18 @@ const GRNPost = () => {
   }
 
   const openBulkLabel = (grn, lines) => {
-    setBulkLabelGrn({
-      grnNumber: grn.grnNumber,
-       grnDate: grn.grnDate,
-      supplierInvoiceNumber: grn.supplierInvoiceNumber,
-      supplierInvoiceDate: grn.supplierInvoiceDate,
-      totalQuantity: totalQuantity(grn),
-      lines,
-    })
-    setBulkLabelSize('')
-    setShowBulkLabel(true)
-  }
+  setBulkLabelGrn({
+    grnNumber: grn.grnNumber,
+    grnDate: grn.grnDate,
+    supplierInvoiceNumber: grn.supplierInvoiceNumber,
+    supplierInvoiceDate: grn.supplierInvoiceDate,
+    allLines: grn.lines || [],
+    lines,
+  })
+
+  setBulkLabelSize('')
+  setShowBulkLabel(true)
+}
 
   const handleViewLine = (line) => {
     setViewLineTarget(line)
@@ -1029,8 +1042,31 @@ const GRNPost = () => {
     }
   }
 
-  const totalQuantity = (grn) => (grn?.lines || []).reduce((sum, l) => sum + Number(l.quantity || 0), 0)
-  const totalPalletQuantity = (grn) => (grn?.lines || []).reduce((sum, l) => sum + Number(l.palletQuantity || 0), 0)
+  const getStuffQuantity = (line) => {
+  const value = line?.stuffQuantity ?? line?.StuffQuantity;
+
+  if (
+    value === null ||
+    value === undefined ||
+    value === '' ||
+    !Number.isFinite(Number(value))
+  ) {
+    return null;
+  }
+
+  return Number(value);
+};
+const totalQuantity = (grn) =>
+  (grn?.lines || []).reduce(
+    (sum, l) => sum + Number(l.quantity || 0),
+    0
+  );
+
+const totalPalletQuantity = (grn) =>
+  (grn?.lines || []).reduce(
+    (sum, l) => sum + Number(l.quantity || 0),
+    0
+  );
   const totalValue = (grn) => (grn?.lines || []).reduce((sum, l) => sum + Number(l.totalValue || 0), 0)
 
   const firstLine = labelGrn?.line
@@ -1082,7 +1118,13 @@ const GRNPost = () => {
       ? `${getCompactPalletNoFontSize(line?.palletNo)}mm`
       : `${getPalletNoFontSize(line?.palletNo)}px`
 
-    const qtyValue = line?.palletQuantity ?? line?.quantity ?? 0
+    // PQTY / PALLET QTY = quantity on THIS pallet (e.g. 700, 700, 700, 400)
+    const palletQty = Number(line?.quantity ?? 0)
+
+    // QTY = total invoice qty of this part in the GRN (e.g. 2500 on all 4 labels)
+    const sameParts = (grnMeta?.allLines?.length ? grnMeta.allLines : [line])
+      .filter((l) => l?.partNumber === line?.partNumber)
+    const invoiceQty = sameParts.reduce((sum, l) => sum + Number(l?.quantity || 0), 0)
 
     return (
       <div
@@ -1135,6 +1177,7 @@ const GRNPost = () => {
       fifoPalletNo: line?.fifoPalletNo ?? '',
       palletNo: line?.palletNo ?? '',
       part: line?.partNumber ?? '',
+      uom: line?.uom || 'NOS',
       qty: line?.quantity ?? line?.palletQuantity ?? 0,
       location: line?.storeLocation || line?.location || '',
     })}
@@ -1151,7 +1194,14 @@ const GRNPost = () => {
             <div className="fifo-meta-grid">
               <div><FaRegFileAlt className="fifo-meta-icon" /><span className="fifo-meta-label">SUP.INV.NO</span><span className="fifo-meta-colon">:</span><span className="fifo-meta-value">{grnMeta.supplierInvoiceNumber || '—'}</span></div>
               <div><FaRegCalendarAlt className="fifo-meta-icon" /><span className="fifo-meta-label">SDATE</span><span className="fifo-meta-colon">:</span><span className="fifo-meta-value">{formatDate(grnMeta.supplierInvoiceDate) || '—'}</span></div>
-              <div><FaBoxOpen className="fifo-meta-icon" /><span className="fifo-meta-label">QTY</span><span className="fifo-meta-colon">:</span><span className="fifo-meta-value">{grnMeta.totalQuantity ?? 0} Nos.</span></div>
+             <div>
+  <FaBoxOpen className="fifo-meta-icon" />
+  <span className="fifo-meta-label">QTY</span>
+  <span className="fifo-meta-colon">:</span>
+  <div className="fifo-meta-value">
+  {invoiceQty} {line?.uom || 'Nos'}
+</div>
+</div>
               <div><FaRegFileAlt className="fifo-meta-icon" /><span className="fifo-meta-label">GRN NO</span><span className="fifo-meta-colon">:</span><span className="fifo-meta-value">{grnMeta.grnNumber || '—'}</span></div>
               <div>
   <FaRegCalendarAlt className="fifo-meta-icon" />
@@ -1161,7 +1211,13 @@ const GRNPost = () => {
     {formatDate(grnMeta?.grnDate) || '—'}
   </span>
 </div>
-              <div><FaBoxOpen className="fifo-meta-icon" /><span className="fifo-meta-label">PQTY</span><span className="fifo-meta-colon">:</span><span className="fifo-meta-value">{line?.palletQuantity ?? 0} Nos.</span></div>
+           <div>
+  <FaBoxOpen className="fifo-meta-icon" />
+  <span className="fifo-meta-label">PQTY:</span>
+  <span className="fifo-meta-value">
+    {palletQty !== null ? palletQty : '—'} {line?.uom || 'NOS'}
+  </span>
+</div>
             </div>
 
             <div className="fifo-part-row">
@@ -1196,8 +1252,10 @@ const GRNPost = () => {
                   {line?.partName?.toUpperCase() || '—'}
                 </div>
 
-                <div className="fifo-pallet-qty">
-                  <div className="fifo-part-label">PALLET QTY (Nos.)</div>
+                {/* <div className="fifo-pallet-qty">
+                 <div className="fifo-part-label">
+  PALLET QTY ({line?.uom || 'NOS'})
+</div>
                   <div
                     className="fifo-qty-value"
                     style={{
@@ -1214,7 +1272,24 @@ const GRNPost = () => {
                   >
                     {qtyValue}
                   </div>
-                </div>
+                </div> */}
+
+           <div className="fifo-pallet-qty">
+  <div className="fifo-part-label">
+    PALLET QTY ({line?.uom || 'NOS'})
+  </div>
+
+  <div
+    className="fifo-qty-value"
+    style={{
+      fontSize: compact
+        ? `${getQtyFontSize(palletQty ?? 0, true)}mm`
+        : `${getQtyFontSize(palletQty ?? 0, false)}px`,
+    }}
+  >
+    {palletQty !== null ? palletQty : '—'}
+  </div>
+</div>
               </div>
             </div>
           </div>
@@ -1353,8 +1428,24 @@ const GRNPost = () => {
                 columns={[
                   { name: 'PART', selector: (row) => row.partNumber, minWidth: '90px' },
                   { name: 'PART DESC', selector: (row) => row.partName, grow: 2, wrap: true },
-                  { name: 'QTY', selector: (row) => row.quantity, center: true, width: '80px' },
-                  { name: 'PALLET QTY', selector: (row) => row.palletQuantity ?? '—', center: true, width: '110px' },
+                  {
+  name: 'PALLET NO',
+  selector: (row) => row.palletNo || '—',
+  center: true,
+  minWidth: '110px',
+},
+              {
+  name: 'QTY',
+  selector: (row) => row.quantity,
+  center: true,
+  width: '80px'
+},
+{
+  name: 'PALLET QTY',
+  selector: (row) => Number(row.quantity ?? 0),
+  center: true,
+  width: '110px'
+},
                   { name: 'RATE (₹)', selector: (row) => Number(row.rate).toFixed(2), center: true, width: '100px' },
                   { name: 'TOTAL VALUE (₹)', selector: (row) => Number(row.totalValue).toFixed(2), center: true, minWidth: '130px' },
                   {
@@ -1566,14 +1657,14 @@ const GRNPost = () => {
                     <td>{viewLineTarget.partNumber}</td>
                     <td>{viewLineTarget.partName}</td>
                     <td>{viewLineTarget.quantity}</td>
-                    <td>{viewLineTarget.palletQuantity ?? '—'}</td>
+                    <td>{Number(viewLineTarget.quantity ?? 0)}</td>
                     <td>{Number(viewLineTarget.rate).toFixed(2)}</td>
                     <td>{Number(viewLineTarget.totalValue).toFixed(2)}</td>
                   </tr>
                   <tr className="grn-modal-total-row">
                     <td colSpan={2}><strong>Total</strong></td>
                     <td><strong>{viewLineTarget.quantity}</strong></td>
-                    <td>—</td>
+                    <td><strong>{Number(viewLineTarget.quantity ?? 0)}</strong></td>
                     <td></td>
                     <td><strong>{Number(viewLineTarget.totalValue).toFixed(2)}</strong></td>
                   </tr>
@@ -1636,7 +1727,7 @@ const GRNPost = () => {
                 <span>GRN: <strong>{labelGrn.grnNumber || '—'}</strong></span>
                 <span>Part: <strong>{firstLine?.partNumber || '—'}</strong></span>
                 <span>Pallet: <strong>{firstLine?.palletNo || '—'}</strong></span>
-                <span>Pallet Qty: <strong>{firstLine?.palletQuantity ?? firstLine?.quantity ?? 0}</strong></span>
+                <span>Pallet Qty: <strong>{Number(firstLine?.quantity ?? 0)}</strong></span>
               </div>
 
               <LabelSizePicker value={labelSize} onChange={setLabelSize} />
