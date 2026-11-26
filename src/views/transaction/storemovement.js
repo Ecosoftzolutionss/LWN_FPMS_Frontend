@@ -25,7 +25,10 @@ const getErrorMessage = (err, fallback) => {
   const data = err?.response?.data
   if (!data) return fallback
   if (typeof data === 'string') return data
-  if (data.message || data.error) return data.message || data.error
+  if (data.message || data.error) {
+    const msg = data.message || data.error
+    return data.detail ? `${msg}: ${data.detail}` : msg
+  }
   return fallback
 }
 
@@ -258,35 +261,24 @@ const StoreMovement = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Load the posted GRNs that still have quantity pending for Store Movement.
+  // Only TWO requests are made (the posted GRN list + the ids of GRNs with
+  // pending pallets). The old version called /grn/{id}/pallets once for every
+  // posted GRN, which flooded the API and caused "timeout of 15000ms exceeded".
   const loadGrns = async () => {
     try {
-      const res = await API.get('/GrnEntry?posted=true')
-      const postedGrns = res.data || []
+      const [grnRes, pendingRes] = await Promise.all([
+        API.get('/GrnEntry?posted=true'),
+        API.get('/StoreMovement/pending-grns'),
+      ])
 
-      const availableGrns = await Promise.all(
-        postedGrns.map(async (grn) => {
-          try {
-            const palletRes = await API.get(`/StoreMovement/grn/${grn.id}/pallets`)
-            const list = palletRes.data || []
+      const postedGrns = grnRes.data || []
+      const pendingIds = new Set((pendingRes.data || []).map((id) => Number(id)))
 
-            // Show GRN only when at least one pallet still has quantity
-            // pending for Store Movement (ground quantity counts as stored).
-            const hasRemainingPallet = list.some(
-              (pallet) => Number(pallet.quantity || 0) > Number(pallet.stuffedQty || 0),
-            )
-
-            return hasRemainingPallet ? grn : null
-          } catch (err) {
-            console.error(`Failed to check Store Movement status for GRN ${grn.id}`, err)
-            return null
-          }
-        }),
-      )
-
-      setGrns(availableGrns.filter(Boolean))
+      setGrns(postedGrns.filter((grn) => pendingIds.has(Number(grn.id))))
     } catch (err) {
       console.error('Failed to load GRN list', err)
-      toast.error('Failed to load GRN list')
+      toast.error(getErrorMessage(err, 'Failed to load GRN list'))
     }
   }
 
@@ -321,10 +313,12 @@ const StoreMovement = () => {
   const loadPallets = async (grnId) => {
     try {
       const res = await API.get(`/StoreMovement/grn/${grnId}/pallets`)
-      setPallets(res.data || [])
-      setActivePallet((prev) => res.data.find((p) => p.id === prev?.id) || res.data[0] || null)
-    } catch {
-      toast.error('Failed to load pallets for this GRN')
+      const list = res.data || []
+      setPallets(list)
+      setActivePallet((prev) => list.find((p) => p.id === prev?.id) || list[0] || null)
+    } catch (err) {
+      console.error('Failed to load pallets for GRN', grnId, err?.response?.data || err)
+      toast.error(getErrorMessage(err, 'Failed to load pallets for this GRN'))
     }
   }
 
